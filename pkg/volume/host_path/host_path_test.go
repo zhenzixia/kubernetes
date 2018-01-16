@@ -198,32 +198,32 @@ func TestPlugin(t *testing.T) {
 		VolumeSource: api.VolumeSource{HostPath: &api.HostPathVolumeSource{Path: "/vol1"}},
 	}
 	pod := &api.Pod{ObjectMeta: api.ObjectMeta{UID: types.UID("poduid")}}
-	mounter, err := plug.NewMounter(volume.NewSpecFromVolume(spec), pod, volume.VolumeOptions{})
+	builder, err := plug.NewBuilder(volume.NewSpecFromVolume(spec), pod, volume.VolumeOptions{})
 	if err != nil {
-		t.Errorf("Failed to make a new Mounter: %v", err)
+		t.Errorf("Failed to make a new Builder: %v", err)
 	}
-	if mounter == nil {
-		t.Errorf("Got a nil Mounter")
+	if builder == nil {
+		t.Errorf("Got a nil Builder")
 	}
 
-	path := mounter.GetPath()
+	path := builder.GetPath()
 	if path != "/vol1" {
 		t.Errorf("Got unexpected path: %s", path)
 	}
 
-	if err := mounter.SetUp(nil); err != nil {
+	if err := builder.SetUp(nil); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 
-	unmounter, err := plug.NewUnmounter("vol1", types.UID("poduid"))
+	cleaner, err := plug.NewCleaner("vol1", types.UID("poduid"))
 	if err != nil {
-		t.Errorf("Failed to make a new Unmounter: %v", err)
+		t.Errorf("Failed to make a new Cleaner: %v", err)
 	}
-	if unmounter == nil {
-		t.Errorf("Got a nil Unmounter")
+	if cleaner == nil {
+		t.Errorf("Got a nil Cleaner")
 	}
 
-	if err := unmounter.TearDown(); err != nil {
+	if err := cleaner.TearDown(); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 }
@@ -262,12 +262,12 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 	plugMgr.InitPlugins(ProbeVolumePlugins(volume.VolumeConfig{}), volumetest.NewFakeVolumeHost("/tmp/fake", client, nil))
 	plug, _ := plugMgr.FindPluginByName(hostPathPluginName)
 
-	// readOnly bool is supplied by persistent-claim volume source when its mounter creates other volumes
+	// readOnly bool is supplied by persistent-claim volume source when its builder creates other volumes
 	spec := volume.NewSpecFromPersistentVolume(pv, true)
 	pod := &api.Pod{ObjectMeta: api.ObjectMeta{UID: types.UID("poduid")}}
-	mounter, _ := plug.NewMounter(spec, pod, volume.VolumeOptions{})
+	builder, _ := plug.NewBuilder(spec, pod, volume.VolumeOptions{})
 
-	if !mounter.GetAttributes().ReadOnly {
-		t.Errorf("Expected true for mounter.IsReadOnly")
+	if !builder.GetAttributes().ReadOnly {
+		t.Errorf("Expected true for builder.IsReadOnly")
 	}
 }

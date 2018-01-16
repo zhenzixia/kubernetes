@@ -419,11 +419,11 @@ func (proxier *Proxier) OnServiceUpdate(services []api.Service) {
 				continue
 			}
 			info.portal.ip = serviceIP
-			info.portal.port = int(servicePort.Port)
+			info.portal.port = servicePort.Port
 			info.externalIPs = service.Spec.ExternalIPs
 			// Deep-copy in case the service instance changes
 			info.loadBalancerStatus = *api.LoadBalancerStatusDeepCopy(&service.Status.LoadBalancer)
-			info.nodePort = int(servicePort.NodePort)
+			info.nodePort = servicePort.NodePort
 			info.sessionAffinityType = service.Spec.SessionAffinity
 			glog.V(4).Infof("info: %+v", info)
 
@@ -452,7 +452,7 @@ func (proxier *Proxier) OnServiceUpdate(services []api.Service) {
 }
 
 func sameConfig(info *serviceInfo, service *api.Service, port *api.ServicePort) bool {
-	if info.protocol != port.Protocol || info.portal.port != int(port.Port) || info.nodePort != int(port.NodePort) {
+	if info.protocol != port.Protocol || info.portal.port != port.Port || info.nodePort != port.NodePort {
 		return false
 	}
 	if !info.portal.ip.Equal(net.ParseIP(service.Spec.ClusterIP)) {

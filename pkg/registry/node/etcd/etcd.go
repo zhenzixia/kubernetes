@@ -26,7 +26,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/client"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	"k8s.io/kubernetes/pkg/registry/generic"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/registry/node"
 	noderest "k8s.io/kubernetes/pkg/registry/node/rest"
 	"k8s.io/kubernetes/pkg/runtime"
@@ -40,14 +40,14 @@ type NodeStorage struct {
 }
 
 type REST struct {
-	*registry.Store
+	*etcdgeneric.Etcd
 	connection     client.ConnectionInfoGetter
 	proxyTransport http.RoundTripper
 }
 
 // StatusREST implements the REST endpoint for changing the status of a pod.
 type StatusREST struct {
-	store *registry.Store
+	store *etcdgeneric.Etcd
 }
 
 func (r *StatusREST) New() runtime.Object {
@@ -67,14 +67,14 @@ func NewStorage(opts generic.RESTOptions, connection client.ConnectionInfoGetter
 	storageInterface := opts.Decorator(
 		opts.Storage, cachesize.GetWatchCacheSizeByResource(cachesize.Nodes), &api.Node{}, prefix, node.Strategy, newListFunc)
 
-	store := &registry.Store{
+	store := &etcdgeneric.Etcd{
 		NewFunc:     func() runtime.Object { return &api.Node{} },
 		NewListFunc: newListFunc,
 		KeyRootFunc: func(ctx api.Context) string {
 			return prefix
 		},
 		KeyFunc: func(ctx api.Context, name string) (string, error) {
-			return registry.NoNamespaceKeyFunc(ctx, prefix, name)
+			return etcdgeneric.NoNamespaceKeyFunc(ctx, prefix, name)
 		},
 		ObjectNameFunc: func(obj runtime.Object) (string, error) {
 			return obj.(*api.Node).Name, nil
@@ -85,7 +85,6 @@ func NewStorage(opts generic.RESTOptions, connection client.ConnectionInfoGetter
 
 		CreateStrategy: node.Strategy,
 		UpdateStrategy: node.Strategy,
-		DeleteStrategy: node.Strategy,
 		ExportStrategy: node.Strategy,
 
 		Storage: storageInterface,
@@ -123,7 +122,7 @@ func (r *REST) getKubeletPort(ctx api.Context, nodeName string) (int, error) {
 	if !ok {
 		return 0, fmt.Errorf("Unexpected object type: %#v", node)
 	}
-	return int(node.Status.DaemonEndpoints.KubeletEndpoint.Port), nil
+	return node.Status.DaemonEndpoints.KubeletEndpoint.Port, nil
 }
 
 func (c *REST) GetConnectionInfo(ctx api.Context, nodeName string) (string, uint, http.RoundTripper, error) {

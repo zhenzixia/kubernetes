@@ -24,9 +24,9 @@ import (
 )
 
 func (c *FakeEvents) CreateWithEventNamespace(event *api.Event) (*api.Event, error) {
-	action := core.NewRootCreateAction(eventsResource, event)
+	action := core.NewRootCreateAction("events", event)
 	if c.ns != "" {
-		action = core.NewCreateAction(eventsResource, c.ns, event)
+		action = core.NewCreateAction("events", c.ns, event)
 	}
 	obj, err := c.Fake.Invokes(action, event)
 	if obj == nil {
@@ -38,9 +38,9 @@ func (c *FakeEvents) CreateWithEventNamespace(event *api.Event) (*api.Event, err
 
 // Update replaces an existing event. Returns the copy of the event the server returns, or an error.
 func (c *FakeEvents) UpdateWithEventNamespace(event *api.Event) (*api.Event, error) {
-	action := core.NewRootUpdateAction(eventsResource, event)
+	action := core.NewRootUpdateAction("events", event)
 	if c.ns != "" {
-		action = core.NewUpdateAction(eventsResource, c.ns, event)
+		action = core.NewUpdateAction("events", c.ns, event)
 	}
 	obj, err := c.Fake.Invokes(action, event)
 	if obj == nil {
@@ -52,9 +52,9 @@ func (c *FakeEvents) UpdateWithEventNamespace(event *api.Event) (*api.Event, err
 
 // Patch patches an existing event. Returns the copy of the event the server returns, or an error.
 func (c *FakeEvents) Patch(event *api.Event, data []byte) (*api.Event, error) {
-	action := core.NewRootPatchAction(eventsResource, event)
+	action := core.NewRootPatchAction("events", event)
 	if c.ns != "" {
-		action = core.NewPatchAction(eventsResource, c.ns, event)
+		action = core.NewPatchAction("events", c.ns, event)
 	}
 	obj, err := c.Fake.Invokes(action, event)
 	if obj == nil {
@@ -66,9 +66,9 @@ func (c *FakeEvents) Patch(event *api.Event, data []byte) (*api.Event, error) {
 
 // Search returns a list of events matching the specified object.
 func (c *FakeEvents) Search(objOrRef runtime.Object) (*api.EventList, error) {
-	action := core.NewRootListAction(eventsResource, api.ListOptions{})
+	action := core.NewRootListAction("events", api.ListOptions{})
 	if c.ns != "" {
-		action = core.NewListAction(eventsResource, c.ns, api.ListOptions{})
+		action = core.NewListAction("events", c.ns, api.ListOptions{})
 	}
 	obj, err := c.Fake.Invokes(action, &api.EventList{})
 	if obj == nil {
@@ -81,7 +81,7 @@ func (c *FakeEvents) Search(objOrRef runtime.Object) (*api.EventList, error) {
 func (c *FakeEvents) GetFieldSelector(involvedObjectName, involvedObjectNamespace, involvedObjectKind, involvedObjectUID *string) fields.Selector {
 	action := core.GenericActionImpl{}
 	action.Verb = "get-field-selector"
-	action.Resource = eventsResource
+	action.Resource = "events"
 
 	c.Fake.Invokes(action, nil)
 	return fields.Everything()

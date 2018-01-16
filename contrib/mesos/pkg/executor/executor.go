@@ -28,7 +28,7 @@ import (
 
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
-	dockertypes "github.com/docker/engine-api/types"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/golang/glog"
 	bindings "github.com/mesos/mesos-go/executor"
@@ -150,10 +150,8 @@ func New(config Config) *Executor {
 		nodeInfos:         config.NodeInfos,
 		initCompleted:     make(chan struct{}),
 		registry:          config.Registry,
-	}
-	if config.APIClient != nil {
-		k.kubeAPI = &clientAPIWrapper{config.APIClient.Core()}
-		k.nodeAPI = &clientAPIWrapper{config.APIClient.Core()}
+		kubeAPI:           &clientAPIWrapper{config.APIClient},
+		nodeAPI:           &clientAPIWrapper{config.APIClient},
 	}
 
 	// apply functional options
@@ -490,7 +488,7 @@ func (k *Executor) bindAndWatchTask(driver bindings.ExecutorDriver, task *mesos.
 	// within the launch timeout window we should see a pod-task update via the registry.
 	// if we see a Running update then we need to generate a TASK_RUNNING status update for mesos.
 	handlerFinished := false
-	handler := &watchHandler{
+	handler := watchHandler{
 		expiration: watchExpiration{
 			timeout: launchTimer.C,
 			onEvent: func(taskID string) {
@@ -657,13 +655,14 @@ func (k *Executor) doShutdown(driver bindings.ExecutorDriver) {
 // Destroy existing k8s containers
 func (k *Executor) killKubeletContainers() {
 	if containers, err := dockertools.GetKubeletDockerContainers(k.dockerClient, true); err == nil {
-		opts := dockertypes.ContainerRemoveOptions{
+		opts := docker.RemoveContainerOptions{
 			RemoveVolumes: true,
 			Force:         true,
 		}
 		for _, container := range containers {
-			log.V(2).Infof("Removing container: %v", container.ID)
-			if err := k.dockerClient.RemoveContainer(container.ID, opts); err != nil {
+			opts.ID = container.ID
+			log.V(2).Infof("Removing container: %v", opts.ID)
+			if err := k.dockerClient.RemoveContainer(opts); err != nil {
 				log.Warning(err)
 			}
 		}

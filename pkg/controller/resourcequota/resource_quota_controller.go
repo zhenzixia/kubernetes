@@ -29,7 +29,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller/framework"
 	"k8s.io/kubernetes/pkg/quota"
 	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/util/metrics"
 	utilruntime "k8s.io/kubernetes/pkg/util/runtime"
 	"k8s.io/kubernetes/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/util/workqueue"
@@ -70,7 +69,7 @@ type ResourceQuotaController struct {
 	// knows how to calculate usage
 	registry quota.Registry
 	// controllers monitoring to notify for replenishment
-	replenishmentControllers []framework.ControllerInterface
+	replenishmentControllers []*framework.Controller
 }
 
 func NewResourceQuotaController(options *ResourceQuotaControllerOptions) *ResourceQuotaController {
@@ -80,11 +79,9 @@ func NewResourceQuotaController(options *ResourceQuotaControllerOptions) *Resour
 		queue:                    workqueue.New(),
 		resyncPeriod:             options.ResyncPeriod,
 		registry:                 options.Registry,
-		replenishmentControllers: []framework.ControllerInterface{},
+		replenishmentControllers: []*framework.Controller{},
 	}
-	if options.KubeClient != nil && options.KubeClient.Core().GetRESTClient().GetRateLimiter() != nil {
-		metrics.RegisterMetricAndTrackRateLimiterUsage("resource_quota_controller", options.KubeClient.Core().GetRESTClient().GetRateLimiter())
-	}
+
 	// set the synchronization handler
 	rq.syncHandler = rq.syncResourceQuotaFromKey
 
@@ -163,24 +160,19 @@ func (rq *ResourceQuotaController) enqueueResourceQuota(obj interface{}) {
 // worker runs a worker thread that just dequeues items, processes them, and marks them done.
 // It enforces that the syncHandler is never invoked concurrently with the same key.
 func (rq *ResourceQuotaController) worker() {
-	workFunc := func() bool {
-		key, quit := rq.queue.Get()
-		if quit {
-			return true
-		}
-		defer rq.queue.Done(key)
-		err := rq.syncHandler(key.(string))
-		if err != nil {
-			utilruntime.HandleError(err)
-			rq.queue.Add(key)
-		}
-		return false
-	}
 	for {
-		if quit := workFunc(); quit {
-			glog.Infof("resource quota controller worker shutting down")
-			return
-		}
+		func() {
+			key, quit := rq.queue.Get()
+			if quit {
+				return
+			}
+			defer rq.queue.Done(key)
+			err := rq.syncHandler(key.(string))
+			if err != nil {
+				utilruntime.HandleError(err)
+				rq.queue.Add(key)
+			}
+		}()
 	}
 }
 

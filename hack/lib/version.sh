@@ -107,11 +107,18 @@ kube::version::load_version_vars() {
   source "${version_file}"
 }
 
+# golang 1.5+ wants `-X key=val`, but golang 1.4- REQUIRES `-X key val`
 kube::version::ldflag() {
   local key=${1}
   local val=${2}
 
-  echo "-X ${KUBE_GO_PACKAGE}/pkg/version.${key}=${val}"
+  GO_VERSION=($(go version))
+
+  if [[ -n $(echo "${GO_VERSION[2]}" | grep -E 'go1.1|go1.2|go1.3|go1.4') ]]; then
+    echo "-X ${KUBE_GO_PACKAGE}/pkg/version.${key} ${val}"
+  else
+    echo "-X ${KUBE_GO_PACKAGE}/pkg/version.${key}=${val}"
+  fi
 }
 
 # Prints the value that needs to be passed to the -ldflags parameter of go build
@@ -119,7 +126,7 @@ kube::version::ldflag() {
 kube::version::ldflags() {
   kube::version::get_version_vars
 
-  local -a ldflags=($(kube::version::ldflag "buildDate" "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"))
+  local -a ldflags=()
   if [[ -n ${KUBE_GIT_COMMIT-} ]]; then
     ldflags+=($(kube::version::ldflag "gitCommit" "${KUBE_GIT_COMMIT}"))
     ldflags+=($(kube::version::ldflag "gitTreeState" "${KUBE_GIT_TREE_STATE}"))

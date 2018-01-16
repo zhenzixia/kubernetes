@@ -36,8 +36,6 @@ import (
 var FileExtensions = []string{".json", ".yaml", ".yml"}
 var InputExtensions = append(FileExtensions, "stdin")
 
-const defaultHttpGetAttempts int = 3
-
 // Builder provides convenience functions for taking arguments and parameters
 // from the command line and converting them to a list of resources to iterate
 // over using the Visitor interface.
@@ -100,7 +98,7 @@ func (b *Builder) Schema(schema validation.Schema) *Builder {
 // will cause an error.
 // If ContinueOnError() is set prior to this method, objects on the path that are not
 // recognized will be ignored (but logged at V(2)).
-func (b *Builder) FilenameParam(enforceNamespace, recursive bool, paths ...string) *Builder {
+func (b *Builder) FilenameParam(enforceNamespace bool, paths ...string) *Builder {
 	for _, s := range paths {
 		switch {
 		case s == "-":
@@ -111,9 +109,9 @@ func (b *Builder) FilenameParam(enforceNamespace, recursive bool, paths ...strin
 				b.errs = append(b.errs, fmt.Errorf("the URL passed to filename %q is not valid: %v", s, err))
 				continue
 			}
-			b.URL(defaultHttpGetAttempts, url)
+			b.URL(url)
 		default:
-			b.Path(recursive, s)
+			b.Path(s)
 		}
 	}
 
@@ -125,12 +123,11 @@ func (b *Builder) FilenameParam(enforceNamespace, recursive bool, paths ...strin
 }
 
 // URL accepts a number of URLs directly.
-func (b *Builder) URL(httpAttemptCount int, urls ...*url.URL) *Builder {
+func (b *Builder) URL(urls ...*url.URL) *Builder {
 	for _, u := range urls {
 		b.paths = append(b.paths, &URLVisitor{
-			URL:              u,
-			StreamVisitor:    NewStreamVisitor(nil, b.mapper, u.String(), b.schema),
-			HttpAttemptCount: httpAttemptCount,
+			URL:           u,
+			StreamVisitor: NewStreamVisitor(nil, b.mapper, u.String(), b.schema),
 		})
 	}
 	return b
@@ -160,7 +157,7 @@ func (b *Builder) Stream(r io.Reader, name string) *Builder {
 // FileVisitor is streaming the content to a StreamVisitor. If ContinueOnError() is set
 // prior to this method being called, objects on the path that are unrecognized will be
 // ignored (but logged at V(2)).
-func (b *Builder) Path(recursive bool, paths ...string) *Builder {
+func (b *Builder) Path(paths ...string) *Builder {
 	for _, p := range paths {
 		_, err := os.Stat(p)
 		if os.IsNotExist(err) {
@@ -172,7 +169,7 @@ func (b *Builder) Path(recursive bool, paths ...string) *Builder {
 			continue
 		}
 
-		visitors, err := ExpandPathsToFileVisitors(b.mapper, p, recursive, FileExtensions, b.schema)
+		visitors, err := ExpandPathsToFileVisitors(b.mapper, p, false, FileExtensions, b.schema)
 		if err != nil {
 			b.errs = append(b.errs, fmt.Errorf("error reading %q: %v", p, err))
 		}

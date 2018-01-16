@@ -26,17 +26,19 @@ source "${KUBE_ROOT}/cluster/lib/util.sh"
 if [[ "${OS_DISTRIBUTION}" == "debian" || "${OS_DISTRIBUTION}" == "coreos" || "${OS_DISTRIBUTION}" == "trusty" ]]; then
   source "${KUBE_ROOT}/cluster/gce/${OS_DISTRIBUTION}/helper.sh"
 elif [[ "${OS_DISTRIBUTION}" == "gci" ]]; then
-  # TODO(andyzheng0831): Switch to use the GCI specific code.
   source "${KUBE_ROOT}/cluster/gce/trusty/helper.sh"
-  MASTER_IMAGE_PROJECT="google-containers"
-  # If choosing "gci" disto, at least the cluster master needs to run on GCI image.
-  # If the user does not set a GCI image for master, we run both master and nodes
-  # using the latest GCI dev image.
-  if [[ "${MASTER_IMAGE}" != gci* ]]; then
-    gci_images=( $(gcloud compute images list --project google-containers | grep "gci-dev" | cut -d ' ' -f1) )
+  # If the master or node image is not set, we use the latest GCI dev image.
+  # Otherwise, we respect whatever set by the user.
+  gci_images=( $(gcloud compute images list --project google-containers \
+      --show-deprecated --no-standard-images --sort-by='~creationTimestamp' \
+      --regexp='gci-[a-z]+-52-.*' --format='table[no-heading](name)') )
+  if [[ -z "${KUBE_GCE_MASTER_IMAGE:-}" ]]; then
     MASTER_IMAGE="${gci_images[0]}"
-    NODE_IMAGE="${MASTER_IMAGE}"
-    NODE_IMAGE_PROJECT="${MASTER_IMAGE_PROJECT}"
+    MASTER_IMAGE_PROJECT="google-containers"
+  fi
+  if [[ -z "${KUBE_GCE_NODE_IMAGE:-}" ]]; then
+    NODE_IMAGE="${gci_images[0]}"
+    NODE_IMAGE_PROJECT="google-containers"
   fi
 else
   echo "Cannot operate on cluster using os distro: ${OS_DISTRIBUTION}" >&2
@@ -235,7 +237,7 @@ function upload-server-tars() {
     local staging_bucket="gs://kubernetes-staging-${project_hash}${suffix}"
 
     # Ensure the buckets are created
-    if ! gsutil ls "${staging_bucket}" ; then
+    if ! gsutil ls "${staging_bucket}" > /dev/null 2>&1 ; then
       echo "Creating ${staging_bucket}"
       gsutil mb -l "${region}" "${staging_bucket}"
     fi
@@ -295,9 +297,12 @@ function detect-node-names {
         "${group}" --zone "${ZONE}" --project "${PROJECT}" \
         --format='value(instance)'))
     done
+    echo "INSTANCE_GROUPS=${INSTANCE_GROUPS[*]}" >&2
+    echo "NODE_NAMES=${NODE_NAMES[*]}" >&2
+  else
+    echo "INSTANCE_GROUPS=" >&2
+    echo "NODE_NAMES=" >&2
   fi
-  echo "INSTANCE_GROUPS=${INSTANCE_GROUPS[*]:-}" >&2
-  echo "NODE_NAMES=${NODE_NAMES[*]:-}" >&2
 }
 
 # Detect the information about the minions
@@ -715,11 +720,11 @@ function create-nodes-template() {
 # exports:
 # - NUM_MIGS
 function set_num_migs() {
-  local defaulted_max_instances_per_mig=${MAX_INSTANCES_PER_MIG:-1000}
+  local defaulted_max_instances_per_mig=${MAX_INSTANCES_PER_MIG:-500}
 
   if [[ ${defaulted_max_instances_per_mig} -le "0" ]]; then
-    echo "MAX_INSTANCES_PER_MIG cannot be negative. Assuming default 1000"
-    defaulted_max_instances_per_mig=1000
+    echo "MAX_INSTANCES_PER_MIG cannot be negative. Assuming default 500"
+    defaulted_max_instances_per_mig=500
   fi
   export NUM_MIGS=$(((${NUM_NODES} + ${defaulted_max_instances_per_mig} - 1) / ${defaulted_max_instances_per_mig}))
 }
@@ -747,8 +752,8 @@ function create-nodes() {
         --template "$template_name" || true;
     gcloud compute instance-groups managed wait-until-stable \
         "${NODE_INSTANCE_PREFIX}-group-$i" \
-        --zone "${ZONE}" \
-        --project "${PROJECT}" || true;
+	      --zone "${ZONE}" \
+	      --project "${PROJECT}" || true;
   done
 
   # TODO: We don't add a suffix for the last group to keep backward compatibility when there's only one MIG.
@@ -893,7 +898,7 @@ function kube-down {
   # Get the name of the managed instance group template before we delete the
   # managed instance group. (The name of the managed instance group template may
   # change during a cluster upgrade.)
-  local template=$(get-template "${PROJECT}")
+  local templates=$(get-template "${PROJECT}")
 
   # The gcloud APIs don't return machine parseable error codes/retry information. Therefore the best we can
   # do is parse the output and special case particular responses we are interested in.
@@ -920,12 +925,14 @@ function kube-down {
     fi
   done
 
-  if gcloud compute instance-templates describe --project "${PROJECT}" "${template}" &>/dev/null; then
-    gcloud compute instance-templates delete \
-      --project "${PROJECT}" \
-      --quiet \
-      "${template}"
-  fi
+  for template in ${templates[@]:-}; do
+    if gcloud compute instance-templates describe --project "${PROJECT}" "${template}" &>/dev/null; then
+      gcloud compute instance-templates delete \
+        --project "${PROJECT}" \
+        --quiet \
+        "${template}"
+    fi
+  done
 
   # First delete the master (if it exists).
   if gcloud compute instances describe "${MASTER_NAME}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
@@ -1033,11 +1040,8 @@ function kube-down {
 # $1: project
 # $2: zone
 function get-template {
-  local template=""
-  if [[ -n $(gcloud compute instance-templates list "${NODE_INSTANCE_PREFIX}"-template --project="${1}" | grep template) ]]; then
-    template="${NODE_INSTANCE_PREFIX}"-template
-  fi
-  echo "${template}"
+  gcloud compute instance-templates list -r "${NODE_INSTANCE_PREFIX}-template(-(${KUBE_RELEASE_VERSION_DASHED_REGEX}|${KUBE_CI_VERSION_DASHED_REGEX}))?" \
+    --project="${1}" --format='value(name)'
 }
 
 
@@ -1194,11 +1198,10 @@ function prepare-push() {
 function push-master {
   echo "Updating master metadata ..."
   write-master-env
-  prepare-startup-script
-  add-instance-metadata-from-file "${KUBE_MASTER}" "kube-env=${KUBE_TEMP}/master-kube-env.yaml" "startup-script=${KUBE_TEMP}/configure-vm.sh"
+  add-instance-metadata-from-file "${KUBE_MASTER}" "kube-env=${KUBE_TEMP}/master-kube-env.yaml" "startup-script=${KUBE_ROOT}/cluster/gce/configure-vm.sh"
 
   echo "Pushing to master (log at ${OUTPUT}/push-${KUBE_MASTER}.log) ..."
-  cat ${KUBE_TEMP}/configure-vm.sh | gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --project "${PROJECT}" --zone "${ZONE}" "${KUBE_MASTER}" --command "sudo bash -s -- --push" &> ${OUTPUT}/push-"${KUBE_MASTER}".log
+  cat ${KUBE_ROOT}/cluster/gce/configure-vm.sh | gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --project "${PROJECT}" --zone "${ZONE}" "${KUBE_MASTER}" --command "sudo bash -s -- --push" &> ${OUTPUT}/push-"${KUBE_MASTER}".log
 }
 
 # Push binaries to kubernetes node
@@ -1206,11 +1209,10 @@ function push-node() {
   node=${1}
 
   echo "Updating node ${node} metadata... "
-  prepare-startup-script
-  add-instance-metadata-from-file "${node}" "kube-env=${KUBE_TEMP}/node-kube-env.yaml" "startup-script=${KUBE_TEMP}/configure-vm.sh"
+  add-instance-metadata-from-file "${node}" "kube-env=${KUBE_TEMP}/node-kube-env.yaml" "startup-script=${KUBE_ROOT}/cluster/gce/configure-vm.sh"
 
   echo "Start upgrading node ${node} (log at ${OUTPUT}/push-${node}.log) ..."
-  cat ${KUBE_TEMP}/configure-vm.sh | gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --project "${PROJECT}" --zone "${ZONE}" "${node}" --command "sudo bash -s -- --push" &> ${OUTPUT}/push-"${node}".log
+  cat ${KUBE_ROOT}/cluster/gce/configure-vm.sh | gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --project "${PROJECT}" --zone "${ZONE}" "${node}" --command "sudo bash -s -- --push" &> ${OUTPUT}/push-"${node}".log
 }
 
 # Push binaries to kubernetes cluster
@@ -1352,23 +1354,16 @@ function ssh-to-node {
   local cmd="$2"
   # Loop until we can successfully ssh into the box
   for try in $(seq 1 5); do
-    if gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${ZONE}" "${node}" --command "echo test > /dev/null"; then
+    if gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --project "${PROJECT}" --zone="${ZONE}" "${node}" --command "echo test > /dev/null"; then
       break
     fi
     sleep 5
   done
   # Then actually try the command.
-  gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${ZONE}" "${node}" --command "${cmd}"
+  gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --project "${PROJECT}" --zone="${ZONE}" "${node}" --command "${cmd}"
 }
 
 # Perform preparations required to run e2e tests
 function prepare-e2e() {
   detect-project
-}
-
-# Writes configure-vm.sh to a temporary location with comments stripped. GCE
-# limits the size of metadata fields to 32K, and stripping comments is the
-# easiest way to buy us a little more room.
-function prepare-startup-script() {
-  sed '/^\s*#\([^!].*\)*$/ d' ${KUBE_ROOT}/cluster/gce/configure-vm.sh > ${KUBE_TEMP}/configure-vm.sh
 }

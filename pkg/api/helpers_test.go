@@ -24,7 +24,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/labels"
 
-	inf "gopkg.in/inf.v0"
+	"speter.net/go/exp/math/dec/inf"
 )
 
 func TestConversionError(t *testing.T) {

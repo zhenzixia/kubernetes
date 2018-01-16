@@ -27,25 +27,11 @@ set -o pipefail
 KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
 
 if [ -f "${KUBE_ROOT}/cluster/env.sh" ]; then
-  source "${KUBE_ROOT}/cluster/env.sh"
+    source "${KUBE_ROOT}/cluster/env.sh"
 fi
 
-source "${KUBE_ROOT}/cluster/lib/util.sh"
+source "${KUBE_ROOT}/cluster/kube-env.sh"
 source "${KUBE_ROOT}/cluster/kube-util.sh"
-
-# Run kubectl and retry upon failure.
-function kubectl_retry() {
-  tries=3
-  while ! "${KUBE_ROOT}/cluster/kubectl.sh" "$@"; do
-    tries=$((tries-1))
-    if [[ ${tries} -le 0 ]]; then
-      echo "('kubectl $@' failed, giving up)" >&2
-      return 1
-    fi
-    echo "(kubectl failed, will retry ${tries} times)" >&2
-    sleep 1
-  done
-}
 
 ALLOWED_NOTREADY_NODES="${ALLOWED_NOTREADY_NODES:-0}"
 
@@ -57,12 +43,6 @@ fi
 return_value=0
 attempt=0
 while true; do
-  # Pause between iterations of this large outer loop.
-  if [[ ${attempt} -gt 0 ]]; then
-    sleep 15
-  fi
-  attempt=$((attempt+1))
-
   # The "kubectl get nodes -o template" exports node information.
   #
   # Echo the output and gather 2 counts:
@@ -72,36 +52,35 @@ while true; do
   # Suppress errors from kubectl output because during cluster bootstrapping
   # for clusters where the master node is registered, the apiserver will become
   # available and then get restarted as the kubelet configures the docker bridge.
-  node=$(kubectl_retry get nodes) || continue
-  found=$(($(echo "${node}" | wc -l) - 1))
-  ready=$(($(echo "${node}" | grep -v "NotReady" | wc -l ) - 1))
+  node=$("${KUBE_ROOT}/cluster/kubectl.sh" get nodes) || true
+  found=$(($(echo "${node}" | wc -l) - 1)) || true
+  ready=$(($(echo "${node}" | grep -v "NotReady" | wc -l ) - 1)) || true
 
   if (( "${found}" == "${EXPECTED_NUM_NODES}" )) && (( "${ready}" == "${EXPECTED_NUM_NODES}")); then
     break
-  elif (( "${found}" > "${EXPECTED_NUM_NODES}" )); then
-    echo -e "${color_red}Found ${found} nodes, but expected ${EXPECTED_NUM_NODES}. Your cluster may not behave correctly.${color_norm}"
-    break
-  elif (( "${ready}" > "${EXPECTED_NUM_NODES}")); then
-    echo -e "${color_red}Found ${ready} ready nodes, but expected ${EXPECTED_NUM_NODES}. Your cluster may not behave correctly.${color_norm}"
+  elif (( "${found}" > "${EXPECTED_NUM_NODES}" )) && (( "${ready}" > "${EXPECTED_NUM_NODES}")); then
+    echo -e "${color_red}Detected ${ready} ready nodes, found ${found} nodes out of expected ${EXPECTED_NUM_NODES}. Found more nodes than expected, your cluster may not behave correctly.${color_norm}"
     break
   else
     # Set the timeout to ~25minutes (100 x 15 second) to avoid timeouts for 1000-node clusters.
     if (( attempt > 100 )); then
       echo -e "${color_red}Detected ${ready} ready nodes, found ${found} nodes out of expected ${EXPECTED_NUM_NODES}. Your cluster may not be fully functional.${color_norm}"
-      kubectl_retry get nodes
+      "${KUBE_ROOT}/cluster/kubectl.sh" get nodes
       if [ "$((${EXPECTED_NUM_NODES} - ${ready}))" -gt "${ALLOWED_NOTREADY_NODES}" ]; then
         exit 1
       else
         return_value=2
         break
       fi
-    else
+		else
       echo -e "${color_yellow}Waiting for ${EXPECTED_NUM_NODES} ready nodes. ${ready} ready nodes, ${found} registered. Retrying.${color_norm}"
     fi
+    attempt=$((attempt+1))
+    sleep 15
   fi
 done
 echo "Found ${found} node(s)."
-kubectl_retry get nodes
+"${KUBE_ROOT}/cluster/kubectl.sh" get nodes
 
 attempt=0
 while true; do
@@ -110,9 +89,9 @@ while true; do
   # Echo the output and gather 2 counts:
   #  - Total number of componentstatuses.
   #  - Number of "healthy" components.
-  cs_status=$(kubectl_retry get componentstatuses -o template --template='{{range .items}}{{with index .conditions 0}}{{.type}}:{{.status}}{{end}}{{"\n"}}{{end}}') || true
-  componentstatuses=$(echo "${cs_status}" | grep -c 'Healthy:') || true
-  healthy=$(echo "${cs_status}" | grep -c 'Healthy:True') || true
+  cs_status=$("${KUBE_ROOT}/cluster/kubectl.sh" get componentstatuses -o template --template='{{range .items}}{{with index .conditions 0}}{{.type}}:{{.status}},{{end}}{{end}}' --api-version=v1) || true
+  componentstatuses=$(echo "${cs_status}" | tr "," "\n" | grep -c 'Healthy:') || true
+  healthy=$(echo "${cs_status}" | tr "," "\n" | grep -c 'Healthy:True') || true
 
   if ((componentstatuses > healthy)); then
     if ((attempt < 5)); then
@@ -121,7 +100,7 @@ while true; do
       sleep 30
     else
       echo -e " ${color_yellow}Validate output:${color_norm}"
-      kubectl_retry get cs
+      "${KUBE_ROOT}/cluster/kubectl.sh" get cs
       echo -e "${color_red}Validation returned one or more failed components. Cluster is probably broken.${color_norm}"
       exit 1
     fi
@@ -131,8 +110,8 @@ while true; do
 done
 
 echo "Validate output:"
-kubectl_retry get cs
-if [ "${return_value}" == "0" ]; then
+"${KUBE_ROOT}/cluster/kubectl.sh" get cs
+if [ "${return_value}" == "0" ]; then 
   echo -e "${color_green}Cluster validation succeeded${color_norm}"
 else
   echo -e "${color_yellow}Cluster validation encountered some problems, but cluster should be in working order${color_norm}"

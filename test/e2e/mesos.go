@@ -24,31 +24,30 @@ import (
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/wait"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = framework.KubeDescribe("Mesos", func() {
-	f := framework.NewDefaultFramework("pods")
+var _ = Describe("Mesos", func() {
+	framework := NewDefaultFramework("pods")
 	var c *client.Client
 	var ns string
 
 	BeforeEach(func() {
-		framework.SkipUnlessProviderIs("mesos/docker")
-		c = f.Client
-		ns = f.Namespace.Name
+		SkipUnlessProviderIs("mesos/docker")
+		c = framework.Client
+		ns = framework.Namespace.Name
 	})
 
 	It("applies slave attributes as labels", func() {
-		nodeClient := f.Client.Nodes()
+		nodeClient := framework.Client.Nodes()
 
 		rackA := labels.SelectorFromSet(map[string]string{"k8s.mesosphere.io/attribute-rack": "1"})
 		options := api.ListOptions{LabelSelector: rackA}
 		nodes, err := nodeClient.List(options)
 		if err != nil {
-			framework.Failf("Failed to query for node: %v", err)
+			Failf("Failed to query for node: %v", err)
 		}
 		Expect(len(nodes.Items)).To(Equal(1))
 
@@ -62,14 +61,14 @@ var _ = framework.KubeDescribe("Mesos", func() {
 	})
 
 	It("starts static pods on every node in the mesos cluster", func() {
-		client := f.Client
-		framework.ExpectNoError(framework.AllNodesReady(client, wait.ForeverTestTimeout), "all nodes ready")
+		client := framework.Client
+		expectNoError(allNodesReady(client, wait.ForeverTestTimeout), "all nodes ready")
 
-		nodelist := framework.ListSchedulableNodesOrDie(f.Client)
+		nodelist := ListSchedulableNodesOrDie(framework.Client)
 
 		const ns = "static-pods"
-		numpods := int32(len(nodelist.Items))
-		framework.ExpectNoError(framework.WaitForPodsRunningReady(ns, numpods, wait.ForeverTestTimeout),
+		numpods := len(nodelist.Items)
+		expectNoError(waitForPodsRunningReady(ns, numpods, wait.ForeverTestTimeout),
 			fmt.Sprintf("number of static pods in namespace %s is %d", ns, numpods))
 	})
 
@@ -94,18 +93,18 @@ var _ = framework.KubeDescribe("Mesos", func() {
 				Containers: []api.Container{
 					{
 						Name:  podName,
-						Image: "beta.gcr.io/google_containers/pause-amd64:3.0",
+						Image: "beta.gcr.io/google_containers/pause:2.0",
 					},
 				},
 			},
 		})
-		framework.ExpectNoError(err)
+		expectNoError(err)
 
-		framework.ExpectNoError(framework.WaitForPodRunningInNamespace(c, podName, ns))
+		expectNoError(waitForPodRunningInNamespace(c, podName, ns))
 		pod, err := c.Pods(ns).Get(podName)
-		framework.ExpectNoError(err)
+		expectNoError(err)
 
-		nodeClient := f.Client.Nodes()
+		nodeClient := framework.Client.Nodes()
 
 		// schedule onto node with rack=2 being assigned to the "public" role
 		rack2 := labels.SelectorFromSet(map[string]string{
@@ -113,7 +112,7 @@ var _ = framework.KubeDescribe("Mesos", func() {
 		})
 		options := api.ListOptions{LabelSelector: rack2}
 		nodes, err := nodeClient.List(options)
-		framework.ExpectNoError(err)
+		expectNoError(err)
 
 		Expect(nodes.Items[0].Name).To(Equal(pod.Spec.NodeName))
 	})

@@ -60,7 +60,7 @@ kubectl cordon foo
 func NewCmdCordon(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 	options := &DrainOptions{factory: f, out: out}
 
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:     "cordon NODE",
 		Short:   "Mark node as unschedulable",
 		Long:    cordon_long,
@@ -70,7 +70,6 @@ func NewCmdCordon(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 			cmdutil.CheckErr(options.RunCordonOrUncordon(true))
 		},
 	}
-	return cmd
 }
 
 const (
@@ -84,7 +83,7 @@ $ kubectl uncordon foo
 func NewCmdUncordon(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 	options := &DrainOptions{factory: f, out: out}
 
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:     "uncordon NODE",
 		Short:   "Mark node as schedulable",
 		Long:    uncordon_long,
@@ -94,7 +93,6 @@ func NewCmdUncordon(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 			cmdutil.CheckErr(options.RunCordonOrUncordon(false))
 		},
 	}
-	return cmd
 }
 
 const (
@@ -105,7 +103,7 @@ Then drain deletes all pods except mirror pods (which cannot be deleted through
 the API server).  If there are DaemonSet-managed pods, drain will not proceed
 without --ignore-daemonsets, and regardless it will not delete any
 DaemonSet-managed pods, because those pods would be immediately replaced by the
-DaemonSet controller, which ignores unschedulable markings.  If there are any
+DaemonSet controller, which ignores unschedulable marknigs.  If there are any
 pods that are neither mirror pods nor managed--by ReplicationController,
 ReplicaSet, DaemonSet or Job--, then drain will not delete any pods unless you
 use --force.
@@ -152,14 +150,14 @@ func (o *DrainOptions) SetupDrain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	o.mapper, o.typer = o.factory.Object(false)
+	o.mapper, o.typer = o.factory.Object()
 
 	cmdNamespace, _, err := o.factory.DefaultNamespace()
 	if err != nil {
 		return err
 	}
 
-	r := o.factory.NewBuilder(cmdutil.GetIncludeThirdPartyAPIs(cmd)).
+	r := o.factory.NewBuilder().
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		ResourceNames("node", args[0]).
 		Do()
@@ -199,15 +197,83 @@ func (o *DrainOptions) RunDrain() error {
 // any unmanaged pods and the user didn't pass --force, we return that list in
 // an error.
 func (o *DrainOptions) getPodsForDeletion() ([]api.Pod, error) {
-	pods, unreplicatedPodNames, daemonSetPodNames, err := GetPodsForDeletionOnNodeDrain(
-		o.client,
-		o.nodeInfo.Name,
-		o.factory.Decoder(true),
-		o.Force,
-		o.IgnoreDaemonsets,
-	)
+	pods := []api.Pod{}
+	podList, err := o.client.Pods(api.NamespaceAll).List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"spec.nodeName": o.nodeInfo.Name})})
 	if err != nil {
-		return []api.Pod{}, err
+		return pods, err
+	}
+	unreplicatedPodNames := []string{}
+	daemonSetPodNames := []string{}
+
+	for _, pod := range podList.Items {
+		_, found := pod.ObjectMeta.Annotations[types.ConfigMirrorAnnotationKey]
+		if found {
+			// Skip mirror pod
+			continue
+		}
+		replicated := false
+		daemonset_pod := false
+
+		creatorRef, found := pod.ObjectMeta.Annotations[controller.CreatedByAnnotation]
+		if found {
+			// Now verify that the specified creator actually exists.
+			var sr api.SerializedReference
+			if err := runtime.DecodeInto(o.factory.Decoder(true), []byte(creatorRef), &sr); err != nil {
+				return pods, err
+			}
+			if sr.Reference.Kind == "ReplicationController" {
+				rc, err := o.client.ReplicationControllers(sr.Reference.Namespace).Get(sr.Reference.Name)
+				// Assume the only reason for an error is because the RC is
+				// gone/missing, not for any other cause.  TODO(mml): something more
+				// sophisticated than this
+				if err == nil && rc != nil {
+					replicated = true
+				}
+			} else if sr.Reference.Kind == "DaemonSet" {
+				ds, err := o.client.DaemonSets(sr.Reference.Namespace).Get(sr.Reference.Name)
+
+				// Assume the only reason for an error is because the DaemonSet is
+				// gone/missing, not for any other cause.  TODO(mml): something more
+				// sophisticated than this
+				if err == nil && ds != nil {
+					// Otherwise, treat daemonset-managed pods as unmanaged since
+					// DaemonSet Controller currently ignores the unschedulable bit.
+					// FIXME(mml): Add link to the issue concerning a proper way to drain
+					// daemonset pods, probably using taints.
+					daemonset_pod = true
+				}
+			} else if sr.Reference.Kind == "Job" {
+				job, err := o.client.ExtensionsClient.Jobs(sr.Reference.Namespace).Get(sr.Reference.Name)
+
+				// Assume the only reason for an error is because the Job is
+				// gone/missing, not for any other cause.  TODO(mml): something more
+				// sophisticated than this
+				if err == nil && job != nil {
+					replicated = true
+				}
+			} else if sr.Reference.Kind == "ReplicaSet" {
+				rs, err := o.client.ExtensionsClient.ReplicaSets(sr.Reference.Namespace).Get(sr.Reference.Name)
+
+				// Assume the only reason for an error is because the RS is
+				// gone/missing, not for any other cause.  TODO(mml): something more
+				// sophisticated than this
+				if err == nil && rs != nil {
+					replicated = true
+				}
+			}
+		}
+
+		switch {
+		case daemonset_pod:
+			daemonSetPodNames = append(daemonSetPodNames, pod.Name)
+		case !replicated:
+			unreplicatedPodNames = append(unreplicatedPodNames, pod.Name)
+			if o.Force {
+				pods = append(pods, pod)
+			}
+		default:
+			pods = append(pods, pod)
+		}
 	}
 
 	daemonSetErrors := !o.IgnoreDaemonsets && len(daemonSetPodNames) > 0
@@ -230,92 +296,6 @@ func (o *DrainOptions) getPodsForDeletion() ([]api.Pod, error) {
 	}
 
 	return pods, nil
-}
-
-// GetPodsForDeletionOnNodeDrain returns pods that should be deleted on node drain as well as some extra information
-// about possibly problematic pods (unreplicated and deamon sets).
-func GetPodsForDeletionOnNodeDrain(client *client.Client, nodename string, decoder runtime.Decoder, force bool,
-	ignoreDeamonSet bool) (pods []api.Pod, unreplicatedPodNames []string, daemonSetPodNames []string, finalError error) {
-
-	pods = []api.Pod{}
-	unreplicatedPodNames = []string{}
-	daemonSetPodNames = []string{}
-	podList, err := client.Pods(api.NamespaceAll).List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"spec.nodeName": nodename})})
-	if err != nil {
-		return []api.Pod{}, []string{}, []string{}, err
-	}
-
-	for _, pod := range podList.Items {
-		_, found := pod.ObjectMeta.Annotations[types.ConfigMirrorAnnotationKey]
-		if found {
-			// Skip mirror pod
-			continue
-		}
-		replicated := false
-		daemonset_pod := false
-
-		creatorRef, found := pod.ObjectMeta.Annotations[controller.CreatedByAnnotation]
-		if found {
-			// Now verify that the specified creator actually exists.
-			var sr api.SerializedReference
-			if err := runtime.DecodeInto(decoder, []byte(creatorRef), &sr); err != nil {
-				return []api.Pod{}, []string{}, []string{}, err
-			}
-			if sr.Reference.Kind == "ReplicationController" {
-				rc, err := client.ReplicationControllers(sr.Reference.Namespace).Get(sr.Reference.Name)
-				// Assume the only reason for an error is because the RC is
-				// gone/missing, not for any other cause.  TODO(mml): something more
-				// sophisticated than this
-				if err == nil && rc != nil {
-					replicated = true
-				}
-			} else if sr.Reference.Kind == "DaemonSet" {
-				ds, err := client.DaemonSets(sr.Reference.Namespace).Get(sr.Reference.Name)
-
-				// Assume the only reason for an error is because the DaemonSet is
-				// gone/missing, not for any other cause.  TODO(mml): something more
-				// sophisticated than this
-				if err == nil && ds != nil {
-					// Otherwise, treat daemonset-managed pods as unmanaged since
-					// DaemonSet Controller currently ignores the unschedulable bit.
-					// FIXME(mml): Add link to the issue concerning a proper way to drain
-					// daemonset pods, probably using taints.
-					daemonset_pod = true
-				}
-			} else if sr.Reference.Kind == "Job" {
-				job, err := client.ExtensionsClient.Jobs(sr.Reference.Namespace).Get(sr.Reference.Name)
-
-				// Assume the only reason for an error is because the Job is
-				// gone/missing, not for any other cause.  TODO(mml): something more
-				// sophisticated than this
-				if err == nil && job != nil {
-					replicated = true
-				}
-			} else if sr.Reference.Kind == "ReplicaSet" {
-				rs, err := client.ExtensionsClient.ReplicaSets(sr.Reference.Namespace).Get(sr.Reference.Name)
-
-				// Assume the only reason for an error is because the RS is
-				// gone/missing, not for any other cause.  TODO(mml): something more
-				// sophisticated than this
-				if err == nil && rs != nil {
-					replicated = true
-				}
-			}
-		}
-
-		switch {
-		case daemonset_pod:
-			daemonSetPodNames = append(daemonSetPodNames, pod.Name)
-		case !replicated:
-			unreplicatedPodNames = append(unreplicatedPodNames, pod.Name)
-			if force {
-				pods = append(pods, pod)
-			}
-		default:
-			pods = append(pods, pod)
-		}
-	}
-	return pods, unreplicatedPodNames, daemonSetPodNames, nil
 }
 
 // Helper for generating errors or warnings about unmanaged pods.

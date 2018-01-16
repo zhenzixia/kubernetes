@@ -29,7 +29,6 @@ import (
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/runtime/serializer"
 	"k8s.io/kubernetes/pkg/version"
 )
 
@@ -214,11 +213,7 @@ func (d *DiscoveryClient) SwaggerSchema(version unversioned.GroupVersion) (*swag
 func setDiscoveryDefaults(config *restclient.Config) error {
 	config.APIPath = ""
 	config.GroupVersion = nil
-	codec := runtime.NoopEncoder{Decoder: api.Codecs.UniversalDecoder()}
-	config.NegotiatedSerializer = serializer.NegotiatedSerializerWrapper(
-		runtime.SerializerInfo{Serializer: codec},
-		runtime.StreamSerializerInfo{},
-	)
+	config.Codec = runtime.NoopEncoder{api.Codecs.UniversalDecoder()}
 	if len(config.UserAgent) == 0 {
 		config.UserAgent = restclient.DefaultKubernetesUserAgent()
 	}

@@ -22,12 +22,11 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/api/meta"
 	"k8s.io/kubernetes/pkg/api/rest/resttest"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/storage"
 	etcdstorage "k8s.io/kubernetes/pkg/storage/etcd"
@@ -38,17 +37,17 @@ import (
 
 func NewEtcdStorage(t *testing.T, group string) (storage.Interface, *etcdtesting.EtcdTestServer) {
 	server := etcdtesting.NewEtcdTestClientServer(t)
-	storage := etcdstorage.NewEtcdStorage(server.Client, testapi.Groups[group].StorageCodec(), etcdtest.PathPrefix(), false, etcdtest.DeserializationCacheSize)
+	storage := etcdstorage.NewEtcdStorage(server.Client, testapi.Groups[group].Codec(), etcdtest.PathPrefix(), false)
 	return storage, server
 }
 
 type Tester struct {
 	tester  *resttest.Tester
-	storage *registry.Store
+	storage *etcdgeneric.Etcd
 }
 type UpdateFunc func(runtime.Object) runtime.Object
 
-func New(t *testing.T, storage *registry.Store) *Tester {
+func New(t *testing.T, storage *etcdgeneric.Etcd) *Tester {
 	return &Tester{
 		tester:  resttest.New(t, storage),
 		storage: storage,
@@ -82,7 +81,7 @@ func (t *Tester) ReturnDeletedObject() *Tester {
 func (t *Tester) TestCreate(valid runtime.Object, invalid ...runtime.Object) {
 	t.tester.TestCreate(
 		valid,
-		t.createObject,
+		t.setObject,
 		t.getObject,
 		invalid...,
 	)
@@ -95,7 +94,7 @@ func (t *Tester) TestUpdate(valid runtime.Object, validUpdateFunc UpdateFunc, in
 	}
 	t.tester.TestUpdate(
 		valid,
-		t.createObject,
+		t.setObject,
 		t.getObject,
 		resttest.UpdateFunc(validUpdateFunc),
 		invalidFuncs...,
@@ -105,7 +104,7 @@ func (t *Tester) TestUpdate(valid runtime.Object, validUpdateFunc UpdateFunc, in
 func (t *Tester) TestDelete(valid runtime.Object) {
 	t.tester.TestDelete(
 		valid,
-		t.createObject,
+		t.setObject,
 		t.getObject,
 		errors.IsNotFound,
 	)
@@ -114,7 +113,7 @@ func (t *Tester) TestDelete(valid runtime.Object) {
 func (t *Tester) TestDeleteGraceful(valid runtime.Object, expectedGrace int64) {
 	t.tester.TestDeleteGraceful(
 		valid,
-		t.createObject,
+		t.setObject,
 		t.getObject,
 		expectedGrace,
 	)
@@ -169,28 +168,28 @@ func getCodec(obj runtime.Object) (runtime.Codec, error) {
 // Helper functions
 
 func (t *Tester) getObject(ctx api.Context, obj runtime.Object) (runtime.Object, error) {
-	accessor, err := meta.Accessor(obj)
+	meta, err := api.ObjectMetaFor(obj)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := t.storage.Get(ctx, accessor.GetName())
+	result, err := t.storage.Get(ctx, meta.Name)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (t *Tester) createObject(ctx api.Context, obj runtime.Object) error {
-	accessor, err := meta.Accessor(obj)
+func (t *Tester) setObject(ctx api.Context, obj runtime.Object) error {
+	meta, err := api.ObjectMetaFor(obj)
 	if err != nil {
 		return err
 	}
-	key, err := t.storage.KeyFunc(ctx, accessor.GetName())
+	key, err := t.storage.KeyFunc(ctx, meta.Name)
 	if err != nil {
 		return err
 	}
-	return t.storage.Storage.Create(ctx, key, obj, nil, 0)
+	return t.storage.Storage.Set(ctx, key, obj, nil, 0)
 }
 
 func (t *Tester) setObjectsForList(objects []runtime.Object) []runtime.Object {
@@ -208,13 +207,13 @@ func (t *Tester) emitObject(obj runtime.Object, action string) error {
 
 	switch action {
 	case etcdstorage.EtcdCreate:
-		err = t.createObject(ctx, obj)
+		err = t.setObject(ctx, obj)
 	case etcdstorage.EtcdDelete:
-		accessor, err := meta.Accessor(obj)
+		meta, err := api.ObjectMetaFor(obj)
 		if err != nil {
 			return err
 		}
-		_, err = t.storage.Delete(ctx, accessor.GetName(), nil)
+		_, err = t.storage.Delete(ctx, meta.Name, nil)
 	default:
 		err = fmt.Errorf("unexpected action: %v", action)
 	}

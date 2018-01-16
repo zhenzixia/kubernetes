@@ -32,10 +32,8 @@ const (
 	PodStartLatencyKey            = "pod_start_latency_microseconds"
 	PodStatusLatencyKey           = "generate_pod_status_latency_microseconds"
 	ContainerManagerOperationsKey = "container_manager_latency_microseconds"
-	DockerOperationsLatencyKey    = "docker_operations_latency_microseconds"
-	DockerOperationsKey           = "docker_operations"
-	DockerOperationsErrorsKey     = "docker_operations_errors"
-	DockerOperationsTimeoutKey    = "docker_operations_timeout"
+	DockerOperationsKey           = "docker_operations_latency_microseconds"
+	DockerErrorsKey               = "docker_errors"
 	PodWorkerStartLatencyKey      = "pod_worker_start_latency_microseconds"
 	PLEGRelistLatencyKey          = "pleg_relist_latency_microseconds"
 	PLEGRelistIntervalKey         = "pleg_relist_interval_microseconds"
@@ -96,32 +94,16 @@ var (
 	DockerOperationsLatency = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
 			Subsystem: KubeletSubsystem,
-			Name:      DockerOperationsLatencyKey,
+			Name:      DockerOperationsKey,
 			Help:      "Latency in microseconds of Docker operations. Broken down by operation type.",
 		},
 		[]string{"operation_type"},
 	)
-	DockerOperations = prometheus.NewCounterVec(
+	DockerErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Subsystem: KubeletSubsystem,
-			Name:      DockerOperationsKey,
-			Help:      "Cumulative number of Docker operations by operation type.",
-		},
-		[]string{"operation_type"},
-	)
-	DockerOperationsErrors = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Subsystem: KubeletSubsystem,
-			Name:      DockerOperationsErrorsKey,
-			Help:      "Cumulative number of Docker operation errors by operation type.",
-		},
-		[]string{"operation_type"},
-	)
-	DockerOperationsTimeout = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Subsystem: KubeletSubsystem,
-			Name:      DockerOperationsTimeoutKey,
-			Help:      "Cumulative number of Docker operation timeout by operation type.",
+			Name:      DockerErrorsKey,
+			Help:      "Cumulative number of Docker errors by operation type.",
 		},
 		[]string{"operation_type"},
 	)
@@ -155,9 +137,7 @@ func Register(containerCache kubecontainer.RuntimeCache) {
 		prometheus.MustRegister(SyncPodsLatency)
 		prometheus.MustRegister(PodWorkerStartLatency)
 		prometheus.MustRegister(ContainersPerPodCount)
-		prometheus.MustRegister(DockerOperations)
-		prometheus.MustRegister(DockerOperationsErrors)
-		prometheus.MustRegister(DockerOperationsTimeout)
+		prometheus.MustRegister(DockerErrors)
 		prometheus.MustRegister(newPodAndContainerCollector(containerCache))
 		prometheus.MustRegister(PLEGRelistLatency)
 		prometheus.MustRegister(PLEGRelistInterval)

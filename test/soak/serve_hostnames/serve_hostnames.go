@@ -37,7 +37,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util/intstr"
-	e2e "k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/e2e"
 )
 
 var (
@@ -200,7 +200,7 @@ func main() {
 						Containers: []api.Container{
 							{
 								Name:  "serve-hostname",
-								Image: "gcr.io/google_containers/serve_hostname:v1.4",
+								Image: "gcr.io/google_containers/serve_hostname:1.1",
 								Ports: []api.ContainerPort{{ContainerPort: 9376}},
 							},
 						},

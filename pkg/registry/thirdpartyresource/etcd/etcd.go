@@ -22,14 +22,14 @@ import (
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/registry/generic"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/registry/thirdpartyresource"
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
 // REST implements a RESTStorage for ThirdPartyResources against etcd
 type REST struct {
-	*registry.Store
+	*etcdgeneric.Etcd
 }
 
 // NewREST returns a registry which will store ThirdPartyResource in the given helper
@@ -39,14 +39,14 @@ func NewREST(opts generic.RESTOptions) *REST {
 	// We explicitly do NOT do any decoration here yet.
 	storageInterface := opts.Storage
 
-	store := &registry.Store{
+	store := &etcdgeneric.Etcd{
 		NewFunc:     func() runtime.Object { return &extensions.ThirdPartyResource{} },
 		NewListFunc: func() runtime.Object { return &extensions.ThirdPartyResourceList{} },
 		KeyRootFunc: func(ctx api.Context) string {
-			return prefix
+			return etcdgeneric.NamespaceKeyRootFunc(ctx, prefix)
 		},
 		KeyFunc: func(ctx api.Context, id string) (string, error) {
-			return registry.NoNamespaceKeyFunc(ctx, prefix, id)
+			return etcdgeneric.NamespaceKeyFunc(ctx, prefix, id)
 		},
 		ObjectNameFunc: func(obj runtime.Object) (string, error) {
 			return obj.(*extensions.ThirdPartyResource).Name, nil
@@ -58,7 +58,6 @@ func NewREST(opts generic.RESTOptions) *REST {
 		DeleteCollectionWorkers: opts.DeleteCollectionWorkers,
 		CreateStrategy:          thirdpartyresource.Strategy,
 		UpdateStrategy:          thirdpartyresource.Strategy,
-		DeleteStrategy:          thirdpartyresource.Strategy,
 
 		Storage: storageInterface,
 	}

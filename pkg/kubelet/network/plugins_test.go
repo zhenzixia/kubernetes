@@ -19,13 +19,12 @@ package network
 import (
 	"testing"
 
-	"k8s.io/kubernetes/pkg/apis/componentconfig"
 	nettest "k8s.io/kubernetes/pkg/kubelet/network/testing"
 )
 
 func TestSelectDefaultPlugin(t *testing.T) {
 	all_plugins := []NetworkPlugin{}
-	plug, err := InitNetworkPlugin(all_plugins, "", nettest.NewFakeHost(nil), componentconfig.HairpinNone)
+	plug, err := InitNetworkPlugin(all_plugins, "", nettest.NewFakeHost(nil))
 	if err != nil {
 		t.Fatalf("Unexpected error in selecting default plugin: %v", err)
 	}

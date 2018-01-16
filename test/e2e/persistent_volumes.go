@@ -26,93 +26,75 @@ import (
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
-// Clean both server and client pods.
-func persistentVolumeTestCleanup(client *client.Client, config VolumeTestConfig) {
-	defer GinkgoRecover()
-
-	podClient := client.Pods(config.namespace)
-
-	if config.serverImage != "" {
-		err := podClient.Delete(config.prefix+"-server", nil)
-		if err != nil {
-			framework.ExpectNoError(err, "Failed to delete server pod: %v", err)
-		}
-	}
-}
-
-var _ = framework.KubeDescribe("PersistentVolumes", func() {
-	f := framework.NewDefaultFramework("pv")
+// This test needs privileged containers, which are disabled by default.  Run
+// the test with "go run hack/e2e.go ... --ginkgo.focus=[Feature:Volumes]"
+var _ = Describe("PersistentVolumes [Feature:Volumes]", func() {
+	framework := NewDefaultFramework("pv")
 	var c *client.Client
 	var ns string
 
 	BeforeEach(func() {
-		c = f.Client
-		ns = f.Namespace.Name
+		c = framework.Client
+		ns = framework.Namespace.Name
 	})
 
-	// Flaky issue: #25294
-	It("NFS volume can be created, bound, retrieved, unbound, and used by a pod [Flaky]", func() {
+	It("NFS volume can be created, bound, retrieved, unbound, and used by a pod", func() {
 		config := VolumeTestConfig{
 			namespace:   ns,
 			prefix:      "nfs",
-			serverImage: "gcr.io/google_containers/volume-nfs:0.6",
+			serverImage: "gcr.io/google_containers/volume-nfs:0.4",
 			serverPorts: []int{2049},
 		}
 
 		defer func() {
-			persistentVolumeTestCleanup(c, config)
+			volumeTestCleanup(c, config)
 		}()
 
 		pod := startVolumeServer(c, config)
 		serverIP := pod.Status.PodIP
-		framework.Logf("NFS server IP address: %v", serverIP)
+		Logf("NFS server IP address: %v", serverIP)
 
 		pv := makePersistentVolume(serverIP)
 		pvc := makePersistentVolumeClaim(ns)
 
-		framework.Logf("Creating PersistentVolume using NFS")
+		Logf("Creating PersistentVolume using NFS")
 		pv, err := c.PersistentVolumes().Create(pv)
 		Expect(err).NotTo(HaveOccurred())
 
-		framework.Logf("Creating PersistentVolumeClaim")
+		Logf("Creating PersistentVolumeClaim")
 		pvc, err = c.PersistentVolumeClaims(ns).Create(pvc)
 		Expect(err).NotTo(HaveOccurred())
 
 		// allow the binder a chance to catch up.  should not be more than 20s.
-		framework.WaitForPersistentVolumePhase(api.VolumeBound, c, pv.Name, 1*time.Second, 30*time.Second)
+		waitForPersistentVolumePhase(api.VolumeBound, c, pv.Name, 1*time.Second, 30*time.Second)
 
 		pv, err = c.PersistentVolumes().Get(pv.Name)
 		Expect(err).NotTo(HaveOccurred())
 		if pv.Spec.ClaimRef == nil {
-			framework.Failf("Expected PersistentVolume to be bound, but got nil ClaimRef: %+v", pv)
+			Failf("Expected PersistentVolume to be bound, but got nil ClaimRef: %+v", pv)
 		}
 
-		framework.Logf("Deleting PersistentVolumeClaim to trigger PV Recycling")
+		Logf("Deleting PersistentVolumeClaim to trigger PV Recycling")
 		err = c.PersistentVolumeClaims(ns).Delete(pvc.Name)
 		Expect(err).NotTo(HaveOccurred())
 
 		// allow the recycler a chance to catch up.  it has to perform NFS scrub, which can be slow in e2e.
-		framework.WaitForPersistentVolumePhase(api.VolumeAvailable, c, pv.Name, 5*time.Second, 300*time.Second)
+		waitForPersistentVolumePhase(api.VolumeAvailable, c, pv.Name, 5*time.Second, 300*time.Second)
 
 		pv, err = c.PersistentVolumes().Get(pv.Name)
 		Expect(err).NotTo(HaveOccurred())
 		if pv.Spec.ClaimRef != nil {
-			framework.Failf("Expected PersistentVolume to be unbound, but found non-nil ClaimRef: %+v", pv)
+			Failf("Expected PersistentVolume to be unbound, but found non-nil ClaimRef: %+v", pv)
 		}
 
 		// The NFS Server pod we're using contains an index.html file
 		// Verify the file was really scrubbed from the volume
 		podTemplate := makeCheckPod(ns, serverIP)
 		checkpod, err := c.Pods(ns).Create(podTemplate)
-		framework.ExpectNoError(err, "Failed to create checker pod: %v", err)
-		err = framework.WaitForPodSuccessInNamespace(c, checkpod.Name, checkpod.Spec.Containers[0].Name, checkpod.Namespace)
-		Expect(err).NotTo(HaveOccurred())
-		// must delete PV, otherwise the PV is available and next time a PVC may bind to it and cause new PV fails to bind
-		framework.Logf("Deleting PersistentVolume")
-		err = c.PersistentVolumes().Delete(pv.Name)
+		expectNoError(err, "Failed to create checker pod: %v", err)
+		err = waitForPodSuccessInNamespace(c, checkpod.Name, checkpod.Spec.Containers[0].Name, checkpod.Namespace)
 		Expect(err).NotTo(HaveOccurred())
 	})
 })

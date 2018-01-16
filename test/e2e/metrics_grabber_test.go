@@ -23,7 +23,6 @@ import (
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/metrics"
 	"k8s.io/kubernetes/pkg/util/sets"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -78,23 +77,23 @@ func checkMetrics(response metrics.Metrics, assumedMetrics map[string][]string) 
 	Expect(invalidLabels).To(BeEmpty())
 }
 
-var _ = framework.KubeDescribe("MetricsGrabber", func() {
-	f := framework.NewDefaultFramework("metrics-grabber")
+var _ = Describe("MetricsGrabber", func() {
+	framework := NewDefaultFramework("metrics-grabber")
 	var c *client.Client
 	var grabber *metrics.MetricsGrabber
 	BeforeEach(func() {
 		var err error
-		c = f.Client
-		framework.ExpectNoError(err)
+		c = framework.Client
+		expectNoError(err)
 		grabber, err = metrics.NewMetricsGrabber(c, true, true, true, true)
-		framework.ExpectNoError(err)
+		expectNoError(err)
 	})
 
 	It("should grab all metrics from API server.", func() {
 		By("Connecting to /metrics endpoint")
 		unknownMetrics := sets.NewString()
 		response, err := grabber.GrabFromApiServer(unknownMetrics)
-		framework.ExpectNoError(err)
+		expectNoError(err)
 		Expect(unknownMetrics).To(BeEmpty())
 
 		checkMetrics(metrics.Metrics(response), metrics.KnownApiServerMetrics)
@@ -102,10 +101,10 @@ var _ = framework.KubeDescribe("MetricsGrabber", func() {
 
 	It("should grab all metrics from a Kubelet.", func() {
 		By("Proxying to Node through the API server")
-		nodes := framework.ListSchedulableNodesOrDie(c)
+		nodes := ListSchedulableNodesOrDie(c)
 		Expect(nodes.Items).NotTo(BeEmpty())
 		response, err := grabber.GrabFromKubelet(nodes.Items[0].Name)
-		framework.ExpectNoError(err)
+		expectNoError(err)
 		checkNecessaryMetrics(metrics.Metrics(response), metrics.NecessaryKubeletMetrics)
 	})
 
@@ -113,7 +112,7 @@ var _ = framework.KubeDescribe("MetricsGrabber", func() {
 		By("Proxying to Pod through the API server")
 		// Check if master Node is registered
 		nodes, err := c.Nodes().List(api.ListOptions{})
-		framework.ExpectNoError(err)
+		expectNoError(err)
 
 		var masterRegistered = false
 		for _, node := range nodes.Items {
@@ -122,12 +121,12 @@ var _ = framework.KubeDescribe("MetricsGrabber", func() {
 			}
 		}
 		if !masterRegistered {
-			framework.Logf("Master is node registered. Skipping testing Scheduler metrics.")
+			Logf("Master is node registered. Skipping testing Scheduler metrics.")
 			return
 		}
 		unknownMetrics := sets.NewString()
 		response, err := grabber.GrabFromScheduler(unknownMetrics)
-		framework.ExpectNoError(err)
+		expectNoError(err)
 		Expect(unknownMetrics).To(BeEmpty())
 
 		checkMetrics(metrics.Metrics(response), metrics.KnownSchedulerMetrics)
@@ -137,7 +136,7 @@ var _ = framework.KubeDescribe("MetricsGrabber", func() {
 		By("Proxying to Pod through the API server")
 		// Check if master Node is registered
 		nodes, err := c.Nodes().List(api.ListOptions{})
-		framework.ExpectNoError(err)
+		expectNoError(err)
 
 		var masterRegistered = false
 		for _, node := range nodes.Items {
@@ -146,12 +145,12 @@ var _ = framework.KubeDescribe("MetricsGrabber", func() {
 			}
 		}
 		if !masterRegistered {
-			framework.Logf("Master is node registered. Skipping testing ControllerManager metrics.")
+			Logf("Master is node registered. Skipping testing ControllerManager metrics.")
 			return
 		}
 		unknownMetrics := sets.NewString()
 		response, err := grabber.GrabFromControllerManager(unknownMetrics)
-		framework.ExpectNoError(err)
+		expectNoError(err)
 		Expect(unknownMetrics).To(BeEmpty())
 
 		checkMetrics(metrics.Metrics(response), metrics.KnownControllerManagerMetrics)

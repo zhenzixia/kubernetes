@@ -37,52 +37,23 @@ import (
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/runtime/serializer/streaming"
 	"k8s.io/kubernetes/pkg/util"
-	"k8s.io/kubernetes/pkg/util/flowcontrol"
 	"k8s.io/kubernetes/pkg/util/httpstream"
 	"k8s.io/kubernetes/pkg/util/intstr"
 	utiltesting "k8s.io/kubernetes/pkg/util/testing"
 	"k8s.io/kubernetes/pkg/watch"
-	"k8s.io/kubernetes/pkg/watch/versioned"
+	watchjson "k8s.io/kubernetes/pkg/watch/json"
 )
 
 func TestNewRequestSetsAccept(t *testing.T) {
-	r := NewRequest(nil, "get", &url.URL{Path: "/path/"}, "", ContentConfig{}, Serializers{}, nil, nil)
+	r := NewRequest(nil, "get", &url.URL{Path: "/path/"}, "", ContentConfig{}, nil, nil)
 	if r.headers.Get("Accept") != "" {
 		t.Errorf("unexpected headers: %#v", r.headers)
 	}
-	r = NewRequest(nil, "get", &url.URL{Path: "/path/"}, "", ContentConfig{ContentType: "application/other"}, Serializers{}, nil, nil)
+	r = NewRequest(nil, "get", &url.URL{Path: "/path/"}, "", ContentConfig{ContentType: "application/other"}, nil, nil)
 	if r.headers.Get("Accept") != "application/other, */*" {
 		t.Errorf("unexpected headers: %#v", r.headers)
 	}
-}
-
-type clientFunc func(req *http.Request) (*http.Response, error)
-
-func (f clientFunc) Do(req *http.Request) (*http.Response, error) {
-	return f(req)
-}
-
-func TestRequestSetsHeaders(t *testing.T) {
-	server := clientFunc(func(req *http.Request) (*http.Response, error) {
-		if req.Header.Get("Accept") != "application/other, */*" {
-			t.Errorf("unexpected headers: %#v", req.Header)
-		}
-		return &http.Response{
-			StatusCode: http.StatusForbidden,
-			Body:       ioutil.NopCloser(bytes.NewReader([]byte{})),
-		}, nil
-	})
-	config := defaultContentConfig()
-	config.ContentType = "application/other"
-	serializers := defaultSerializers()
-	r := NewRequest(server, "get", &url.URL{Path: "/path"}, "", config, serializers, nil, nil)
-
-	// Check if all "issue" methods are setting headers.
-	_ = r.Do()
-	_, _ = r.Watch()
-	_, _ = r.Stream()
 }
 
 func TestRequestWithErrorWontChange(t *testing.T) {
@@ -270,23 +241,6 @@ type NotAnAPIObject struct{}
 func (obj NotAnAPIObject) GroupVersionKind() *unversioned.GroupVersionKind       { return nil }
 func (obj NotAnAPIObject) SetGroupVersionKind(gvk *unversioned.GroupVersionKind) {}
 
-func defaultContentConfig() ContentConfig {
-	return ContentConfig{
-		GroupVersion:         testapi.Default.GroupVersion(),
-		Codec:                testapi.Default.Codec(),
-		NegotiatedSerializer: testapi.Default.NegotiatedSerializer(),
-	}
-}
-
-func defaultSerializers() Serializers {
-	return Serializers{
-		Encoder:             testapi.Default.Codec(),
-		Decoder:             testapi.Default.Codec(),
-		StreamingSerializer: testapi.Default.Codec(),
-		Framer:              runtime.DefaultFramer,
-	}
-}
-
 func TestRequestBody(t *testing.T) {
 	// test unknown type
 	r := (&Request{}).Body([]string{"test"})
@@ -307,7 +261,7 @@ func TestRequestBody(t *testing.T) {
 	}
 
 	// test unencodable api object
-	r = (&Request{content: defaultContentConfig()}).Body(&NotAnAPIObject{})
+	r = (&Request{content: ContentConfig{Codec: testapi.Default.Codec()}}).Body(&NotAnAPIObject{})
 	if r.err == nil || r.body != nil {
 		t.Errorf("should have set err and left body nil: %#v", r)
 	}
@@ -322,7 +276,7 @@ func TestResultIntoWithErrReturnsErr(t *testing.T) {
 
 func TestURLTemplate(t *testing.T) {
 	uri, _ := url.Parse("http://localhost")
-	r := NewRequest(nil, "POST", uri, "", ContentConfig{GroupVersion: &unversioned.GroupVersion{Group: "test"}}, Serializers{}, nil, nil)
+	r := NewRequest(nil, "POST", uri, "", ContentConfig{GroupVersion: &unversioned.GroupVersion{Group: "test"}}, nil, nil)
 	r.Prefix("pre1").Resource("r1").Namespace("ns").Name("nm").Param("p0", "v0")
 	full := r.URL()
 	if full.String() != "http://localhost/pre1/namespaces/ns/r1/nm?p0=v0" {
@@ -383,7 +337,7 @@ func TestTransformResponse(t *testing.T) {
 		{Response: &http.Response{StatusCode: 200, Body: ioutil.NopCloser(bytes.NewReader(invalid))}, Data: invalid},
 	}
 	for i, test := range testCases {
-		r := NewRequest(nil, "", uri, "", defaultContentConfig(), defaultSerializers(), nil, nil)
+		r := NewRequest(nil, "", uri, "", ContentConfig{GroupVersion: testapi.Default.GroupVersion(), Codec: testapi.Default.Codec()}, nil, nil)
 		if test.Response.Body == nil {
 			test.Response.Body = ioutil.NopCloser(bytes.NewReader([]byte{}))
 		}
@@ -470,8 +424,7 @@ func TestTransformUnstructuredError(t *testing.T) {
 
 	for _, testCase := range testCases {
 		r := &Request{
-			content:      defaultContentConfig(),
-			serializers:  defaultSerializers(),
+			content:      ContentConfig{GroupVersion: testapi.Default.GroupVersion(), Codec: testapi.Default.Codec()},
 			resourceName: testCase.Name,
 			resource:     testCase.Resource,
 		}
@@ -488,6 +441,12 @@ func TestTransformUnstructuredError(t *testing.T) {
 			t.Errorf("unexpected error string: %s", err)
 		}
 	}
+}
+
+type clientFunc func(req *http.Request) (*http.Response, error)
+
+func (f clientFunc) Do(req *http.Request) (*http.Response, error) {
+	return f(req)
 }
 
 func TestRequestWatch(t *testing.T) {
@@ -516,8 +475,7 @@ func TestRequestWatch(t *testing.T) {
 		},
 		{
 			Request: &Request{
-				content:     defaultContentConfig(),
-				serializers: defaultSerializers(),
+				content: ContentConfig{GroupVersion: testapi.Default.GroupVersion(), Codec: testapi.Default.Codec()},
 				client: clientFunc(func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusForbidden,
@@ -533,8 +491,7 @@ func TestRequestWatch(t *testing.T) {
 		},
 		{
 			Request: &Request{
-				content:     defaultContentConfig(),
-				serializers: defaultSerializers(),
+				content: ContentConfig{GroupVersion: testapi.Default.GroupVersion(), Codec: testapi.Default.Codec()},
 				client: clientFunc(func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusUnauthorized,
@@ -550,8 +507,7 @@ func TestRequestWatch(t *testing.T) {
 		},
 		{
 			Request: &Request{
-				content:     defaultContentConfig(),
-				serializers: defaultSerializers(),
+				content: ContentConfig{GroupVersion: testapi.Default.GroupVersion(), Codec: testapi.Default.Codec()},
 				client: clientFunc(func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusUnauthorized,
@@ -570,7 +526,6 @@ func TestRequestWatch(t *testing.T) {
 		},
 		{
 			Request: &Request{
-				serializers: defaultSerializers(),
 				client: clientFunc(func(req *http.Request) (*http.Response, error) {
 					return nil, io.EOF
 				}),
@@ -580,7 +535,6 @@ func TestRequestWatch(t *testing.T) {
 		},
 		{
 			Request: &Request{
-				serializers: defaultSerializers(),
 				client: clientFunc(func(req *http.Request) (*http.Response, error) {
 					return nil, &url.Error{Err: io.EOF}
 				}),
@@ -590,7 +544,6 @@ func TestRequestWatch(t *testing.T) {
 		},
 		{
 			Request: &Request{
-				serializers: defaultSerializers(),
 				client: clientFunc(func(req *http.Request) (*http.Response, error) {
 					return nil, errors.New("http: can't write HTTP request on broken connection")
 				}),
@@ -600,7 +553,6 @@ func TestRequestWatch(t *testing.T) {
 		},
 		{
 			Request: &Request{
-				serializers: defaultSerializers(),
 				client: clientFunc(func(req *http.Request) (*http.Response, error) {
 					return nil, errors.New("foo: connection reset by peer")
 				}),
@@ -667,9 +619,8 @@ func TestRequestStream(t *testing.T) {
 						})))),
 					}, nil
 				}),
-				content:     defaultContentConfig(),
-				serializers: defaultSerializers(),
-				baseURL:     &url.URL{},
+				content: ContentConfig{Codec: testapi.Default.Codec()},
+				baseURL: &url.URL{},
 			},
 			Err: true,
 		},
@@ -771,7 +722,8 @@ func TestDoRequestNewWay(t *testing.T) {
 		T:            t,
 	}
 	testServer := httptest.NewServer(&fakeHandler)
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	c := testRESTClient(t, testServer)
 	obj, err := c.Verb("POST").
 		Prefix("foo", "bar").
@@ -807,7 +759,8 @@ func TestBackoffLifecycle(t *testing.T) {
 			return
 		}
 	}))
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	c := testRESTClient(t, testServer)
 
 	// Test backoff recovery and increase.  This correlates to the constants
@@ -817,7 +770,7 @@ func TestBackoffLifecycle(t *testing.T) {
 	clock := util.FakeClock{}
 	request.backoffMgr = &URLBackoff{
 		// Use a fake backoff here to avoid flakes and speed the test up.
-		Backoff: flowcontrol.NewFakeBackOff(
+		Backoff: util.NewFakeBackOff(
 			time.Duration(1)*time.Second,
 			time.Duration(200)*time.Second,
 			&clock,
@@ -852,7 +805,8 @@ func TestCheckRetryClosesBody(t *testing.T) {
 		w.Header().Set("Retry-After", "0")
 		w.WriteHeader(apierrors.StatusTooManyRequests)
 	}))
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 
 	c := testRESTClient(t, testServer)
 	_, err := c.Verb("POST").
@@ -884,7 +838,8 @@ func TestCheckRetryHandles429And5xx(t *testing.T) {
 		w.WriteHeader([]int{apierrors.StatusTooManyRequests, 500, 501, 504}[count])
 		count++
 	}))
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 
 	c := testRESTClient(t, testServer)
 	_, err := c.Verb("POST").
@@ -913,7 +868,8 @@ func BenchmarkCheckRetryClosesBody(b *testing.B) {
 		w.Header().Set("Retry-After", "0")
 		w.WriteHeader(apierrors.StatusTooManyRequests)
 	}))
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 
 	c := testRESTClient(b, testServer)
 	r := c.Verb("POST").
@@ -944,7 +900,8 @@ func TestDoRequestNewWayReader(t *testing.T) {
 		T:            t,
 	}
 	testServer := httptest.NewServer(&fakeHandler)
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	c := testRESTClient(t, testServer)
 	obj, err := c.Verb("POST").
 		Resource("bar").
@@ -984,7 +941,8 @@ func TestDoRequestNewWayObj(t *testing.T) {
 		T:            t,
 	}
 	testServer := httptest.NewServer(&fakeHandler)
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	c := testRESTClient(t, testServer)
 	obj, err := c.Verb("POST").
 		Suffix("baz").
@@ -1039,7 +997,8 @@ func TestDoRequestNewWayFile(t *testing.T) {
 		T:            t,
 	}
 	testServer := httptest.NewServer(&fakeHandler)
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	c := testRESTClient(t, testServer)
 	wasCreated := true
 	obj, err := c.Verb("POST").
@@ -1084,7 +1043,8 @@ func TestWasCreated(t *testing.T) {
 		T:            t,
 	}
 	testServer := httptest.NewServer(&fakeHandler)
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	c := testRESTClient(t, testServer)
 	wasCreated := false
 	obj, err := c.Verb("PUT").
@@ -1155,7 +1115,7 @@ func TestAbsPath(t *testing.T) {
 		{"/p1/api/p2", "/api/r1", "/api/", "/p1/api/p2/api/"},
 	} {
 		u, _ := url.Parse("http://localhost:123" + tc.configPrefix)
-		r := NewRequest(nil, "POST", u, "", ContentConfig{GroupVersion: &unversioned.GroupVersion{Group: "test"}}, Serializers{}, nil, nil).Prefix(tc.resourcePrefix).AbsPath(tc.absPath)
+		r := NewRequest(nil, "POST", u, "", ContentConfig{GroupVersion: &unversioned.GroupVersion{Group: "test"}}, nil, nil).Prefix(tc.resourcePrefix).AbsPath(tc.absPath)
 		if r.pathPrefix != tc.wantsAbsPath {
 			t.Errorf("test case %d failed, unexpected path: %q, expected %q", i, r.pathPrefix, tc.wantsAbsPath)
 		}
@@ -1175,7 +1135,7 @@ func TestUintParam(t *testing.T) {
 
 	for _, item := range table {
 		u, _ := url.Parse("http://localhost")
-		r := NewRequest(nil, "GET", u, "", ContentConfig{GroupVersion: &unversioned.GroupVersion{Group: "test"}}, Serializers{}, nil, nil).AbsPath("").UintParam(item.name, item.testVal)
+		r := NewRequest(nil, "GET", u, "", ContentConfig{GroupVersion: &unversioned.GroupVersion{Group: "test"}}, nil, nil).AbsPath("").UintParam(item.name, item.testVal)
 		if e, a := item.expectStr, r.URL().String(); e != a {
 			t.Errorf("expected %v, got %v", e, a)
 		}
@@ -1281,7 +1241,7 @@ func TestWatch(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		flusher.Flush()
 
-		encoder := versioned.NewEncoder(streaming.NewEncoder(w, testapi.Default.Codec()), testapi.Default.Codec())
+		encoder := watchjson.NewEncoder(w, testapi.Default.Codec())
 		for _, item := range table {
 			if err := encoder.Encode(&watch.Event{Type: item.t, Object: item.obj}); err != nil {
 				panic(err)
@@ -1289,7 +1249,8 @@ func TestWatch(t *testing.T) {
 			flusher.Flush()
 		}
 	}))
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 
 	s := testRESTClient(t, testServer)
 	watching, err := s.Get().Prefix("path/to/watch/thing").Watch()
@@ -1329,7 +1290,8 @@ func TestStream(t *testing.T) {
 		w.Write([]byte(expectedBody))
 		flusher.Flush()
 	}))
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 
 	s := testRESTClient(t, testServer)
 	readCloser, err := s.Get().Prefix("path/to/stream/thing").Stream()
@@ -1356,9 +1318,5 @@ func testRESTClient(t testing.TB, srv *httptest.Server) *RESTClient {
 		}
 	}
 	versionedAPIPath := testapi.Default.ResourcePath("", "", "")
-	client, err := NewRESTClient(baseURL, versionedAPIPath, defaultContentConfig(), 0, 0, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create a client: %v", err)
-	}
-	return client
+	return NewRESTClient(baseURL, versionedAPIPath, ContentConfig{GroupVersion: testapi.Default.GroupVersion(), Codec: testapi.Default.Codec()}, 0, 0, nil)
 }

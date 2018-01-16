@@ -47,10 +47,8 @@ import (
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
-	apierrs "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	"github.com/golang/glog"
 	. "github.com/onsi/ginkgo"
@@ -87,7 +85,7 @@ func startVolumeServer(client *client.Client, config VolumeTestConfig) *api.Pod 
 
 		serverPodPorts[i] = api.ContainerPort{
 			Name:          portName,
-			ContainerPort: int32(config.serverPorts[i]),
+			ContainerPort: config.serverPorts[i],
 			Protocol:      api.ProtocolTCP,
 		}
 	}
@@ -142,13 +140,13 @@ func startVolumeServer(client *client.Client, config VolumeTestConfig) *api.Pod 
 		},
 	}
 	_, err := podClient.Create(serverPod)
-	framework.ExpectNoError(err, "Failed to create %s pod: %v", serverPod.Name, err)
+	expectNoError(err, "Failed to create %s pod: %v", serverPod.Name, err)
 
-	framework.ExpectNoError(framework.WaitForPodRunningInNamespace(client, serverPod.Name, config.namespace))
+	expectNoError(waitForPodRunningInNamespace(client, serverPod.Name, config.namespace))
 
 	By("locating the server pod")
 	pod, err := podClient.Get(serverPod.Name)
-	framework.ExpectNoError(err, "Cannot locate the server pod %v: %v", serverPod.Name, err)
+	expectNoError(err, "Cannot locate the server pod %v: %v", serverPod.Name, err)
 
 	By("sleeping a bit to give the server time to start")
 	time.Sleep(20 * time.Second)
@@ -156,35 +154,26 @@ func startVolumeServer(client *client.Client, config VolumeTestConfig) *api.Pod 
 }
 
 // Clean both server and client pods.
-func volumeTestCleanup(f *framework.Framework, config VolumeTestConfig) {
+func volumeTestCleanup(client *client.Client, config VolumeTestConfig) {
 	By(fmt.Sprint("cleaning the environment after ", config.prefix))
 
 	defer GinkgoRecover()
 
-	client := f.Client
 	podClient := client.Pods(config.namespace)
 
 	err := podClient.Delete(config.prefix+"-client", nil)
 	if err != nil {
 		// Log the error before failing test: if the test has already failed,
-		// framework.ExpectNoError() won't print anything to logs!
+		// expectNoError() won't print anything to logs!
 		glog.Warningf("Failed to delete client pod: %v", err)
-		framework.ExpectNoError(err, "Failed to delete client pod: %v", err)
+		expectNoError(err, "Failed to delete client pod: %v", err)
 	}
 
 	if config.serverImage != "" {
-		if err := f.WaitForPodTerminated(config.prefix+"-client", ""); !apierrs.IsNotFound(err) {
-			framework.ExpectNoError(err, "Failed to wait client pod terminated: %v", err)
-		}
-		// See issue #24100.
-		// Prevent umount errors by making sure making sure the client pod exits cleanly *before* the volume server pod exits.
-		By("sleeping a bit so client can stop and unmount")
-		time.Sleep(20 * time.Second)
-
 		err = podClient.Delete(config.prefix+"-server", nil)
 		if err != nil {
 			glog.Warningf("Failed to delete server pod: %v", err)
-			framework.ExpectNoError(err, "Failed to delete server pod: %v", err)
+			expectNoError(err, "Failed to delete server pod: %v", err)
 		}
 	}
 }
@@ -193,6 +182,8 @@ func volumeTestCleanup(f *framework.Framework, config VolumeTestConfig) {
 // and check that the pod sees the data from the server pod.
 func testVolumeClient(client *client.Client, config VolumeTestConfig, volume api.VolumeSource, fsGroup *int64, expectedContent string) {
 	By(fmt.Sprint("starting ", config.prefix, " client"))
+	podClient := client.Pods(config.namespace)
+
 	clientPod := &api.Pod{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "Pod",
@@ -207,21 +198,19 @@ func testVolumeClient(client *client.Client, config VolumeTestConfig, volume api
 		Spec: api.PodSpec{
 			Containers: []api.Container{
 				{
-					Name:       config.prefix + "-client",
-					Image:      "gcr.io/google_containers/busybox:1.24",
-					WorkingDir: "/opt",
-					// An imperative and easily debuggable container which reads vol contents for
-					// us to scan in the tests or by eye.
-					// We expect that /opt is empty in the minimal containers which we use in this test.
-					Command: []string{
-						"/bin/sh",
-						"-c",
-						"while true ; do cat /opt/index.html ; sleep 2 ; ls -altrh /opt/  ; sleep 2 ; done ",
+					Name:  config.prefix + "-client",
+					Image: "gcr.io/google_containers/nginx:1.7.9",
+					Ports: []api.ContainerPort{
+						{
+							Name:          "web",
+							ContainerPort: 80,
+							Protocol:      api.ProtocolTCP,
+						},
 					},
 					VolumeMounts: []api.VolumeMount{
 						{
 							Name:      config.prefix + "-volume",
-							MountPath: "/opt/",
+							MountPath: "/usr/share/nginx/html",
 						},
 					},
 				},
@@ -239,25 +228,46 @@ func testVolumeClient(client *client.Client, config VolumeTestConfig, volume api
 			},
 		},
 	}
-	podsNamespacer := client.Pods(config.namespace)
-
 	if fsGroup != nil {
 		clientPod.Spec.SecurityContext.FSGroup = fsGroup
 	}
-	if _, err := podsNamespacer.Create(clientPod); err != nil {
-		framework.Failf("Failed to create %s pod: %v", clientPod.Name, err)
-	}
-	framework.ExpectNoError(framework.WaitForPodRunningInNamespace(client, clientPod.Name, config.namespace))
 
-	By("Checking that text file contents are perfect.")
-	_, err := framework.LookForStringInPodExec(config.namespace, clientPod.Name, []string{"cat", "/opt/index.html"}, expectedContent, time.Minute)
-	Expect(err).NotTo(HaveOccurred(), "failed: finding the contents of the mounted file.")
+	if _, err := podClient.Create(clientPod); err != nil {
+		Failf("Failed to create %s pod: %v", clientPod.Name, err)
+	}
+	expectNoError(waitForPodRunningInNamespace(client, clientPod.Name, config.namespace))
+
+	By("reading a web page from the client")
+	subResourceProxyAvailable, err := serverVersionGTE(subResourcePodProxyVersion, client)
+	if err != nil {
+		Failf("Failed to get server version: %v", err)
+	}
+	var body []byte
+	if subResourceProxyAvailable {
+		body, err = client.Get().
+			Namespace(config.namespace).
+			Resource("pods").
+			SubResource("proxy").
+			Name(clientPod.Name).
+			DoRaw()
+	} else {
+		body, err = client.Get().
+			Prefix("proxy").
+			Namespace(config.namespace).
+			Resource("pods").
+			Name(clientPod.Name).
+			DoRaw()
+	}
+	expectNoError(err, "Cannot read web page: %v", err)
+	Logf("body: %v", string(body))
+
+	By("checking the page content")
+	Expect(body).To(ContainSubstring(expectedContent))
 
 	if fsGroup != nil {
-
-		By("Checking fsGroup is correct.")
-		_, err = framework.LookForStringInPodExec(config.namespace, clientPod.Name, []string{"ls", "-ld", "/opt"}, strconv.Itoa(int(*fsGroup)), time.Minute)
-		Expect(err).NotTo(HaveOccurred(), "failed: getting the right priviliges in the file %v", int(*fsGroup))
+		By("Checking fsGroup")
+		_, err = lookForStringInPodExec(config.namespace, clientPod.Name, []string{"ls", "-ld", "/usr/share/nginx/html"}, strconv.Itoa(int(*fsGroup)), time.Minute)
+		Expect(err).NotTo(HaveOccurred(), "waiting for output from pod exec")
 	}
 }
 
@@ -314,8 +324,8 @@ func injectHtml(client *client.Client, config VolumeTestConfig, volume api.Volum
 	}()
 
 	injectPod, err := podClient.Create(injectPod)
-	framework.ExpectNoError(err, "Failed to create injector pod: %v", err)
-	err = framework.WaitForPodSuccessInNamespace(client, injectPod.Name, injectPod.Spec.Containers[0].Name, injectPod.Namespace)
+	expectNoError(err, "Failed to create injector pod: %v", err)
+	err = waitForPodSuccessInNamespace(client, injectPod.Name, injectPod.Spec.Containers[0].Name, injectPod.Namespace)
 	Expect(err).NotTo(HaveOccurred())
 }
 
@@ -326,24 +336,24 @@ func deleteCinderVolume(name string) error {
 	var err error
 	timeout := time.Second * 120
 
-	framework.Logf("Waiting up to %v for removal of cinder volume %s", timeout, name)
+	Logf("Waiting up to %v for removal of cinder volume %s", timeout, name)
 	for start := time.Now(); time.Since(start) < timeout; time.Sleep(5 * time.Second) {
 		output, err = exec.Command("cinder", "delete", name).CombinedOutput()
 		if err == nil {
-			framework.Logf("Cinder volume %s deleted", name)
+			Logf("Cinder volume %s deleted", name)
 			return nil
 		} else {
-			framework.Logf("Failed to delete volume %s: %v", name, err)
+			Logf("Failed to delete volume %s: %v", name, err)
 		}
 	}
-	framework.Logf("Giving up deleting volume %s: %v\n%s", name, err, string(output[:]))
+	Logf("Giving up deleting volume %s: %v\n%s", name, err, string(output[:]))
 	return err
 }
 
 // These tests need privileged containers, which are disabled by default.  Run
 // the test with "go run hack/e2e.go ... --ginkgo.focus=[Feature:Volumes]"
-var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
-	f := framework.NewDefaultFramework("volume")
+var _ = Describe("Volumes [Feature:Volumes]", func() {
+	framework := NewDefaultFramework("volume")
 
 	// If 'false', the test won't clear its volumes upon completion. Useful for debugging,
 	// note that namespace deletion is handled by delete-namespace flag
@@ -353,31 +363,31 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 	var namespace *api.Namespace
 
 	BeforeEach(func() {
-		c = f.Client
-		namespace = f.Namespace
+		c = framework.Client
+		namespace = framework.Namespace
 	})
 
 	////////////////////////////////////////////////////////////////////////
 	// NFS
 	////////////////////////////////////////////////////////////////////////
 
-	framework.KubeDescribe("NFS", func() {
+	Describe("NFS", func() {
 		It("should be mountable", func() {
 			config := VolumeTestConfig{
 				namespace:   namespace.Name,
 				prefix:      "nfs",
-				serverImage: "gcr.io/google_containers/volume-nfs:0.6",
+				serverImage: "gcr.io/google_containers/volume-nfs:0.4",
 				serverPorts: []int{2049},
 			}
 
 			defer func() {
 				if clean {
-					volumeTestCleanup(f, config)
+					volumeTestCleanup(c, config)
 				}
 			}()
 			pod := startVolumeServer(c, config)
 			serverIP := pod.Status.PodIP
-			framework.Logf("NFS server IP address: %v", serverIP)
+			Logf("NFS server IP address: %v", serverIP)
 
 			volume := api.VolumeSource{
 				NFS: &api.NFSVolumeSource{
@@ -395,7 +405,7 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 	// Gluster
 	////////////////////////////////////////////////////////////////////////
 
-	framework.KubeDescribe("GlusterFS", func() {
+	Describe("GlusterFS", func() {
 		It("should be mountable", func() {
 			config := VolumeTestConfig{
 				namespace:   namespace.Name,
@@ -406,12 +416,12 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 
 			defer func() {
 				if clean {
-					volumeTestCleanup(f, config)
+					volumeTestCleanup(c, config)
 				}
 			}()
 			pod := startVolumeServer(c, config)
 			serverIP := pod.Status.PodIP
-			framework.Logf("Gluster server IP address: %v", serverIP)
+			Logf("Gluster server IP address: %v", serverIP)
 
 			// create Endpoints for the server
 			endpoints := api.Endpoints{
@@ -449,7 +459,7 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 			}()
 
 			if _, err := endClient.Create(&endpoints); err != nil {
-				framework.Failf("Failed to create endpoints for Gluster server: %v", err)
+				Failf("Failed to create endpoints for Gluster server: %v", err)
 			}
 
 			volume := api.VolumeSource{
@@ -474,7 +484,7 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 	// are installed on all nodes!
 	// Run the test with "go run hack/e2e.go ... --ginkgo.focus=iSCSI"
 
-	framework.KubeDescribe("iSCSI", func() {
+	Describe("iSCSI", func() {
 		It("should be mountable", func() {
 			config := VolumeTestConfig{
 				namespace:   namespace.Name,
@@ -489,12 +499,12 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 
 			defer func() {
 				if clean {
-					volumeTestCleanup(f, config)
+					volumeTestCleanup(c, config)
 				}
 			}()
 			pod := startVolumeServer(c, config)
 			serverIP := pod.Status.PodIP
-			framework.Logf("iSCSI server IP address: %v", serverIP)
+			Logf("iSCSI server IP address: %v", serverIP)
 
 			volume := api.VolumeSource{
 				ISCSI: &api.ISCSIVolumeSource{
@@ -516,7 +526,7 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 	// Ceph RBD
 	////////////////////////////////////////////////////////////////////////
 
-	framework.KubeDescribe("Ceph RBD", func() {
+	Describe("Ceph RBD", func() {
 		It("should be mountable", func() {
 			config := VolumeTestConfig{
 				namespace:   namespace.Name,
@@ -532,12 +542,12 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 
 			defer func() {
 				if clean {
-					volumeTestCleanup(f, config)
+					volumeTestCleanup(c, config)
 				}
 			}()
 			pod := startVolumeServer(c, config)
 			serverIP := pod.Status.PodIP
-			framework.Logf("Ceph server IP address: %v", serverIP)
+			Logf("Ceph server IP address: %v", serverIP)
 
 			// create secrets for the server
 			secret := api.Secret{
@@ -563,7 +573,7 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 			}()
 
 			if _, err := secClient.Create(&secret); err != nil {
-				framework.Failf("Failed to create secrets for Ceph RBD: %v", err)
+				Failf("Failed to create secrets for Ceph RBD: %v", err)
 			}
 
 			volume := api.VolumeSource{
@@ -589,7 +599,7 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 	// Ceph
 	////////////////////////////////////////////////////////////////////////
 
-	framework.KubeDescribe("CephFS", func() {
+	Describe("CephFS", func() {
 		It("should be mountable", func() {
 			config := VolumeTestConfig{
 				namespace:   namespace.Name,
@@ -600,12 +610,12 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 
 			defer func() {
 				if clean {
-					volumeTestCleanup(f, config)
+					volumeTestCleanup(c, config)
 				}
 			}()
 			pod := startVolumeServer(c, config)
 			serverIP := pod.Status.PodIP
-			framework.Logf("Ceph server IP address: %v", serverIP)
+			Logf("Ceph server IP address: %v", serverIP)
 			By("sleeping a bit to give ceph server time to initialize")
 			time.Sleep(20 * time.Second)
 
@@ -628,14 +638,14 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 			defer func() {
 				if clean {
 					if err := c.Secrets(namespace.Name).Delete(secret.Name); err != nil {
-						framework.Failf("unable to delete secret %v: %v", secret.Name, err)
+						Failf("unable to delete secret %v: %v", secret.Name, err)
 					}
 				}
 			}()
 
 			var err error
 			if secret, err = c.Secrets(namespace.Name).Create(secret); err != nil {
-				framework.Failf("unable to create test secret %s: %v", secret.Name, err)
+				Failf("unable to create test secret %s: %v", secret.Name, err)
 			}
 
 			volume := api.VolumeSource{
@@ -660,9 +670,8 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 	// and that the usual OpenStack authentication env. variables are set
 	// (OS_USERNAME, OS_PASSWORD, OS_TENANT_NAME at least).
 
-	framework.KubeDescribe("Cinder", func() {
+	Describe("Cinder", func() {
 		It("should be mountable", func() {
-			framework.SkipUnlessProviderIs("openstack")
 			config := VolumeTestConfig{
 				namespace: namespace.Name,
 				prefix:    "cinder",
@@ -673,7 +682,7 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 			By("creating a test Cinder volume")
 			output, err := exec.Command("cinder", "create", "--display-name="+volumeName, "1").CombinedOutput()
 			outputString := string(output[:])
-			framework.Logf("cinder output:\n%s", outputString)
+			Logf("cinder output:\n%s", outputString)
 			Expect(err).NotTo(HaveOccurred())
 
 			defer func() {
@@ -699,13 +708,13 @@ var _ = framework.KubeDescribe("Volumes [Feature:Volumes]", func() {
 				volumeID = fields[3]
 				break
 			}
-			framework.Logf("Volume ID: %s", volumeID)
+			Logf("Volume ID: %s", volumeID)
 			Expect(volumeID).NotTo(Equal(""))
 
 			defer func() {
 				if clean {
-					framework.Logf("Running volumeTestCleanup")
-					volumeTestCleanup(f, config)
+					Logf("Running volumeTestCleanup")
+					volumeTestCleanup(c, config)
 				}
 			}()
 			volume := api.VolumeSource{

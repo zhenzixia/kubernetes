@@ -29,9 +29,8 @@ import (
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/runtime/serializer/streaming"
 	"k8s.io/kubernetes/pkg/watch"
-	"k8s.io/kubernetes/pkg/watch/versioned"
+	watchjson "k8s.io/kubernetes/pkg/watch/json"
 )
 
 func getJSON(version, kind, name string) []byte {
@@ -46,6 +45,11 @@ func getListJSON(version, kind string, items ...[]byte) []byte {
 
 func getObject(version, kind, name string) *runtime.Unstructured {
 	return &runtime.Unstructured{
+		TypeMeta: runtime.TypeMeta{
+			APIVersion: version,
+			Kind:       kind,
+		},
+		Name: name,
 		Object: map[string]interface{}{
 			"apiVersion": version,
 			"kind":       kind,
@@ -84,9 +88,9 @@ func TestList(t *testing.T) {
 				getJSON("vTest", "rTest", "item1"),
 				getJSON("vTest", "rTest", "item2")),
 			want: &runtime.UnstructuredList{
-				Object: map[string]interface{}{
-					"apiVersion": "vTest",
-					"kind":       "rTestList",
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "vTest",
+					Kind:       "rTestList",
 				},
 				Items: []*runtime.Unstructured{
 					getObject("vTest", "rTest", "item1"),
@@ -102,9 +106,9 @@ func TestList(t *testing.T) {
 				getJSON("vTest", "rTest", "item1"),
 				getJSON("vTest", "rTest", "item2")),
 			want: &runtime.UnstructuredList{
-				Object: map[string]interface{}{
-					"apiVersion": "vTest",
-					"kind":       "rTestList",
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "vTest",
+					Kind:       "rTestList",
 				},
 				Items: []*runtime.Unstructured{
 					getObject("vTest", "rTest", "item1"),
@@ -125,7 +129,6 @@ func TestList(t *testing.T) {
 				t.Errorf("List(%q) got path %s. wanted %s", tc.name, r.URL.Path, tc.path)
 			}
 
-			w.Header().Set("Content-Type", runtime.ContentTypeJSON)
 			w.Write(tc.resp)
 		})
 		if err != nil {
@@ -134,7 +137,7 @@ func TestList(t *testing.T) {
 		}
 		defer srv.Close()
 
-		got, err := cl.Resource(resource, tc.namespace).List(&v1.ListOptions{})
+		got, err := cl.Resource(resource, tc.namespace).List(v1.ListOptions{})
 		if err != nil {
 			t.Errorf("unexpected error when listing %q: %v", tc.name, err)
 			continue
@@ -180,7 +183,6 @@ func TestGet(t *testing.T) {
 				t.Errorf("Get(%q) got path %s. wanted %s", tc.name, r.URL.Path, tc.path)
 			}
 
-			w.Header().Set("Content-Type", runtime.ContentTypeJSON)
 			w.Write(tc.resp)
 		})
 		if err != nil {
@@ -233,7 +235,6 @@ func TestDelete(t *testing.T) {
 				t.Errorf("Delete(%q) got path %s. wanted %s", tc.name, r.URL.Path, tc.path)
 			}
 
-			w.Header().Set("Content-Type", runtime.ContentTypeJSON)
 			runtime.UnstructuredJSONScheme.EncodeToStream(statusOK, w)
 		})
 		if err != nil {
@@ -282,7 +283,6 @@ func TestDeleteCollection(t *testing.T) {
 				t.Errorf("DeleteCollection(%q) got path %s. wanted %s", tc.name, r.URL.Path, tc.path)
 			}
 
-			w.Header().Set("Content-Type", runtime.ContentTypeJSON)
 			runtime.UnstructuredJSONScheme.EncodeToStream(statusOK, w)
 		})
 		if err != nil {
@@ -291,7 +291,7 @@ func TestDeleteCollection(t *testing.T) {
 		}
 		defer srv.Close()
 
-		err = cl.Resource(resource, tc.namespace).DeleteCollection(nil, &v1.ListOptions{})
+		err = cl.Resource(resource, tc.namespace).DeleteCollection(nil, v1.ListOptions{})
 		if err != nil {
 			t.Errorf("unexpected error when deleting collection %q: %v", tc.name, err)
 			continue
@@ -330,7 +330,6 @@ func TestCreate(t *testing.T) {
 				t.Errorf("Create(%q) got path %s. wanted %s", tc.name, r.URL.Path, tc.path)
 			}
 
-			w.Header().Set("Content-Type", runtime.ContentTypeJSON)
 			data, err := ioutil.ReadAll(r.Body)
 			if err != nil {
 				t.Errorf("Create(%q) unexpected error reading body: %v", tc.name, err)
@@ -389,7 +388,6 @@ func TestUpdate(t *testing.T) {
 				t.Errorf("Update(%q) got path %s. wanted %s", tc.name, r.URL.Path, tc.path)
 			}
 
-			w.Header().Set("Content-Type", runtime.ContentTypeJSON)
 			data, err := ioutil.ReadAll(r.Body)
 			if err != nil {
 				t.Errorf("Update(%q) unexpected error reading body: %v", tc.name, err)
@@ -456,7 +454,7 @@ func TestWatch(t *testing.T) {
 				t.Errorf("Watch(%q) got path %s. wanted %s", tc.name, r.URL.Path, tc.path)
 			}
 
-			enc := versioned.NewEncoder(streaming.NewEncoder(w, dynamicCodec{}), dynamicCodec{})
+			enc := watchjson.NewEncoder(w, dynamicCodec{})
 			for _, e := range tc.events {
 				enc.Encode(&e)
 			}
@@ -467,7 +465,7 @@ func TestWatch(t *testing.T) {
 		}
 		defer srv.Close()
 
-		watcher, err := cl.Resource(resource, tc.namespace).Watch(&v1.ListOptions{})
+		watcher, err := cl.Resource(resource, tc.namespace).Watch(v1.ListOptions{})
 		if err != nil {
 			t.Errorf("unexpected error when watching %q: %v", tc.name, err)
 			continue

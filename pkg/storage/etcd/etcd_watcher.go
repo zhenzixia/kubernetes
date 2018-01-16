@@ -42,7 +42,6 @@ const (
 	EtcdSet    = "set"
 	EtcdCAS    = "compareAndSwap"
 	EtcdDelete = "delete"
-	EtcdCAD    = "compareAndDelete"
 	EtcdExpire = "expire"
 )
 
@@ -100,8 +99,7 @@ type etcdWatcher struct {
 	userStop chan struct{}
 	stopped  bool
 	stopLock sync.Mutex
-	// wg is used to avoid calls to etcd after Stop(), and to make sure
-	// that the translate goroutine is not leaked.
+	// wg is used to avoid calls to etcd after Stop()
 	wg sync.WaitGroup
 
 	// Injectable for testing. Send the event down the outgoing channel.
@@ -147,17 +145,7 @@ func newEtcdWatcher(
 		ctx:          nil,
 		cancel:       nil,
 	}
-	w.emit = func(e watch.Event) {
-		// Give up on user stop, without this we leak a lot of goroutines in tests.
-		select {
-		case w.outgoing <- e:
-		case <-w.userStop:
-		}
-	}
-	// translate will call done. We need to Add() here because otherwise,
-	// if Stop() gets called before translate gets started, there'd be a
-	// problem.
-	w.wg.Add(1)
+	w.emit = func(e watch.Event) { w.outgoing <- e }
 	go w.translate()
 	return w
 }
@@ -233,7 +221,7 @@ func etcdGetInitialWatchState(ctx context.Context, client etcd.KeysAPI, key stri
 	if err != nil {
 		if !etcdutil.IsEtcdNotFound(err) {
 			utilruntime.HandleError(fmt.Errorf("watch was unable to retrieve the current index for the provided key (%q): %v", key, err))
-			return resourceVersion, toStorageErr(err, key, 0)
+			return resourceVersion, err
 		}
 		if etcdError, ok := err.(etcd.Error); ok {
 			resourceVersion = etcdError.Index
@@ -267,7 +255,6 @@ var (
 // translate pulls stuff from etcd, converts, and pushes out the outgoing channel. Meant to be
 // called as a goroutine.
 func (w *etcdWatcher) translate() {
-	defer w.wg.Done()
 	defer close(w.outgoing)
 	defer utilruntime.HandleCrash()
 
@@ -329,7 +316,7 @@ func (w *etcdWatcher) decodeObject(node *etcd.Node) (runtime.Object, error) {
 	}
 
 	// ensure resource version is set on the object we load from etcd
-	if err := w.versioner.UpdateObject(obj, node.ModifiedIndex); err != nil {
+	if err := w.versioner.UpdateObject(obj, node.Expiration, node.ModifiedIndex); err != nil {
 		utilruntime.HandleError(fmt.Errorf("failure to version api object (%d) %#v: %v", node.ModifiedIndex, obj, err))
 	}
 
@@ -463,7 +450,7 @@ func (w *etcdWatcher) sendResult(res *etcd.Response) {
 		w.sendAdd(res)
 	case EtcdSet, EtcdCAS:
 		w.sendModify(res)
-	case EtcdDelete, EtcdExpire, EtcdCAD:
+	case EtcdDelete, EtcdExpire:
 		w.sendDelete(res)
 	default:
 		utilruntime.HandleError(fmt.Errorf("unknown action: %v", res.Action))

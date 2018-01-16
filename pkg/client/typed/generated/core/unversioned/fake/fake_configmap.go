@@ -18,7 +18,6 @@ package fake
 
 import (
 	api "k8s.io/kubernetes/pkg/api"
-	unversioned "k8s.io/kubernetes/pkg/api/unversioned"
 	core "k8s.io/kubernetes/pkg/client/testing/core"
 	labels "k8s.io/kubernetes/pkg/labels"
 	watch "k8s.io/kubernetes/pkg/watch"
@@ -30,11 +29,9 @@ type FakeConfigMaps struct {
 	ns   string
 }
 
-var configmapsResource = unversioned.GroupVersionResource{Group: "", Version: "", Resource: "configmaps"}
-
 func (c *FakeConfigMaps) Create(configMap *api.ConfigMap) (result *api.ConfigMap, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewCreateAction(configmapsResource, c.ns, configMap), &api.ConfigMap{})
+		Invokes(core.NewCreateAction("configmaps", c.ns, configMap), &api.ConfigMap{})
 
 	if obj == nil {
 		return nil, err
@@ -44,7 +41,7 @@ func (c *FakeConfigMaps) Create(configMap *api.ConfigMap) (result *api.ConfigMap
 
 func (c *FakeConfigMaps) Update(configMap *api.ConfigMap) (result *api.ConfigMap, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewUpdateAction(configmapsResource, c.ns, configMap), &api.ConfigMap{})
+		Invokes(core.NewUpdateAction("configmaps", c.ns, configMap), &api.ConfigMap{})
 
 	if obj == nil {
 		return nil, err
@@ -54,13 +51,13 @@ func (c *FakeConfigMaps) Update(configMap *api.ConfigMap) (result *api.ConfigMap
 
 func (c *FakeConfigMaps) Delete(name string, options *api.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(core.NewDeleteAction(configmapsResource, c.ns, name), &api.ConfigMap{})
+		Invokes(core.NewDeleteAction("configmaps", c.ns, name), &api.ConfigMap{})
 
 	return err
 }
 
 func (c *FakeConfigMaps) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
-	action := core.NewDeleteCollectionAction(configmapsResource, c.ns, listOptions)
+	action := core.NewDeleteCollectionAction("configmaps", c.ns, listOptions)
 
 	_, err := c.Fake.Invokes(action, &api.ConfigMapList{})
 	return err
@@ -68,7 +65,7 @@ func (c *FakeConfigMaps) DeleteCollection(options *api.DeleteOptions, listOption
 
 func (c *FakeConfigMaps) Get(name string) (result *api.ConfigMap, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewGetAction(configmapsResource, c.ns, name), &api.ConfigMap{})
+		Invokes(core.NewGetAction("configmaps", c.ns, name), &api.ConfigMap{})
 
 	if obj == nil {
 		return nil, err
@@ -78,7 +75,7 @@ func (c *FakeConfigMaps) Get(name string) (result *api.ConfigMap, err error) {
 
 func (c *FakeConfigMaps) List(opts api.ListOptions) (result *api.ConfigMapList, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewListAction(configmapsResource, c.ns, opts), &api.ConfigMapList{})
+		Invokes(core.NewListAction("configmaps", c.ns, opts), &api.ConfigMapList{})
 
 	if obj == nil {
 		return nil, err
@@ -100,6 +97,6 @@ func (c *FakeConfigMaps) List(opts api.ListOptions) (result *api.ConfigMapList, 
 // Watch returns a watch.Interface that watches the requested configMaps.
 func (c *FakeConfigMaps) Watch(opts api.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(core.NewWatchAction(configmapsResource, c.ns, opts))
+		InvokesWatch(core.NewWatchAction("configmaps", c.ns, opts))
 
 }

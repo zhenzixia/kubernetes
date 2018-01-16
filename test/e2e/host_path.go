@@ -25,21 +25,20 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 )
 
 //TODO : Consolidate this code with the code for emptyDir.
 //This will require some smart.
-var _ = framework.KubeDescribe("hostPath", func() {
-	f := framework.NewDefaultFramework("hostpath")
+var _ = Describe("hostPath", func() {
+	framework := NewDefaultFramework("hostpath")
 	var c *client.Client
 	var namespace *api.Namespace
 
 	BeforeEach(func() {
-		c = f.Client
-		namespace = f.Namespace
+		c = framework.Client
+		namespace = framework.Namespace
 
 		//cleanup before running the test.
 		_ = os.Remove("/tmp/test-file")
@@ -56,7 +55,7 @@ var _ = framework.KubeDescribe("hostPath", func() {
 			fmt.Sprintf("--fs_type=%v", volumePath),
 			fmt.Sprintf("--file_mode=%v", volumePath),
 		}
-		framework.TestContainerOutput("hostPath mode", c, pod, 0, []string{
+		testContainerOutput("hostPath mode", c, pod, 0, []string{
 			"mode of file \"/test-volume\": dtrwxrwxrwx", // we expect the sticky bit (mode flag t) to be set for the dir
 		},
 			namespace.Name)
@@ -83,41 +82,10 @@ var _ = framework.KubeDescribe("hostPath", func() {
 		}
 		//Read the content of the file with the second container to
 		//verify volumes  being shared properly among containers within the pod.
-		framework.TestContainerOutput("hostPath r/w", c, pod, 1, []string{
+		testContainerOutput("hostPath r/w", c, pod, 1, []string{
 			"content of file \"/test-volume/test-file\": mount-tester new file",
 		}, namespace.Name,
 		)
-	})
-
-	It("should support subPath [Conformance]", func() {
-		volumePath := "/test-volume"
-		subPath := "sub-path"
-		fileName := "test-file"
-		retryDuration := 180
-
-		filePathInWriter := path.Join(volumePath, fileName)
-		filePathInReader := path.Join(volumePath, subPath, fileName)
-
-		source := &api.HostPathVolumeSource{
-			Path: "/tmp",
-		}
-		pod := testPodWithHostVol(volumePath, source)
-		// Write the file in the subPath from container 0
-		container := &pod.Spec.Containers[0]
-		container.VolumeMounts[0].SubPath = subPath
-		container.Args = []string{
-			fmt.Sprintf("--new_file_0644=%v", filePathInWriter),
-			fmt.Sprintf("--file_mode=%v", filePathInWriter),
-		}
-		// Read it from outside the subPath from container 1
-		pod.Spec.Containers[1].Args = []string{
-			fmt.Sprintf("--file_content_in_loop=%v", filePathInReader),
-			fmt.Sprintf("--retry_time=%d", retryDuration),
-		}
-
-		framework.TestContainerOutput("hostPath subPath", c, pod, 1, []string{
-			"content of file \"" + filePathInReader + "\": mount-tester new file",
-		}, namespace.Name)
 	})
 })
 

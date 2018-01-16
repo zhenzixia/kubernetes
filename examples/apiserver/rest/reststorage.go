@@ -17,18 +17,18 @@ limitations under the License.
 package rest
 
 import (
-	"k8s.io/kubernetes/cmd/libs/go2idl/client-gen/test_apis/testgroup.k8s.io"
+	"k8s.io/kubernetes/cmd/libs/go2idl/client-gen/testdata/apis/testgroup"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/registry/generic"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/storage"
 )
 
 type REST struct {
-	*registry.Store
+	*etcdgeneric.Etcd
 }
 
 // NewREST returns a RESTStorage object that will work with testtype.
@@ -39,19 +39,19 @@ func NewREST(s storage.Interface, storageDecorator generic.StorageDecorator) *RE
 	strategy := &NotNamespaceScoped{}
 	storageInterface := storageDecorator(
 		s, 100, &testgroup.TestType{}, prefix, strategy, newListFunc)
-	store := &registry.Store{
+	store := &etcdgeneric.Etcd{
 		NewFunc: func() runtime.Object { return &testgroup.TestType{} },
 		// NewListFunc returns an object capable of storing results of an etcd list.
 		NewListFunc: newListFunc,
 		// Produces a path that etcd understands, to the root of the resource
 		// by combining the namespace in the context with the given prefix.
 		KeyRootFunc: func(ctx api.Context) string {
-			return registry.NamespaceKeyRootFunc(ctx, prefix)
+			return etcdgeneric.NamespaceKeyRootFunc(ctx, prefix)
 		},
 		// Produces a path that etcd understands, to the resource by combining
 		// the namespace in the context with the given prefix.
 		KeyFunc: func(ctx api.Context, name string) (string, error) {
-			return registry.NamespaceKeyFunc(ctx, prefix, name)
+			return etcdgeneric.NamespaceKeyFunc(ctx, prefix, name)
 		},
 		// Retrieve the name field of the resource.
 		ObjectNameFunc: func(obj runtime.Object) (string, error) {

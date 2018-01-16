@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/types"
 
 	"github.com/coreos/go-systemd/dbus"
 	rktapi "github.com/coreos/rkt/api/v1alpha"
@@ -57,7 +56,7 @@ func (f *fakeRktInterface) GetInfo(ctx context.Context, in *rktapi.GetInfoReques
 	defer f.Unlock()
 
 	f.called = append(f.called, "GetInfo")
-	return &rktapi.GetInfoResponse{Info: &f.info}, f.err
+	return &rktapi.GetInfoResponse{&f.info}, f.err
 }
 
 func (f *fakeRktInterface) ListPods(ctx context.Context, in *rktapi.ListPodsRequest, opts ...grpc.CallOption) (*rktapi.ListPodsResponse, error) {
@@ -66,7 +65,7 @@ func (f *fakeRktInterface) ListPods(ctx context.Context, in *rktapi.ListPodsRequ
 
 	f.called = append(f.called, "ListPods")
 	f.podFilters = in.Filters
-	return &rktapi.ListPodsResponse{Pods: f.pods}, f.err
+	return &rktapi.ListPodsResponse{f.pods}, f.err
 }
 
 func (f *fakeRktInterface) InspectPod(ctx context.Context, in *rktapi.InspectPodRequest, opts ...grpc.CallOption) (*rktapi.InspectPodResponse, error) {
@@ -76,10 +75,10 @@ func (f *fakeRktInterface) InspectPod(ctx context.Context, in *rktapi.InspectPod
 	f.called = append(f.called, "InspectPod")
 	for _, pod := range f.pods {
 		if pod.Id == in.Id {
-			return &rktapi.InspectPodResponse{Pod: pod}, f.err
+			return &rktapi.InspectPodResponse{pod}, f.err
 		}
 	}
-	return &rktapi.InspectPodResponse{}, fmt.Errorf("pod %q not found", in.Id)
+	return &rktapi.InspectPodResponse{nil}, f.err
 }
 
 func (f *fakeRktInterface) ListImages(ctx context.Context, in *rktapi.ListImagesRequest, opts ...grpc.CallOption) (*rktapi.ListImagesResponse, error) {
@@ -87,7 +86,7 @@ func (f *fakeRktInterface) ListImages(ctx context.Context, in *rktapi.ListImages
 	defer f.Unlock()
 
 	f.called = append(f.called, "ListImages")
-	return &rktapi.ListImagesResponse{Images: f.images}, f.err
+	return &rktapi.ListImagesResponse{f.images}, f.err
 }
 
 func (f *fakeRktInterface) InspectImage(ctx context.Context, in *rktapi.InspectImageRequest, opts ...grpc.CallOption) (*rktapi.InspectImageResponse, error) {
@@ -151,8 +150,6 @@ func (f *fakeSystemd) Reload() error {
 type fakeRuntimeHelper struct {
 	dnsServers  []string
 	dnsSearches []string
-	hostName    string
-	hostDomain  string
 	err         error
 }
 
@@ -162,12 +159,4 @@ func (f *fakeRuntimeHelper) GenerateRunContainerOptions(pod *api.Pod, container 
 
 func (f *fakeRuntimeHelper) GetClusterDNS(pod *api.Pod) ([]string, []string, error) {
 	return f.dnsServers, f.dnsSearches, f.err
-}
-
-func (f *fakeRuntimeHelper) GeneratePodHostNameAndDomain(pod *api.Pod) (string, string, error) {
-	return f.hostName, f.hostDomain, nil
-}
-
-func (f *fakeRuntimeHelper) GetPodDir(podUID types.UID) string {
-	return "/poddir/" + string(podUID)
 }

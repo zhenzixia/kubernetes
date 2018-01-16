@@ -47,7 +47,8 @@ func TestGetServerVersion(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(output)
 	}))
-	defer server.Close()
+	// TODO: Uncomment when fix #19254
+	// defer server.Close()
 	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
 
 	got, err := client.ServerVersion()
@@ -82,7 +83,8 @@ func TestGetServerGroupsWithV1Server(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(output)
 	}))
-	defer server.Close()
+	// TODO: Uncomment when fix #19254
+	// defer server.Close()
 	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
 	// ServerGroups should not return an error even if server returns error at /api and /apis
 	apiGroupList, err := client.ServerGroups()
@@ -118,7 +120,8 @@ func TestGetServerResourcesWithV1Server(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(output)
 	}))
-	defer server.Close()
+	// TODO: Uncomment when fix #19254
+	// defer server.Close()
 	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
 	// ServerResources should not return an error even if server returns error at /api/v1.
 	resourceMap, err := client.ServerResources()
@@ -210,7 +213,8 @@ func TestGetServerResources(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(output)
 	}))
-	defer server.Close()
+	// TODO: Uncomment when fix #19254
+	// defer server.Close()
 	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
 	for _, test := range tests {
 		got, err := client.ServerResourcesForGroupVersion(test.request)
@@ -271,7 +275,8 @@ func TestGetSwaggerSchema(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected encoding error: %v", err)
 	}
-	defer server.Close()
+	// TODO: Uncomment when fix #19254
+	// defer server.Close()
 
 	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
 	got, err := client.SwaggerSchema(v1.SchemeGroupVersion)
@@ -290,7 +295,8 @@ func TestGetSwaggerSchemaFail(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected encoding error: %v", err)
 	}
-	defer server.Close()
+	// TODO: Uncomment when fix #19254
+	// defer server.Close()
 
 	client := NewDiscoveryClientForConfigOrDie(&restclient.Config{Host: server.URL})
 	got, err := client.SwaggerSchema(unversioned.GroupVersion{Group: "api.group", Version: "v4"})

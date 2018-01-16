@@ -29,7 +29,7 @@ import (
 	"sort"
 	"strings"
 
-	"gopkg.in/gcfg.v1"
+	"github.com/scalingdata/gcfg"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 )

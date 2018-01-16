@@ -24,8 +24,6 @@ import (
 	"k8s.io/kubernetes/pkg/conversion"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/types"
-
-	"github.com/golang/glog"
 )
 
 // Accessor takes an arbitrary object pointer and returns meta.Interface.
@@ -42,8 +40,6 @@ func Accessor(obj interface{}) (Object, error) {
 	if oi, ok := obj.(Object); ok {
 		return oi, nil
 	}
-
-	glog.V(4).Infof("Calling Accessor on non-internal object: %v", reflect.TypeOf(obj))
 	// legacy path for objects that do not implement Object and ObjectMetaAccessor via
 	// reflection - very slow code path.
 	v, err := conversion.EnforcePtr(obj)
@@ -123,21 +119,33 @@ type objectAccessor struct {
 }
 
 func (obj objectAccessor) GetKind() string {
-	return obj.GetObjectKind().GroupVersionKind().Kind
+	if gvk := obj.GetObjectKind().GroupVersionKind(); gvk != nil {
+		return gvk.Kind
+	}
+	return ""
 }
 
 func (obj objectAccessor) SetKind(kind string) {
 	gvk := obj.GetObjectKind().GroupVersionKind()
+	if gvk == nil {
+		gvk = &unversioned.GroupVersionKind{}
+	}
 	gvk.Kind = kind
 	obj.GetObjectKind().SetGroupVersionKind(gvk)
 }
 
 func (obj objectAccessor) GetAPIVersion() string {
-	return obj.GetObjectKind().GroupVersionKind().GroupVersion().String()
+	if gvk := obj.GetObjectKind().GroupVersionKind(); gvk != nil {
+		return gvk.GroupVersion().String()
+	}
+	return ""
 }
 
 func (obj objectAccessor) SetAPIVersion(version string) {
 	gvk := obj.GetObjectKind().GroupVersionKind()
+	if gvk == nil {
+		gvk = &unversioned.GroupVersionKind{}
+	}
 	gv, err := unversioned.ParseGroupVersion(version)
 	if err != nil {
 		gv = unversioned.GroupVersion{Version: version}
@@ -313,18 +321,16 @@ func (resourceAccessor) SetResourceVersion(obj runtime.Object, version string) e
 // genericAccessor contains pointers to strings that can modify an arbitrary
 // struct and implements the Accessor interface.
 type genericAccessor struct {
-	namespace         *string
-	name              *string
-	generateName      *string
-	uid               *types.UID
-	apiVersion        *string
-	kind              *string
-	resourceVersion   *string
-	selfLink          *string
-	creationTimestamp *unversioned.Time
-	deletionTimestamp **unversioned.Time
-	labels            *map[string]string
-	annotations       *map[string]string
+	namespace       *string
+	name            *string
+	generateName    *string
+	uid             *types.UID
+	apiVersion      *string
+	kind            *string
+	resourceVersion *string
+	selfLink        *string
+	labels          *map[string]string
+	annotations     *map[string]string
 }
 
 func (a genericAccessor) GetNamespace() string {
@@ -413,22 +419,6 @@ func (a genericAccessor) GetSelfLink() string {
 
 func (a genericAccessor) SetSelfLink(selfLink string) {
 	*a.selfLink = selfLink
-}
-
-func (a genericAccessor) GetCreationTimestamp() unversioned.Time {
-	return *a.creationTimestamp
-}
-
-func (a genericAccessor) SetCreationTimestamp(timestamp unversioned.Time) {
-	*a.creationTimestamp = timestamp
-}
-
-func (a genericAccessor) GetDeletionTimestamp() *unversioned.Time {
-	return *a.deletionTimestamp
-}
-
-func (a genericAccessor) SetDeletionTimestamp(timestamp *unversioned.Time) {
-	*a.deletionTimestamp = timestamp
 }
 
 func (a genericAccessor) GetLabels() map[string]string {

@@ -27,7 +27,6 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 	utilstrings "k8s.io/kubernetes/pkg/util/strings"
 	"k8s.io/kubernetes/pkg/volume"
-	ioutil "k8s.io/kubernetes/pkg/volume/util"
 )
 
 // This is the primary entrypoint for volume plugins.
@@ -71,12 +70,12 @@ func (plugin *iscsiPlugin) GetAccessModes() []api.PersistentVolumeAccessMode {
 	}
 }
 
-func (plugin *iscsiPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
+func (plugin *iscsiPlugin) NewBuilder(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Builder, error) {
 	// Inject real implementations here, test through the internal function.
-	return plugin.newMounterInternal(spec, pod.UID, &ISCSIUtil{}, plugin.host.GetMounter())
+	return plugin.newBuilderInternal(spec, pod.UID, &ISCSIUtil{}, plugin.host.GetMounter())
 }
 
-func (plugin *iscsiPlugin) newMounterInternal(spec *volume.Spec, podUID types.UID, manager diskManager, mounter mount.Interface) (volume.Mounter, error) {
+func (plugin *iscsiPlugin) newBuilderInternal(spec *volume.Spec, podUID types.UID, manager diskManager, mounter mount.Interface) (volume.Builder, error) {
 	// iscsi volumes used directly in a pod have a ReadOnly flag set by the pod author.
 	// iscsi volumes used as a PersistentVolume gets the ReadOnly flag indirectly through the persistent-claim volume used to mount the PV
 	var readOnly bool
@@ -89,12 +88,12 @@ func (plugin *iscsiPlugin) newMounterInternal(spec *volume.Spec, podUID types.UI
 		readOnly = spec.ReadOnly
 	}
 
-	lun := strconv.Itoa(int(iscsi.Lun))
-	portal := portalMounter(iscsi.TargetPortal)
+	lun := strconv.Itoa(iscsi.Lun)
+	portal := portalBuilder(iscsi.TargetPortal)
 
 	iface := iscsi.ISCSIInterface
 
-	return &iscsiDiskMounter{
+	return &iscsiDiskBuilder{
 		iscsiDisk: &iscsiDisk{
 			podUID:  podUID,
 			volName: spec.Name(),
@@ -104,20 +103,19 @@ func (plugin *iscsiPlugin) newMounterInternal(spec *volume.Spec, podUID types.UI
 			iface:   iface,
 			manager: manager,
 			plugin:  plugin},
-		fsType:     iscsi.FSType,
-		readOnly:   readOnly,
-		mounter:    &mount.SafeFormatAndMount{Interface: mounter, Runner: exec.New()},
-		deviceUtil: ioutil.NewDeviceHandler(ioutil.NewIOHandler()),
+		fsType:   iscsi.FSType,
+		readOnly: readOnly,
+		mounter:  &mount.SafeFormatAndMount{mounter, exec.New()},
 	}, nil
 }
 
-func (plugin *iscsiPlugin) NewUnmounter(volName string, podUID types.UID) (volume.Unmounter, error) {
+func (plugin *iscsiPlugin) NewCleaner(volName string, podUID types.UID) (volume.Cleaner, error) {
 	// Inject real implementations here, test through the internal function.
-	return plugin.newUnmounterInternal(volName, podUID, &ISCSIUtil{}, plugin.host.GetMounter())
+	return plugin.newCleanerInternal(volName, podUID, &ISCSIUtil{}, plugin.host.GetMounter())
 }
 
-func (plugin *iscsiPlugin) newUnmounterInternal(volName string, podUID types.UID, manager diskManager, mounter mount.Interface) (volume.Unmounter, error) {
-	return &iscsiDiskUnmounter{
+func (plugin *iscsiPlugin) newCleanerInternal(volName string, podUID types.UID, manager diskManager, mounter mount.Interface) (volume.Cleaner, error) {
+	return &iscsiDiskCleaner{
 		iscsiDisk: &iscsiDisk{
 			podUID:  podUID,
 			volName: volName,
@@ -152,17 +150,16 @@ func (iscsi *iscsiDisk) GetPath() string {
 	return iscsi.plugin.host.GetPodVolumeDir(iscsi.podUID, utilstrings.EscapeQualifiedNameForDisk(name), iscsi.volName)
 }
 
-type iscsiDiskMounter struct {
+type iscsiDiskBuilder struct {
 	*iscsiDisk
-	readOnly   bool
-	fsType     string
-	mounter    *mount.SafeFormatAndMount
-	deviceUtil ioutil.DeviceUtil
+	readOnly bool
+	fsType   string
+	mounter  *mount.SafeFormatAndMount
 }
 
-var _ volume.Mounter = &iscsiDiskMounter{}
+var _ volume.Builder = &iscsiDiskBuilder{}
 
-func (b *iscsiDiskMounter) GetAttributes() volume.Attributes {
+func (b *iscsiDiskBuilder) GetAttributes() volume.Attributes {
 	return volume.Attributes{
 		ReadOnly:        b.readOnly,
 		Managed:         !b.readOnly,
@@ -170,11 +167,11 @@ func (b *iscsiDiskMounter) GetAttributes() volume.Attributes {
 	}
 }
 
-func (b *iscsiDiskMounter) SetUp(fsGroup *int64) error {
+func (b *iscsiDiskBuilder) SetUp(fsGroup *int64) error {
 	return b.SetUpAt(b.GetPath(), fsGroup)
 }
 
-func (b *iscsiDiskMounter) SetUpAt(dir string, fsGroup *int64) error {
+func (b *iscsiDiskBuilder) SetUpAt(dir string, fsGroup *int64) error {
 	// diskSetUp checks mountpoints and prevent repeated calls
 	err := diskSetUp(b.manager, *b, dir, b.mounter, fsGroup)
 	if err != nil {
@@ -183,24 +180,24 @@ func (b *iscsiDiskMounter) SetUpAt(dir string, fsGroup *int64) error {
 	return err
 }
 
-type iscsiDiskUnmounter struct {
+type iscsiDiskCleaner struct {
 	*iscsiDisk
 	mounter mount.Interface
 }
 
-var _ volume.Unmounter = &iscsiDiskUnmounter{}
+var _ volume.Cleaner = &iscsiDiskCleaner{}
 
 // Unmounts the bind mount, and detaches the disk only if the disk
 // resource was the last reference to that disk on the kubelet.
-func (c *iscsiDiskUnmounter) TearDown() error {
+func (c *iscsiDiskCleaner) TearDown() error {
 	return c.TearDownAt(c.GetPath())
 }
 
-func (c *iscsiDiskUnmounter) TearDownAt(dir string) error {
+func (c *iscsiDiskCleaner) TearDownAt(dir string) error {
 	return diskTearDown(c.manager, *c, dir, c.mounter)
 }
 
-func portalMounter(portal string) string {
+func portalBuilder(portal string) string {
 	if !strings.Contains(portal, ":") {
 		portal = portal + ":3260"
 	}

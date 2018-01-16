@@ -51,7 +51,6 @@ func NewCmdCreateNamespace(f *cmdutil.Factory, cmdOut io.Writer) *cobra.Command 
 	cmdutil.AddValidateFlags(cmd)
 	cmdutil.AddPrinterFlags(cmd)
 	cmdutil.AddGeneratorFlags(cmd, cmdutil.NamespaceV1GeneratorName)
-
 	return cmd
 }
 

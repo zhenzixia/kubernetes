@@ -27,13 +27,16 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
 	_ "k8s.io/kubernetes/pkg/api/install" // To register api.Pod used in tests below
-	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	k8sruntime "k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/strategicpatch"
-	"net/http"
 )
+
+func init() {
+	// Don't bother sleeping between retries.
+	sleepDuration = 0
+}
 
 type testEventSink struct {
 	OnCreate func(e *api.Event) (*api.Event, error)
@@ -343,17 +346,14 @@ func TestEventf(t *testing.T) {
 		},
 		OnPatch: OnPatchFactory(testCache, patchEvent),
 	}
-	eventBroadcaster := NewBroadcasterForTests(0)
+	eventBroadcaster := NewBroadcaster()
 	sinkWatcher := eventBroadcaster.StartRecordingToSink(&testEvents)
 
 	clock := util.NewFakeClock(time.Now())
 	recorder := recorderWithFakeClock(api.EventSource{Component: "eventTest"}, eventBroadcaster, clock)
 	for index, item := range table {
 		clock.Step(1 * time.Second)
-		// TODO: uncomment this after we upgrade to Go 1.6.1.
-		// testing.(*common).log() is racing with testing.(*T).report() in Go 1.6.
-		// See #23533 for more details.
-		// logWatcher1 := eventBroadcaster.StartLogging(t.Logf) // Prove that it is useful
+		logWatcher1 := eventBroadcaster.StartLogging(t.Logf) // Prove that it is useful
 		logWatcher2 := eventBroadcaster.StartLogging(func(formatter string, args ...interface{}) {
 			if e, a := item.expectLog, fmt.Sprintf(formatter, args...); e != a {
 				t.Errorf("Expected '%v', got '%v'", e, a)
@@ -372,8 +372,7 @@ func TestEventf(t *testing.T) {
 			actualEvent := <-createEvent
 			validateEvent(string(index), actualEvent, item.expect, t)
 		}
-		// TODO: uncomment this after we upgrade to Go 1.6.1.
-		// logWatcher1.Stop()
+		logWatcher1.Stop()
 		logWatcher2.Stop()
 	}
 	sinkWatcher.Stop()
@@ -432,45 +431,10 @@ func TestWriteEventError(t *testing.T) {
 			},
 		}
 		ev := &api.Event{}
-		recordToSink(sink, ev, eventCorrelator, randGen, 0)
+		recordToSink(sink, ev, eventCorrelator, randGen)
 		if attempts != ent.attemptsWanted {
 			t.Errorf("case %v: wanted %d, got %d attempts", caseName, ent.attemptsWanted, attempts)
 		}
-	}
-}
-
-func TestUpdateExpiredEvent(t *testing.T) {
-	eventCorrelator := NewEventCorrelator(util.RealClock{})
-	randGen := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	var createdEvent *api.Event
-
-	sink := &testEventSink{
-		OnPatch: func(*api.Event, []byte) (*api.Event, error) {
-			return nil, &errors.StatusError{
-				ErrStatus: unversioned.Status{
-					Code:   http.StatusNotFound,
-					Reason: unversioned.StatusReasonNotFound,
-				}}
-		},
-		OnCreate: func(event *api.Event) (*api.Event, error) {
-			createdEvent = event
-			return event, nil
-		},
-	}
-
-	ev := &api.Event{}
-	ev.ResourceVersion = "updated-resource-version"
-	ev.Count = 2
-	recordToSink(sink, ev, eventCorrelator, randGen, 0)
-
-	if createdEvent == nil {
-		t.Error("Event did not get created after patch failed")
-		return
-	}
-
-	if createdEvent.ResourceVersion != "" {
-		t.Errorf("Event did not have its resource version cleared, was %s", createdEvent.ResourceVersion)
 	}
 }
 
@@ -496,7 +460,7 @@ func TestLotsOfEvents(t *testing.T) {
 		},
 	}
 
-	eventBroadcaster := NewBroadcasterForTests(0)
+	eventBroadcaster := NewBroadcaster()
 	sinkWatcher := eventBroadcaster.StartRecordingToSink(&testEvents)
 	logWatcher := eventBroadcaster.StartLogging(func(formatter string, args ...interface{}) {
 		loggerCalled <- struct{}{}
@@ -593,7 +557,7 @@ func TestEventfNoNamespace(t *testing.T) {
 		},
 		OnPatch: OnPatchFactory(testCache, patchEvent),
 	}
-	eventBroadcaster := NewBroadcasterForTests(0)
+	eventBroadcaster := NewBroadcaster()
 	sinkWatcher := eventBroadcaster.StartRecordingToSink(&testEvents)
 
 	clock := util.NewFakeClock(time.Now())
@@ -601,10 +565,7 @@ func TestEventfNoNamespace(t *testing.T) {
 
 	for index, item := range table {
 		clock.Step(1 * time.Second)
-		// TODO: uncomment this after we upgrade to Go 1.6.1.
-		// testing.(*common).log() is racing with testing.(*T).report() in Go 1.6.
-		// See #23533 for more details.
-		// logWatcher1 := eventBroadcaster.StartLogging(t.Logf) // Prove that it is useful
+		logWatcher1 := eventBroadcaster.StartLogging(t.Logf) // Prove that it is useful
 		logWatcher2 := eventBroadcaster.StartLogging(func(formatter string, args ...interface{}) {
 			if e, a := item.expectLog, fmt.Sprintf(formatter, args...); e != a {
 				t.Errorf("Expected '%v', got '%v'", e, a)
@@ -624,8 +585,7 @@ func TestEventfNoNamespace(t *testing.T) {
 			validateEvent(string(index), actualEvent, item.expect, t)
 		}
 
-		// TODO: uncomment this after we upgrade to Go 1.6.1.
-		// logWatcher1.Stop()
+		logWatcher1.Stop()
 		logWatcher2.Stop()
 	}
 	sinkWatcher.Stop()
@@ -886,7 +846,7 @@ func TestMultiSinkCache(t *testing.T) {
 		OnPatch: OnPatchFactory(testCache2, patchEvent2),
 	}
 
-	eventBroadcaster := NewBroadcasterForTests(0)
+	eventBroadcaster := NewBroadcaster()
 	clock := util.NewFakeClock(time.Now())
 	recorder := recorderWithFakeClock(api.EventSource{Component: "eventTest"}, eventBroadcaster, clock)
 

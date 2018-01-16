@@ -64,8 +64,8 @@ func (plugin *secretPlugin) CanSupport(spec *volume.Spec) bool {
 	return spec.Volume != nil && spec.Volume.Secret != nil
 }
 
-func (plugin *secretPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, opts volume.VolumeOptions) (volume.Mounter, error) {
-	return &secretVolumeMounter{
+func (plugin *secretPlugin) NewBuilder(spec *volume.Spec, pod *api.Pod, opts volume.VolumeOptions) (volume.Builder, error) {
+	return &secretVolumeBuilder{
 		secretVolume: &secretVolume{
 			spec.Name(),
 			pod.UID,
@@ -80,8 +80,8 @@ func (plugin *secretPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, opts vol
 	}, nil
 }
 
-func (plugin *secretPlugin) NewUnmounter(volName string, podUID types.UID) (volume.Unmounter, error) {
-	return &secretVolumeUnmounter{
+func (plugin *secretPlugin) NewCleaner(volName string, podUID types.UID) (volume.Cleaner, error) {
+	return &secretVolumeCleaner{
 		&secretVolume{
 			volName,
 			podUID,
@@ -112,9 +112,9 @@ func getPathFromHost(host volume.VolumeHost, podUID types.UID, volName string) s
 	return host.GetPodVolumeDir(podUID, strings.EscapeQualifiedNameForDisk(secretPluginName), volName)
 }
 
-// secretVolumeMounter handles retrieving secrets from the API server
+// secretVolumeBuilder handles retrieving secrets from the API server
 // and placing them into the volume on the host.
-type secretVolumeMounter struct {
+type secretVolumeBuilder struct {
 	*secretVolume
 
 	secretName string
@@ -122,7 +122,7 @@ type secretVolumeMounter struct {
 	opts       *volume.VolumeOptions
 }
 
-var _ volume.Mounter = &secretVolumeMounter{}
+var _ volume.Builder = &secretVolumeBuilder{}
 
 func (sv *secretVolume) GetAttributes() volume.Attributes {
 	return volume.Attributes{
@@ -131,15 +131,15 @@ func (sv *secretVolume) GetAttributes() volume.Attributes {
 		SupportsSELinux: true,
 	}
 }
-func (b *secretVolumeMounter) SetUp(fsGroup *int64) error {
+func (b *secretVolumeBuilder) SetUp(fsGroup *int64) error {
 	return b.SetUpAt(b.GetPath(), fsGroup)
 }
 
-func (b *secretVolumeMounter) getMetaDir() string {
+func (b *secretVolumeBuilder) getMetaDir() string {
 	return path.Join(b.plugin.host.GetPodPluginDir(b.podUID, strings.EscapeQualifiedNameForDisk(secretPluginName)), b.volName)
 }
 
-func (b *secretVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
+func (b *secretVolumeBuilder) SetUpAt(dir string, fsGroup *int64) error {
 	notMnt, err := b.mounter.IsLikelyNotMountPoint(dir)
 	// Getting an os.IsNotExist err from is a contingency; the directory
 	// may not exist yet, in which case, setup should run.
@@ -156,7 +156,7 @@ func (b *secretVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
 	glog.V(3).Infof("Setting up volume %v for pod %v at %v", b.volName, b.pod.UID, dir)
 
 	// Wrap EmptyDir, let it do the setup.
-	wrapped, err := b.plugin.host.NewWrapperMounter(b.volName, wrappedVolumeSpec, &b.pod, *b.opts)
+	wrapped, err := b.plugin.host.NewWrapperBuilder(b.volName, wrappedVolumeSpec, &b.pod, *b.opts)
 	if err != nil {
 		return err
 	}
@@ -208,22 +208,22 @@ func totalSecretBytes(secret *api.Secret) int {
 	return totalSize
 }
 
-// secretVolumeUnmounter handles cleaning up secret volumes.
-type secretVolumeUnmounter struct {
+// secretVolumeCleaner handles cleaning up secret volumes.
+type secretVolumeCleaner struct {
 	*secretVolume
 }
 
-var _ volume.Unmounter = &secretVolumeUnmounter{}
+var _ volume.Cleaner = &secretVolumeCleaner{}
 
-func (c *secretVolumeUnmounter) TearDown() error {
+func (c *secretVolumeCleaner) TearDown() error {
 	return c.TearDownAt(c.GetPath())
 }
 
-func (c *secretVolumeUnmounter) TearDownAt(dir string) error {
+func (c *secretVolumeCleaner) TearDownAt(dir string) error {
 	glog.V(3).Infof("Tearing down volume %v for pod %v at %v", c.volName, c.podUID, dir)
 
 	// Wrap EmptyDir, let it do the teardown.
-	wrapped, err := c.plugin.host.NewWrapperUnmounter(c.volName, wrappedVolumeSpec, c.podUID)
+	wrapped, err := c.plugin.host.NewWrapperCleaner(c.volName, wrappedVolumeSpec, c.podUID)
 	if err != nil {
 		return err
 	}

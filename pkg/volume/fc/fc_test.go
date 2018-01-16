@@ -99,7 +99,7 @@ func (fake *fakeDiskManager) Cleanup() {
 func (fake *fakeDiskManager) MakeGlobalPDName(disk fcDisk) string {
 	return fake.tmpDir
 }
-func (fake *fakeDiskManager) AttachDisk(b fcDiskMounter) error {
+func (fake *fakeDiskManager) AttachDisk(b fcDiskBuilder) error {
 	globalPath := b.manager.MakeGlobalPDName(*b.fcDisk)
 	err := os.MkdirAll(globalPath, 0750)
 	if err != nil {
@@ -113,7 +113,7 @@ func (fake *fakeDiskManager) AttachDisk(b fcDiskMounter) error {
 	return nil
 }
 
-func (fake *fakeDiskManager) DetachDisk(c fcDiskUnmounter, mntPath string) error {
+func (fake *fakeDiskManager) DetachDisk(c fcDiskCleaner, mntPath string) error {
 	globalPath := c.manager.MakeGlobalPDName(*c.fcDisk)
 	err := os.RemoveAll(globalPath)
 	if err != nil {
@@ -140,21 +140,21 @@ func doTestPlugin(t *testing.T, spec *volume.Spec) {
 	fakeManager := NewFakeDiskManager()
 	defer fakeManager.Cleanup()
 	fakeMounter := &mount.FakeMounter{}
-	mounter, err := plug.(*fcPlugin).newMounterInternal(spec, types.UID("poduid"), fakeManager, fakeMounter)
+	builder, err := plug.(*fcPlugin).newBuilderInternal(spec, types.UID("poduid"), fakeManager, fakeMounter)
 	if err != nil {
-		t.Errorf("Failed to make a new Mounter: %v", err)
+		t.Errorf("Failed to make a new Builder: %v", err)
 	}
-	if mounter == nil {
-		t.Errorf("Got a nil Mounter: %v", err)
+	if builder == nil {
+		t.Errorf("Got a nil Builder: %v", err)
 	}
 
-	path := mounter.GetPath()
+	path := builder.GetPath()
 	expectedPath := fmt.Sprintf("%s/pods/poduid/volumes/kubernetes.io~fc/vol1", tmpDir)
 	if path != expectedPath {
 		t.Errorf("Unexpected path, expected %q, got: %q", expectedPath, path)
 	}
 
-	if err := mounter.SetUp(nil); err != nil {
+	if err := builder.SetUp(nil); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(path); err != nil {
@@ -177,15 +177,15 @@ func doTestPlugin(t *testing.T, spec *volume.Spec) {
 
 	fakeManager2 := NewFakeDiskManager()
 	defer fakeManager2.Cleanup()
-	unmounter, err := plug.(*fcPlugin).newUnmounterInternal("vol1", types.UID("poduid"), fakeManager2, fakeMounter)
+	cleaner, err := plug.(*fcPlugin).newCleanerInternal("vol1", types.UID("poduid"), fakeManager2, fakeMounter)
 	if err != nil {
-		t.Errorf("Failed to make a new Unmounter: %v", err)
+		t.Errorf("Failed to make a new Cleaner: %v", err)
 	}
-	if unmounter == nil {
-		t.Errorf("Got a nil Unmounter: %v", err)
+	if cleaner == nil {
+		t.Errorf("Got a nil Cleaner: %v", err)
 	}
 
-	if err := unmounter.TearDown(); err != nil {
+	if err := cleaner.TearDown(); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(path); err == nil {
@@ -199,7 +199,7 @@ func doTestPlugin(t *testing.T, spec *volume.Spec) {
 }
 
 func TestPluginVolume(t *testing.T) {
-	lun := int32(0)
+	lun := 0
 	vol := &api.Volume{
 		Name: "vol1",
 		VolumeSource: api.VolumeSource{
@@ -214,7 +214,7 @@ func TestPluginVolume(t *testing.T) {
 }
 
 func TestPluginPersistentVolume(t *testing.T) {
-	lun := int32(0)
+	lun := 0
 	vol := &api.PersistentVolume{
 		ObjectMeta: api.ObjectMeta{
 			Name: "vol1",
@@ -239,7 +239,7 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	lun := int32(0)
+	lun := 0
 	pv := &api.PersistentVolume{
 		ObjectMeta: api.ObjectMeta{
 			Name: "pvA",
@@ -277,12 +277,12 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 	plugMgr.InitPlugins(ProbeVolumePlugins(), volumetest.NewFakeVolumeHost(tmpDir, client, nil))
 	plug, _ := plugMgr.FindPluginByName(fcPluginName)
 
-	// readOnly bool is supplied by persistent-claim volume source when its mounter creates other volumes
+	// readOnly bool is supplied by persistent-claim volume source when its builder creates other volumes
 	spec := volume.NewSpecFromPersistentVolume(pv, true)
 	pod := &api.Pod{ObjectMeta: api.ObjectMeta{UID: types.UID("poduid")}}
-	mounter, _ := plug.NewMounter(spec, pod, volume.VolumeOptions{})
+	builder, _ := plug.NewBuilder(spec, pod, volume.VolumeOptions{})
 
-	if !mounter.GetAttributes().ReadOnly {
-		t.Errorf("Expected true for mounter.IsReadOnly")
+	if !builder.GetAttributes().ReadOnly {
+		t.Errorf("Expected true for builder.IsReadOnly")
 	}
 }

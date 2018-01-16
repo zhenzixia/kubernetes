@@ -20,23 +20,22 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 )
 
-var _ = framework.KubeDescribe("Docker Containers", func() {
-	f := framework.NewDefaultFramework("containers")
+var _ = Describe("Docker Containers", func() {
+	framework := NewDefaultFramework("containers")
 	var c *client.Client
 	var ns string
 
 	BeforeEach(func() {
-		c = f.Client
-		ns = f.Namespace.Name
+		c = framework.Client
+		ns = framework.Namespace.Name
 	})
 
 	It("should use the image defaults if command and args are blank [Conformance]", func() {
-		framework.TestContainerOutput("use defaults", c, entrypointTestPod(), 0, []string{
+		testContainerOutput("use defaults", c, entrypointTestPod(), 0, []string{
 			"[/ep default arguments]",
 		}, ns)
 	})
@@ -45,7 +44,7 @@ var _ = framework.KubeDescribe("Docker Containers", func() {
 		pod := entrypointTestPod()
 		pod.Spec.Containers[0].Args = []string{"override", "arguments"}
 
-		framework.TestContainerOutput("override arguments", c, pod, 0, []string{
+		testContainerOutput("override arguments", c, pod, 0, []string{
 			"[/ep override arguments]",
 		}, ns)
 	})
@@ -56,7 +55,7 @@ var _ = framework.KubeDescribe("Docker Containers", func() {
 		pod := entrypointTestPod()
 		pod.Spec.Containers[0].Command = []string{"/ep-2"}
 
-		framework.TestContainerOutput("override command", c, pod, 0, []string{
+		testContainerOutput("override command", c, pod, 0, []string{
 			"[/ep-2]",
 		}, ns)
 	})
@@ -66,7 +65,7 @@ var _ = framework.KubeDescribe("Docker Containers", func() {
 		pod.Spec.Containers[0].Command = []string{"/ep-2"}
 		pod.Spec.Containers[0].Args = []string{"override", "arguments"}
 
-		framework.TestContainerOutput("override all", c, pod, 0, []string{
+		testContainerOutput("override all", c, pod, 0, []string{
 			"[/ep-2 override arguments]",
 		}, ns)
 	})

@@ -30,26 +30,14 @@ import (
 	"github.com/coreos/go-oidc/oidc"
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/auth/user"
-	"k8s.io/kubernetes/pkg/util/crypto"
+	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/net"
 )
 
-const (
-	DefaultRetries = 5
-	DefaultBackoff = time.Second * 3
+var (
+	maxRetries   = 5
+	retryBackoff = time.Second * 3
 )
-
-type OIDCOptions struct {
-	IssuerURL     string
-	ClientID      string
-	CAFile        string
-	UsernameClaim string
-	GroupsClaim   string
-
-	// 0 disables retry
-	MaxRetries   int
-	RetryBackoff time.Duration
-}
 
 type OIDCAuthenticator struct {
 	clientConfig     oidc.ClientConfig
@@ -57,29 +45,27 @@ type OIDCAuthenticator struct {
 	usernameClaim    string
 	groupsClaim      string
 	stopSyncProvider chan struct{}
-	maxRetries       int
-	retryBackoff     time.Duration
 }
 
 // New creates a new OpenID Connect client with the given issuerURL and clientID.
 // NOTE(yifan): For now we assume the server provides the "jwks_uri" so we don't
 // need to manager the key sets by ourselves.
-func New(opts OIDCOptions) (*OIDCAuthenticator, error) {
+func New(issuerURL, clientID, caFile, usernameClaim, groupsClaim string) (*OIDCAuthenticator, error) {
 	var cfg oidc.ProviderConfig
 	var err error
 	var roots *x509.CertPool
 
-	url, err := url.Parse(opts.IssuerURL)
+	url, err := url.Parse(issuerURL)
 	if err != nil {
 		return nil, err
 	}
 
 	if url.Scheme != "https" {
-		return nil, fmt.Errorf("'oidc-issuer-url' (%q) has invalid scheme (%q), require 'https'", opts.IssuerURL, url.Scheme)
+		return nil, fmt.Errorf("'oidc-issuer-url' (%q) has invalid scheme (%q), require 'https'", issuerURL, url.Scheme)
 	}
 
-	if opts.CAFile != "" {
-		roots, err = crypto.CertPoolFromFile(opts.CAFile)
+	if caFile != "" {
+		roots, err = util.CertPoolFromFile(caFile)
 		if err != nil {
 			glog.Errorf("Failed to read the CA file: %v", err)
 		}
@@ -98,21 +84,12 @@ func New(opts OIDCOptions) (*OIDCAuthenticator, error) {
 	hc := &http.Client{}
 	hc.Transport = tr
 
-	maxRetries := opts.MaxRetries
-	if maxRetries < 0 {
-		maxRetries = DefaultRetries
-	}
-	retryBackoff := opts.RetryBackoff
-	if retryBackoff < 0 {
-		retryBackoff = DefaultBackoff
-	}
-
 	for i := 0; i <= maxRetries; i++ {
 		if i == maxRetries {
 			return nil, fmt.Errorf("failed to fetch provider config after %v retries", maxRetries)
 		}
 
-		cfg, err = oidc.FetchProviderConfig(hc, strings.TrimSuffix(opts.IssuerURL, "/"))
+		cfg, err = oidc.FetchProviderConfig(hc, strings.TrimSuffix(issuerURL, "/"))
 		if err == nil {
 			break
 		}
@@ -120,11 +97,15 @@ func New(opts OIDCOptions) (*OIDCAuthenticator, error) {
 		time.Sleep(retryBackoff)
 	}
 
-	glog.Infof("Fetched provider config from %s: %#v", opts.IssuerURL, cfg)
+	glog.Infof("Fetched provider config from %s: %#v", issuerURL, cfg)
+
+	if cfg.KeysEndpoint == "" {
+		return nil, fmt.Errorf("OIDC provider must provide 'jwks_uri' for public key discovery")
+	}
 
 	ccfg := oidc.ClientConfig{
 		HTTPClient:     hc,
-		Credentials:    oidc.ClientCredentials{ID: opts.ClientID},
+		Credentials:    oidc.ClientCredentials{ID: clientID},
 		ProviderConfig: cfg,
 	}
 
@@ -136,17 +117,9 @@ func New(opts OIDCOptions) (*OIDCAuthenticator, error) {
 	// SyncProviderConfig will start a goroutine to periodically synchronize the provider config.
 	// The synchronization interval is set by the expiration length of the config, and has a mininum
 	// and maximum threshold.
-	stop := client.SyncProviderConfig(opts.IssuerURL)
+	stop := client.SyncProviderConfig(issuerURL)
 
-	return &OIDCAuthenticator{
-		ccfg,
-		client,
-		opts.UsernameClaim,
-		opts.GroupsClaim,
-		stop,
-		maxRetries,
-		retryBackoff,
-	}, nil
+	return &OIDCAuthenticator{ccfg, client, usernameClaim, groupsClaim, stop}, nil
 }
 
 // AuthenticateToken decodes and verifies a JWT using the OIDC client, if the verification succeeds,

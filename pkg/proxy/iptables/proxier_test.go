@@ -282,8 +282,8 @@ func TestDeleteEndpointConnections(t *testing.T) {
 	}
 
 	serviceMap := make(map[proxy.ServicePortName]*serviceInfo)
-	svc1 := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: "svc1"}, Port: ""}
-	svc2 := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: "svc2"}, Port: ""}
+	svc1 := proxy.ServicePortName{types.NamespacedName{Namespace: "ns1", Name: "svc1"}, ""}
+	svc2 := proxy.ServicePortName{types.NamespacedName{Namespace: "ns1", Name: "svc2"}, ""}
 	serviceMap[svc1] = newFakeServiceInfo(svc1, net.IPv4(10, 20, 30, 40), api.ProtocolUDP)
 	serviceMap[svc2] = newFakeServiceInfo(svc1, net.IPv4(10, 20, 30, 41), api.ProtocolTCP)
 
@@ -372,104 +372,6 @@ func TestDeleteServiceConnections(t *testing.T) {
 			t.Errorf("Exepect comand executed %d times, but got %d", svcCount, fexec.CommandCalls)
 		}
 	}
-}
-
-type fakeClosable struct {
-	closed bool
-}
-
-func (c *fakeClosable) Close() error {
-	c.closed = true
-	return nil
-}
-
-func TestRevertPorts(t *testing.T) {
-	testCases := []struct {
-		replacementPorts []localPort
-		existingPorts    []localPort
-		expectToBeClose  []bool
-	}{
-		{
-			replacementPorts: []localPort{
-				{port: 5001},
-				{port: 5002},
-				{port: 5003},
-			},
-			existingPorts:   []localPort{},
-			expectToBeClose: []bool{true, true, true},
-		},
-		{
-			replacementPorts: []localPort{},
-			existingPorts: []localPort{
-				{port: 5001},
-				{port: 5002},
-				{port: 5003},
-			},
-			expectToBeClose: []bool{},
-		},
-		{
-			replacementPorts: []localPort{
-				{port: 5001},
-				{port: 5002},
-				{port: 5003},
-			},
-			existingPorts: []localPort{
-				{port: 5001},
-				{port: 5002},
-				{port: 5003},
-			},
-			expectToBeClose: []bool{false, false, false},
-		},
-		{
-			replacementPorts: []localPort{
-				{port: 5001},
-				{port: 5002},
-				{port: 5003},
-			},
-			existingPorts: []localPort{
-				{port: 5001},
-				{port: 5003},
-			},
-			expectToBeClose: []bool{false, true, false},
-		},
-		{
-			replacementPorts: []localPort{
-				{port: 5001},
-				{port: 5002},
-				{port: 5003},
-			},
-			existingPorts: []localPort{
-				{port: 5001},
-				{port: 5002},
-				{port: 5003},
-				{port: 5004},
-			},
-			expectToBeClose: []bool{false, false, false},
-		},
-	}
-
-	for i, tc := range testCases {
-		replacementPortsMap := make(map[localPort]closeable)
-		for _, lp := range tc.replacementPorts {
-			replacementPortsMap[lp] = &fakeClosable{}
-		}
-		existingPortsMap := make(map[localPort]closeable)
-		for _, lp := range tc.existingPorts {
-			existingPortsMap[lp] = &fakeClosable{}
-		}
-		revertPorts(replacementPortsMap, existingPortsMap)
-		for j, expectation := range tc.expectToBeClose {
-			if replacementPortsMap[tc.replacementPorts[j]].(*fakeClosable).closed != expectation {
-				t.Errorf("Expect replacement localport %v to be %v in test case %v", tc.replacementPorts[j], expectation, i)
-			}
-		}
-		for _, lp := range tc.existingPorts {
-			if existingPortsMap[lp].(*fakeClosable).closed == true {
-				t.Errorf("Expect existing localport %v to be false in test case %v", lp, i)
-			}
-		}
-	}
-
 }
 
 // TODO(thockin): add a test for syncProxyRules() or break it down further and test the pieces.

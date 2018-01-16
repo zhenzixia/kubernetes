@@ -23,16 +23,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 )
 
 type useContextOptions struct {
-	configAccess clientcmd.ConfigAccess
+	configAccess ConfigAccess
 	contextName  string
 }
 
-func NewCmdConfigUseContext(out io.Writer, configAccess clientcmd.ConfigAccess) *cobra.Command {
+func NewCmdConfigUseContext(out io.Writer, configAccess ConfigAccess) *cobra.Command {
 	options := &useContextOptions{configAccess: configAccess}
 
 	cmd := &cobra.Command{
@@ -69,7 +68,7 @@ func (o useContextOptions) run() error {
 
 	config.CurrentContext = o.contextName
 
-	if err := clientcmd.ModifyConfig(o.configAccess, *config, true); err != nil {
+	if err := ModifyConfig(o.configAccess, *config, true); err != nil {
 		return err
 	}
 

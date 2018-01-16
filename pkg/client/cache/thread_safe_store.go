@@ -45,7 +45,6 @@ type ThreadSafeStore interface {
 	Index(indexName string, obj interface{}) ([]interface{}, error)
 	ListIndexFuncValues(name string) []string
 	ByIndex(indexName, indexKey string) ([]interface{}, error)
-	GetIndexers() Indexers
 }
 
 // threadSafeMap implements ThreadSafeStore
@@ -180,19 +179,12 @@ func (c *threadSafeMap) ByIndex(indexName, indexKey string) ([]interface{}, erro
 }
 
 func (c *threadSafeMap) ListIndexFuncValues(indexName string) []string {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-
 	index := c.indices[indexName]
 	names := make([]string, 0, len(index))
 	for key := range index {
 		names = append(names, key)
 	}
 	return names
-}
-
-func (c *threadSafeMap) GetIndexers() Indexers {
-	return c.indexers
 }
 
 // updateIndices modifies the objects location in the managed indexes, if this is an update, you must provide an oldObj

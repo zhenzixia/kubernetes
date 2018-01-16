@@ -47,10 +47,6 @@ existing replication controller and overwrite at least one (common) label in its
     Explicit policy for when to pull container images. Required when \-\-image is same as existing image, ignored otherwise.
 
 .PP
-\fB\-\-include\-extended\-apis\fP=true
-    If true, include definitions of new APIs via calls to the API server. [default true]
-
-.PP
 \fB\-\-no\-headers\fP=false
     When using the default output, don't print headers.
 
@@ -58,7 +54,7 @@ existing replication controller and overwrite at least one (common) label in its
 \fB\-o\fP, \fB\-\-output\fP=""
     Output format. One of: json|yaml|wide|name|go\-template=...|go\-template\-file=...|jsonpath=...|jsonpath\-file=... See golang template [
 \[la]http://golang.org/pkg/text/template/#pkg-overview\[ra]] and jsonpath template [
-\[la]http://releases.k8s.io/HEAD/docs/user-guide/jsonpath.md\[ra]].
+\[la]http://releases.k8s.io/release-1.2/docs/user-guide/jsonpath.md\[ra]].
 
 .PP
 \fB\-\-output\-version\fP=""
@@ -114,10 +110,6 @@ existing replication controller and overwrite at least one (common) label in its
 .PP
 \fB\-\-api\-version\fP=""
     DEPRECATED: The API version to use when talking to the server
-
-.PP
-\fB\-\-as\fP=""
-    Username to impersonate for the operation.
 
 .PP
 \fB\-\-certificate\-authority\fP=""

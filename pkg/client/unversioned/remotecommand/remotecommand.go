@@ -26,7 +26,6 @@ import (
 
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/transport"
-	"k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 	"k8s.io/kubernetes/pkg/util/httpstream"
 	"k8s.io/kubernetes/pkg/util/httpstream/spdy"
 )
@@ -37,7 +36,7 @@ type Executor interface {
 	// non-nil stream to a remote system, and return an error if a problem occurs. If tty
 	// is set, the stderr stream is not used (raw TTY manages stdout and stderr over the
 	// stdout stream).
-	Stream(supportedProtocols []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) error
+	Stream(stdin io.Reader, stdout, stderr io.Writer, tty bool) error
 }
 
 // StreamExecutor supports the ability to dial an httpstream connection and the ability to
@@ -129,13 +128,26 @@ func (e *streamExecutor) Dial(protocols ...string) (httpstream.Connection, strin
 	return conn, resp.Header.Get(httpstream.HeaderProtocolVersion), nil
 }
 
+const (
+	// The SPDY subprotocol "channel.k8s.io" is used for remote command
+	// attachment/execution. This represents the initial unversioned subprotocol,
+	// which has the known bugs http://issues.k8s.io/13394 and
+	// http://issues.k8s.io/13395.
+	StreamProtocolV1Name = "channel.k8s.io"
+	// The SPDY subprotocol "v2.channel.k8s.io" is used for remote command
+	// attachment/execution. It is the second version of the subprotocol and
+	// resolves the issues present in the first version.
+	StreamProtocolV2Name = "v2.channel.k8s.io"
+)
+
 type streamProtocolHandler interface {
 	stream(httpstream.Connection) error
 }
 
 // Stream opens a protocol streamer to the server and streams until a client closes
 // the connection or the server disconnects.
-func (e *streamExecutor) Stream(supportedProtocols []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) error {
+func (e *streamExecutor) Stream(stdin io.Reader, stdout, stderr io.Writer, tty bool) error {
+	supportedProtocols := []string{StreamProtocolV2Name, StreamProtocolV1Name}
 	conn, protocol, err := e.Dial(supportedProtocols...)
 	if err != nil {
 		return err
@@ -145,7 +157,7 @@ func (e *streamExecutor) Stream(supportedProtocols []string, stdin io.Reader, st
 	var streamer streamProtocolHandler
 
 	switch protocol {
-	case remotecommand.StreamProtocolV2Name:
+	case StreamProtocolV2Name:
 		streamer = &streamProtocolV2{
 			stdin:  stdin,
 			stdout: stdout,
@@ -153,9 +165,9 @@ func (e *streamExecutor) Stream(supportedProtocols []string, stdin io.Reader, st
 			tty:    tty,
 		}
 	case "":
-		glog.V(4).Infof("The server did not negotiate a streaming protocol version. Falling back to %s", remotecommand.StreamProtocolV1Name)
+		glog.V(4).Infof("The server did not negotiate a streaming protocol version. Falling back to %s", StreamProtocolV1Name)
 		fallthrough
-	case remotecommand.StreamProtocolV1Name:
+	case StreamProtocolV1Name:
 		streamer = &streamProtocolV1{
 			stdin:  stdin,
 			stdout: stdout,

@@ -35,7 +35,8 @@ import (
 
 func testPrefix(t *testing.T, prefix string) {
 	_, s := framework.RunAMaster(t)
-	defer s.Close()
+	// TODO: Uncomment when fix #19254
+	// defer s.Close()
 
 	resp, err := http.Get(s.URL + prefix)
 	if err != nil {
@@ -54,17 +55,14 @@ func TestBatchPrefix(t *testing.T) {
 	testPrefix(t, "/apis/batch/")
 }
 
-func TestAppsPrefix(t *testing.T) {
-	testPrefix(t, "/apis/apps/")
-}
-
 func TestExtensionsPrefix(t *testing.T) {
 	testPrefix(t, "/apis/extensions/")
 }
 
 func TestWatchSucceedsWithoutArgs(t *testing.T) {
 	_, s := framework.RunAMaster(t)
-	defer s.Close()
+	// TODO: Uncomment when fix #19254
+	// defer s.Close()
 
 	resp, err := http.Get(s.URL + "/api/v1/namespaces?watch=1")
 	if err != nil {
@@ -304,7 +302,8 @@ func TestBatchGroupBackwardCompatibility(t *testing.T) {
 
 func TestAccept(t *testing.T) {
 	_, s := framework.RunAMaster(t)
-	defer s.Close()
+	// TODO: Uncomment when fix #19254
+	// defer s.Close()
 
 	resp, err := http.Get(s.URL + "/api/")
 	if err != nil {

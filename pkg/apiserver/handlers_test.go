@@ -112,7 +112,8 @@ func TestMaxInFlight(t *testing.T) {
 			}),
 		),
 	)
-	defer server.Close()
+	// TODO: Uncomment when fix #19254
+	// defer server.Close()
 
 	// These should hang, but not affect accounting.  use a query param match
 	for i := 0; i < AllowedInflightRequestsNo; i++ {
@@ -174,7 +175,8 @@ func TestReadOnly(t *testing.T) {
 			}
 		},
 	)))
-	defer server.Close()
+	// TODO: Uncomment when fix #19254
+	// defer server.Close()
 	for _, verb := range []string{"GET", "POST", "PUT", "DELETE", "CREATE"} {
 		req, err := http.NewRequest(verb, server.URL, nil)
 		if err != nil {
@@ -200,7 +202,8 @@ func TestTimeout(t *testing.T) {
 		func(*http.Request) (<-chan time.Time, string) {
 			return timeout, timeoutResp
 		}))
-	defer ts.Close()
+	// TODO: Uncomment when fix #19254
+	// defer ts.Close()
 
 	// No timeouts
 	sendResponse <- struct{}{}
@@ -281,8 +284,6 @@ func TestGetAttribs(t *testing.T) {
 				Path:            "/api/v1/nodes/mynode",
 				ResourceRequest: true,
 				Resource:        "nodes",
-				APIVersion:      "v1",
-				Name:            "mynode",
 			},
 		},
 		"namespaced resource": {
@@ -294,8 +295,6 @@ func TestGetAttribs(t *testing.T) {
 				ResourceRequest: true,
 				Namespace:       "myns",
 				Resource:        "pods",
-				APIVersion:      "v1",
-				Name:            "mypod",
 			},
 		},
 		"API group resource": {
@@ -306,7 +305,6 @@ func TestGetAttribs(t *testing.T) {
 				Path:            "/apis/extensions/v1beta1/namespaces/myns/jobs",
 				ResourceRequest: true,
 				APIGroup:        extensions.GroupName,
-				APIVersion:      "v1beta1",
 				Namespace:       "myns",
 				Resource:        "jobs",
 			},
@@ -360,8 +358,7 @@ func TestGetAPIRequestInfo(t *testing.T) {
 		// subresource identification
 		{"GET", "/api/v1/namespaces/other/pods/foo/status", "get", "api", "", "v1", "other", "pods", "status", "foo", []string{"pods", "foo", "status"}},
 		{"GET", "/api/v1/namespaces/other/pods/foo/proxy/subpath", "get", "api", "", "v1", "other", "pods", "proxy", "foo", []string{"pods", "foo", "proxy", "subpath"}},
-		{"PUT", "/api/v1/namespaces/other/finalize", "update", "api", "", "v1", "other", "namespaces", "finalize", "other", []string{"namespaces", "other", "finalize"}},
-		{"PUT", "/api/v1/namespaces/other/status", "update", "api", "", "v1", "other", "namespaces", "status", "other", []string{"namespaces", "other", "status"}},
+		{"PUT", "/api/v1/namespaces/other/finalize", "update", "api", "", "v1", "other", "finalize", "", "", []string{"finalize"}},
 
 		// verb identification
 		{"PATCH", "/api/v1/namespaces/other/pods/foo", "patch", "api", "", "v1", "other", "pods", "", "foo", []string{"pods", "foo"}},

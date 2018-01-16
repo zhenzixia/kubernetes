@@ -31,7 +31,7 @@ TEST_ARGS="$@"
 
 KUBE_ROOT=$(cd "$(dirname "${BASH_SOURCE}")/../../.." && pwd)
 
-TEST_CMD="KUBERNETES_CONFORMANCE_TEST=y KUBECONFIG=~/.kube/config go run hack/e2e.go --test --test_args=\"--ginkgo.focus=\\[Conformance\\]\""
+TEST_CMD="KUBECONFIG=~/.kube/config hack/conformance-test.sh"
 if [ -n "${CONFORMANCE_BRANCH}" ]; then
 	# create a CONFORMANCE_BRANCH clone in a subdirectory
 	TEST_CMD="

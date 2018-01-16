@@ -14,14 +14,13 @@
 
 .PHONY:	build push
 
-IMAGE=kube-cross
-TAG=$(shell cat VERSION)
-
-
-all: push
+IMAGE = kube-cross
+TAG = $(shell cat VERSION)
 
 build:
 	docker build -t gcr.io/google_containers/$(IMAGE):$(TAG) .
 
-push: build
+push:	build
 	gcloud docker --server=gcr.io push gcr.io/google_containers/$(IMAGE):$(TAG)
+
+all:	push

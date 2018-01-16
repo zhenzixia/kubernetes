@@ -68,11 +68,11 @@ func (plugin *azureFilePlugin) GetAccessModes() []api.PersistentVolumeAccessMode
 	}
 }
 
-func (plugin *azureFilePlugin) NewMounter(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
-	return plugin.newMounterInternal(spec, pod, &azureSvc{}, plugin.host.GetMounter())
+func (plugin *azureFilePlugin) NewBuilder(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Builder, error) {
+	return plugin.newBuilderInternal(spec, pod, &azureSvc{}, plugin.host.GetMounter())
 }
 
-func (plugin *azureFilePlugin) newMounterInternal(spec *volume.Spec, pod *api.Pod, util azureUtil, mounter mount.Interface) (volume.Mounter, error) {
+func (plugin *azureFilePlugin) newBuilderInternal(spec *volume.Spec, pod *api.Pod, util azureUtil, mounter mount.Interface) (volume.Builder, error) {
 	var source *api.AzureFileVolumeSource
 	var readOnly bool
 	if spec.Volume != nil && spec.Volume.AzureFile != nil {
@@ -82,7 +82,7 @@ func (plugin *azureFilePlugin) newMounterInternal(spec *volume.Spec, pod *api.Po
 		source = spec.PersistentVolume.Spec.AzureFile
 		readOnly = spec.ReadOnly
 	}
-	return &azureFileMounter{
+	return &azureFileBuilder{
 		azureFile: &azureFile{
 			volName: spec.Name(),
 			mounter: mounter,
@@ -96,12 +96,12 @@ func (plugin *azureFilePlugin) newMounterInternal(spec *volume.Spec, pod *api.Po
 	}, nil
 }
 
-func (plugin *azureFilePlugin) NewUnmounter(volName string, podUID types.UID) (volume.Unmounter, error) {
-	return plugin.newUnmounterInternal(volName, podUID, plugin.host.GetMounter())
+func (plugin *azureFilePlugin) NewCleaner(volName string, podUID types.UID) (volume.Cleaner, error) {
+	return plugin.newCleanerInternal(volName, podUID, plugin.host.GetMounter())
 }
 
-func (plugin *azureFilePlugin) newUnmounterInternal(volName string, podUID types.UID, mounter mount.Interface) (volume.Unmounter, error) {
-	return &azureFileUnmounter{&azureFile{
+func (plugin *azureFilePlugin) newCleanerInternal(volName string, podUID types.UID, mounter mount.Interface) (volume.Cleaner, error) {
+	return &azureFileCleaner{&azureFile{
 		volName: volName,
 		mounter: mounter,
 		pod:     &api.Pod{ObjectMeta: api.ObjectMeta{UID: podUID}},
@@ -123,7 +123,7 @@ func (azureFileVolume *azureFile) GetPath() string {
 	return azureFileVolume.plugin.host.GetPodVolumeDir(azureFileVolume.pod.UID, strings.EscapeQualifiedNameForDisk(name), azureFileVolume.volName)
 }
 
-type azureFileMounter struct {
+type azureFileBuilder struct {
 	*azureFile
 	util       azureUtil
 	secretName string
@@ -131,9 +131,9 @@ type azureFileMounter struct {
 	readOnly   bool
 }
 
-var _ volume.Mounter = &azureFileMounter{}
+var _ volume.Builder = &azureFileBuilder{}
 
-func (b *azureFileMounter) GetAttributes() volume.Attributes {
+func (b *azureFileBuilder) GetAttributes() volume.Attributes {
 	return volume.Attributes{
 		ReadOnly:        b.readOnly,
 		Managed:         !b.readOnly,
@@ -142,11 +142,11 @@ func (b *azureFileMounter) GetAttributes() volume.Attributes {
 }
 
 // SetUp attaches the disk and bind mounts to the volume path.
-func (b *azureFileMounter) SetUp(fsGroup *int64) error {
+func (b *azureFileBuilder) SetUp(fsGroup *int64) error {
 	return b.SetUpAt(b.GetPath(), fsGroup)
 }
 
-func (b *azureFileMounter) SetUpAt(dir string, fsGroup *int64) error {
+func (b *azureFileBuilder) SetUpAt(dir string, fsGroup *int64) error {
 	notMnt, err := b.mounter.IsLikelyNotMountPoint(dir)
 	glog.V(4).Infof("AzureFile mount set up: %s %v %v", dir, !notMnt, err)
 	if err != nil && !os.IsNotExist(err) {
@@ -195,17 +195,17 @@ func (b *azureFileMounter) SetUpAt(dir string, fsGroup *int64) error {
 	return nil
 }
 
-var _ volume.Unmounter = &azureFileUnmounter{}
+var _ volume.Cleaner = &azureFileCleaner{}
 
-type azureFileUnmounter struct {
+type azureFileCleaner struct {
 	*azureFile
 }
 
-func (c *azureFileUnmounter) TearDown() error {
+func (c *azureFileCleaner) TearDown() error {
 	return c.TearDownAt(c.GetPath())
 }
 
-func (c *azureFileUnmounter) TearDownAt(dir string) error {
+func (c *azureFileCleaner) TearDownAt(dir string) error {
 	notMnt, err := c.mounter.IsLikelyNotMountPoint(dir)
 	if err != nil {
 		glog.Errorf("Error checking IsLikelyNotMountPoint: %v", err)

@@ -22,13 +22,13 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	"k8s.io/kubernetes/pkg/registry/generic"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/registry/resourcequota"
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
 type REST struct {
-	*registry.Store
+	*etcdgeneric.Etcd
 }
 
 // NewREST returns a RESTStorage object that will work against resource quotas.
@@ -39,14 +39,14 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 	storageInterface := opts.Decorator(
 		opts.Storage, cachesize.GetWatchCacheSizeByResource(cachesize.ResourceQuotas), &api.ResourceQuota{}, prefix, resourcequota.Strategy, newListFunc)
 
-	store := &registry.Store{
+	store := &etcdgeneric.Etcd{
 		NewFunc:     func() runtime.Object { return &api.ResourceQuota{} },
 		NewListFunc: newListFunc,
 		KeyRootFunc: func(ctx api.Context) string {
-			return registry.NamespaceKeyRootFunc(ctx, prefix)
+			return etcdgeneric.NamespaceKeyRootFunc(ctx, prefix)
 		},
 		KeyFunc: func(ctx api.Context, name string) (string, error) {
-			return registry.NamespaceKeyFunc(ctx, prefix, name)
+			return etcdgeneric.NamespaceKeyFunc(ctx, prefix, name)
 		},
 		ObjectNameFunc: func(obj runtime.Object) (string, error) {
 			return obj.(*api.ResourceQuota).Name, nil
@@ -59,7 +59,6 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 		CreateStrategy:      resourcequota.Strategy,
 		UpdateStrategy:      resourcequota.Strategy,
-		DeleteStrategy:      resourcequota.Strategy,
 		ReturnDeletedObject: true,
 
 		Storage: storageInterface,
@@ -73,7 +72,7 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 // StatusREST implements the REST endpoint for changing the status of a resourcequota.
 type StatusREST struct {
-	store *registry.Store
+	store *etcdgeneric.Etcd
 }
 
 func (r *StatusREST) New() runtime.Object {

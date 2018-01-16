@@ -28,6 +28,7 @@ import (
 // Features of Extensions group are not supported and may be changed or removed in
 // incompatible ways at any time.
 type ExtensionsInterface interface {
+	HorizontalPodAutoscalersNamespacer
 	ScaleNamespacer
 	DaemonSetsNamespacer
 	DeploymentsNamespacer
@@ -47,6 +48,10 @@ type ExtensionsClient struct {
 
 func (c *ExtensionsClient) PodSecurityPolicies() PodSecurityPolicyInterface {
 	return newPodSecurityPolicy(c)
+}
+
+func (c *ExtensionsClient) HorizontalPodAutoscalers(namespace string) HorizontalPodAutoscalerInterface {
+	return newHorizontalPodAutoscalers(c, namespace)
 }
 
 func (c *ExtensionsClient) Scales(namespace string) ScaleInterface {
@@ -69,8 +74,8 @@ func (c *ExtensionsClient) Ingress(namespace string) IngressInterface {
 	return newIngress(c, namespace)
 }
 
-func (c *ExtensionsClient) ThirdPartyResources() ThirdPartyResourceInterface {
-	return newThirdPartyResources(c)
+func (c *ExtensionsClient) ThirdPartyResources(namespace string) ThirdPartyResourceInterface {
+	return newThirdPartyResources(c, namespace)
 }
 
 func (c *ExtensionsClient) ReplicaSets(namespace string) ReplicaSetInterface {
@@ -122,7 +127,6 @@ func setExtensionsDefaults(config *restclient.Config) error {
 	//}
 
 	config.Codec = api.Codecs.LegacyCodec(*config.GroupVersion)
-	config.NegotiatedSerializer = api.Codecs
 	if config.QPS == 0 {
 		config.QPS = 5
 	}

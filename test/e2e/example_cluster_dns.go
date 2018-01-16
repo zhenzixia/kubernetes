@@ -24,7 +24,6 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -42,17 +41,17 @@ try:
 except:
 	print 'err'`
 
-var _ = framework.KubeDescribe("ClusterDns [Feature:Example]", func() {
-	f := framework.NewDefaultFramework("cluster-dns")
+var _ = Describe("ClusterDns [Feature:Example]", func() {
+	framework := NewDefaultFramework("cluster-dns")
 
 	var c *client.Client
 	BeforeEach(func() {
-		c = f.Client
+		c = framework.Client
 	})
 
 	It("should create pod that uses dns [Conformance]", func() {
 		mkpath := func(file string) string {
-			return filepath.Join(framework.TestContext.RepoRoot, "examples/cluster-dns", file)
+			return filepath.Join(testContext.RepoRoot, "examples/cluster-dns", file)
 		}
 
 		// contrary to the example, this test does not use contexts, for simplicity
@@ -76,22 +75,22 @@ var _ = framework.KubeDescribe("ClusterDns [Feature:Example]", func() {
 		namespaces := []*api.Namespace{nil, nil}
 		for i := range namespaces {
 			var err error
-			namespaces[i], err = f.CreateNamespace(fmt.Sprintf("dnsexample%d", i), nil)
+			namespaces[i], err = framework.CreateNamespace(fmt.Sprintf("dnsexample%d", i), nil)
 			Expect(err).NotTo(HaveOccurred())
 		}
 
 		for _, ns := range namespaces {
-			framework.RunKubectlOrDie("create", "-f", backendRcYaml, getNsCmdFlag(ns))
+			runKubectlOrDie("create", "-f", backendRcYaml, getNsCmdFlag(ns))
 		}
 
 		for _, ns := range namespaces {
-			framework.RunKubectlOrDie("create", "-f", backendSvcYaml, getNsCmdFlag(ns))
+			runKubectlOrDie("create", "-f", backendSvcYaml, getNsCmdFlag(ns))
 		}
 
 		// wait for objects
 		for _, ns := range namespaces {
-			framework.WaitForRCPodsRunning(c, ns.Name, backendRcName)
-			framework.WaitForService(c, ns.Name, backendSvcName, true, framework.Poll, framework.ServiceStartTimeout)
+			waitForRCPodsRunning(c, ns.Name, backendRcName)
+			waitForService(c, ns.Name, backendSvcName, true, poll, serviceStartTimeout)
 		}
 		// it is not enough that pods are running because they may be set to running, but
 		// the application itself may have not been initialized. Just query the application.
@@ -100,11 +99,11 @@ var _ = framework.KubeDescribe("ClusterDns [Feature:Example]", func() {
 			options := api.ListOptions{LabelSelector: label}
 			pods, err := c.Pods(ns.Name).List(options)
 			Expect(err).NotTo(HaveOccurred())
-			err = framework.PodsResponding(c, ns.Name, backendPodName, false, pods)
+			err = podsResponding(c, ns.Name, backendPodName, false, pods)
 			Expect(err).NotTo(HaveOccurred(), "waiting for all pods to respond")
-			framework.Logf("found %d backend pods responding in namespace %s", len(pods.Items), ns.Name)
+			Logf("found %d backend pods responding in namespace %s", len(pods.Items), ns.Name)
 
-			err = framework.ServiceResponding(c, ns.Name, backendSvcName)
+			err = serviceResponding(c, ns.Name, backendSvcName)
 			Expect(err).NotTo(HaveOccurred(), "waiting for the service to respond")
 		}
 
@@ -121,31 +120,31 @@ var _ = framework.KubeDescribe("ClusterDns [Feature:Example]", func() {
 		pods, err := c.Pods(namespaces[0].Name).List(options)
 
 		if err != nil || pods == nil || len(pods.Items) == 0 {
-			framework.Failf("no running pods found")
+			Failf("no running pods found")
 		}
 		podName := pods.Items[0].Name
 
 		queryDns := fmt.Sprintf(queryDnsPythonTemplate, backendSvcName+"."+namespaces[0].Name)
-		_, err = framework.LookForStringInPodExec(namespaces[0].Name, podName, []string{"python", "-c", queryDns}, "ok", dnsReadyTimeout)
+		_, err = lookForStringInPodExec(namespaces[0].Name, podName, []string{"python", "-c", queryDns}, "ok", dnsReadyTimeout)
 		Expect(err).NotTo(HaveOccurred(), "waiting for output from pod exec")
 
 		updatedPodYaml := prepareResourceWithReplacedString(frontendPodYaml, "dns-backend.development.cluster.local", fmt.Sprintf("dns-backend.%s.svc.cluster.local", namespaces[0].Name))
 
 		// create a pod in each namespace
 		for _, ns := range namespaces {
-			framework.NewKubectlCommand("create", "-f", "-", getNsCmdFlag(ns)).WithStdinData(updatedPodYaml).ExecOrDie()
+			newKubectlCommand("create", "-f", "-", getNsCmdFlag(ns)).withStdinData(updatedPodYaml).execOrDie()
 		}
 
 		// wait until the pods have been scheduler, i.e. are not Pending anymore. Remember
 		// that we cannot wait for the pods to be running because our pods terminate by themselves.
 		for _, ns := range namespaces {
-			err := framework.WaitForPodNotPending(c, ns.Name, frontendPodName)
-			framework.ExpectNoError(err)
+			err := waitForPodNotPending(c, ns.Name, frontendPodName)
+			expectNoError(err)
 		}
 
 		// wait for pods to print their result
 		for _, ns := range namespaces {
-			_, err := framework.LookForStringInLog(ns.Name, frontendPodName, frontendPodContainerName, podOutput, framework.PodStartTimeout)
+			_, err := lookForStringInLog(ns.Name, frontendPodName, frontendPodContainerName, podOutput, podStartTimeout)
 			Expect(err).NotTo(HaveOccurred())
 		}
 	})

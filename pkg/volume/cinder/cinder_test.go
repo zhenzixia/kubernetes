@@ -73,7 +73,7 @@ func getFakeDeviceName(host volume.VolumeHost, pdName string) string {
 // Real Cinder AttachDisk attaches a cinder volume. If it is not yet mounted,
 // it mounts it it to globalPDPath.
 // We create a dummy directory (="device") and bind-mount it to globalPDPath
-func (fake *fakePDManager) AttachDisk(b *cinderVolumeMounter, globalPDPath string) error {
+func (fake *fakePDManager) AttachDisk(b *cinderVolumeBuilder, globalPDPath string) error {
 	globalPath := makeGlobalPDName(b.plugin.host, b.pdName)
 	fakeDeviceName := getFakeDeviceName(b.plugin.host, b.pdName)
 	err := os.MkdirAll(fakeDeviceName, 0750)
@@ -104,7 +104,7 @@ func (fake *fakePDManager) AttachDisk(b *cinderVolumeMounter, globalPDPath strin
 	return nil
 }
 
-func (fake *fakePDManager) DetachDisk(c *cinderVolumeUnmounter) error {
+func (fake *fakePDManager) DetachDisk(c *cinderVolumeCleaner) error {
 	globalPath := makeGlobalPDName(c.plugin.host, c.pdName)
 	fakeDeviceName := getFakeDeviceName(c.plugin.host, c.pdName)
 	// unmount the bind-mount - should be fast
@@ -154,20 +154,20 @@ func TestPlugin(t *testing.T) {
 			},
 		},
 	}
-	mounter, err := plug.(*cinderPlugin).newMounterInternal(volume.NewSpecFromVolume(spec), types.UID("poduid"), &fakePDManager{0}, &mount.FakeMounter{})
+	builder, err := plug.(*cinderPlugin).newBuilderInternal(volume.NewSpecFromVolume(spec), types.UID("poduid"), &fakePDManager{0}, &mount.FakeMounter{})
 	if err != nil {
-		t.Errorf("Failed to make a new Mounter: %v", err)
+		t.Errorf("Failed to make a new Builder: %v", err)
 	}
-	if mounter == nil {
-		t.Errorf("Got a nil Mounter")
+	if builder == nil {
+		t.Errorf("Got a nil Builder")
 	}
 	volPath := path.Join(tmpDir, "pods/poduid/volumes/kubernetes.io~cinder/vol1")
-	path := mounter.GetPath()
+	path := builder.GetPath()
 	if path != volPath {
 		t.Errorf("Got unexpected path: %s", path)
 	}
 
-	if err := mounter.SetUp(nil); err != nil {
+	if err := builder.SetUp(nil); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(path); err != nil {
@@ -185,15 +185,15 @@ func TestPlugin(t *testing.T) {
 		}
 	}
 
-	unmounter, err := plug.(*cinderPlugin).newUnmounterInternal("vol1", types.UID("poduid"), &fakePDManager{0}, &mount.FakeMounter{})
+	cleaner, err := plug.(*cinderPlugin).newCleanerInternal("vol1", types.UID("poduid"), &fakePDManager{0}, &mount.FakeMounter{})
 	if err != nil {
-		t.Errorf("Failed to make a new Unmounter: %v", err)
+		t.Errorf("Failed to make a new Cleaner: %v", err)
 	}
-	if unmounter == nil {
-		t.Errorf("Got a nil Unmounter")
+	if cleaner == nil {
+		t.Errorf("Got a nil Cleaner")
 	}
 
-	if err := unmounter.TearDown(); err != nil {
+	if err := cleaner.TearDown(); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(path); err == nil {
@@ -270,54 +270,54 @@ func TestAttachDetachRace(t *testing.T) {
 	}
 	fakeMounter := &mount.FakeMounter{}
 	// SetUp the volume for 1st time
-	mounter, err := plug.(*cinderPlugin).newMounterInternal(volume.NewSpecFromVolume(spec), types.UID("poduid"), &fakePDManager{time.Second}, fakeMounter)
+	builder, err := plug.(*cinderPlugin).newBuilderInternal(volume.NewSpecFromVolume(spec), types.UID("poduid"), &fakePDManager{time.Second}, fakeMounter)
 	if err != nil {
-		t.Errorf("Failed to make a new Mounter: %v", err)
+		t.Errorf("Failed to make a new Builder: %v", err)
 	}
-	if mounter == nil {
-		t.Errorf("Got a nil Mounter")
+	if builder == nil {
+		t.Errorf("Got a nil Builder")
 	}
 
-	if err := mounter.SetUp(nil); err != nil {
+	if err := builder.SetUp(nil); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
-	path := mounter.GetPath()
+	path := builder.GetPath()
 
 	// TearDown the 1st volume and SetUp the 2nd volume (to different pod) at the same time
-	mounter, err = plug.(*cinderPlugin).newMounterInternal(volume.NewSpecFromVolume(spec), types.UID("poduid2"), &fakePDManager{time.Second}, fakeMounter)
+	builder, err = plug.(*cinderPlugin).newBuilderInternal(volume.NewSpecFromVolume(spec), types.UID("poduid2"), &fakePDManager{time.Second}, fakeMounter)
 	if err != nil {
-		t.Errorf("Failed to make a new Mounter: %v", err)
+		t.Errorf("Failed to make a new Builder: %v", err)
 	}
-	if mounter == nil {
-		t.Errorf("Got a nil Mounter")
+	if builder == nil {
+		t.Errorf("Got a nil Builder")
 	}
 
-	unmounter, err := plug.(*cinderPlugin).newUnmounterInternal("vol1", types.UID("poduid"), &fakePDManager{time.Second}, fakeMounter)
+	cleaner, err := plug.(*cinderPlugin).newCleanerInternal("vol1", types.UID("poduid"), &fakePDManager{time.Second}, fakeMounter)
 	if err != nil {
-		t.Errorf("Failed to make a new Unmounter: %v", err)
+		t.Errorf("Failed to make a new Cleaner: %v", err)
 	}
 
 	var buildComplete uint32 = 0
 
 	go func() {
 		glog.Infof("Attaching volume")
-		if err := mounter.SetUp(nil); err != nil {
+		if err := builder.SetUp(nil); err != nil {
 			t.Errorf("Expected success, got: %v", err)
 		}
 		glog.Infof("Volume attached")
 		atomic.AddUint32(&buildComplete, 1)
 	}()
 
-	// mounter is attaching the volume, which takes 1 second. Detach it in the middle of this interval
+	// builder is attaching the volume, which takes 1 second. Detach it in the middle of this interval
 	time.Sleep(time.Second / 2)
 
 	glog.Infof("Detaching volume")
-	if err = unmounter.TearDown(); err != nil {
+	if err = cleaner.TearDown(); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	glog.Infof("Volume detached")
 
-	// wait for the mounter to finish
+	// wait for the builder to finish
 	for atomic.LoadUint32(&buildComplete) == 0 {
 		time.Sleep(time.Millisecond * 100)
 	}
@@ -333,15 +333,15 @@ func TestAttachDetachRace(t *testing.T) {
 	}
 
 	// TearDown the 2nd volume
-	unmounter, err = plug.(*cinderPlugin).newUnmounterInternal("vol1", types.UID("poduid2"), &fakePDManager{0}, fakeMounter)
+	cleaner, err = plug.(*cinderPlugin).newCleanerInternal("vol1", types.UID("poduid2"), &fakePDManager{0}, fakeMounter)
 	if err != nil {
-		t.Errorf("Failed to make a new Unmounter: %v", err)
+		t.Errorf("Failed to make a new Cleaner: %v", err)
 	}
-	if unmounter == nil {
-		t.Errorf("Got a nil Unmounter")
+	if cleaner == nil {
+		t.Errorf("Got a nil Cleaner")
 	}
 
-	if err := unmounter.TearDown(); err != nil {
+	if err := cleaner.TearDown(); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(path); err == nil {

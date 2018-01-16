@@ -32,7 +32,8 @@ func TestConfigz(t *testing.T) {
 	v.Set("blah")
 
 	s := httptest.NewServer(http.HandlerFunc(handle))
-	defer s.Close()
+	// TODO: Uncomment when fix #19254
+	// defer s.Close()
 
 	resp, err := http.Get(s.URL + "/configz")
 	if err != nil {

@@ -21,13 +21,13 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/registry/registrytest"
 )
 
 func TestPodLogValidates(t *testing.T) {
 	etcdStorage, _ := registrytest.NewEtcdStorage(t, "")
-	store := &registry.Store{
+	store := &etcdgeneric.Etcd{
 		Storage: etcdStorage,
 	}
 	logRest := &LogREST{Store: store, KubeletConn: nil}

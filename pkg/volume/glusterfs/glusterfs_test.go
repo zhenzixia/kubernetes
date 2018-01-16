@@ -113,20 +113,20 @@ func doTestPlugin(t *testing.T, spec *volume.Spec) {
 		},
 	}
 	pod := &api.Pod{ObjectMeta: api.ObjectMeta{UID: types.UID("poduid")}}
-	mounter, err := plug.(*glusterfsPlugin).newMounterInternal(spec, ep, pod, &mount.FakeMounter{}, &fake)
-	volumePath := mounter.GetPath()
+	builder, err := plug.(*glusterfsPlugin).newBuilderInternal(spec, ep, pod, &mount.FakeMounter{}, &fake)
+	volumePath := builder.GetPath()
 	if err != nil {
-		t.Errorf("Failed to make a new Mounter: %v", err)
+		t.Errorf("Failed to make a new Builder: %v", err)
 	}
-	if mounter == nil {
-		t.Error("Got a nil Mounter")
+	if builder == nil {
+		t.Error("Got a nil Builder")
 	}
-	path := mounter.GetPath()
+	path := builder.GetPath()
 	expectedPath := fmt.Sprintf("%s/pods/poduid/volumes/kubernetes.io~glusterfs/vol1", tmpDir)
 	if path != expectedPath {
 		t.Errorf("Unexpected path, expected %q, got: %q", expectedPath, path)
 	}
-	if err := mounter.SetUp(nil); err != nil {
+	if err := builder.SetUp(nil); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(volumePath); err != nil {
@@ -136,14 +136,14 @@ func doTestPlugin(t *testing.T, spec *volume.Spec) {
 			t.Errorf("SetUp() failed: %v", err)
 		}
 	}
-	unmounter, err := plug.(*glusterfsPlugin).newUnmounterInternal("vol1", types.UID("poduid"), &mount.FakeMounter{})
+	cleaner, err := plug.(*glusterfsPlugin).newCleanerInternal("vol1", types.UID("poduid"), &mount.FakeMounter{})
 	if err != nil {
-		t.Errorf("Failed to make a new Unmounter: %v", err)
+		t.Errorf("Failed to make a new Cleaner: %v", err)
 	}
-	if unmounter == nil {
-		t.Error("Got a nil Unmounter")
+	if cleaner == nil {
+		t.Error("Got a nil Cleaner")
 	}
-	if err := unmounter.TearDown(); err != nil {
+	if err := cleaner.TearDown(); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(volumePath); err == nil {
@@ -226,12 +226,12 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 	plugMgr.InitPlugins(ProbeVolumePlugins(), volumetest.NewFakeVolumeHost(tmpDir, client, nil))
 	plug, _ := plugMgr.FindPluginByName(glusterfsPluginName)
 
-	// readOnly bool is supplied by persistent-claim volume source when its mounter creates other volumes
+	// readOnly bool is supplied by persistent-claim volume source when its builder creates other volumes
 	spec := volume.NewSpecFromPersistentVolume(pv, true)
 	pod := &api.Pod{ObjectMeta: api.ObjectMeta{UID: types.UID("poduid")}}
-	mounter, _ := plug.NewMounter(spec, pod, volume.VolumeOptions{})
+	builder, _ := plug.NewBuilder(spec, pod, volume.VolumeOptions{})
 
-	if !mounter.GetAttributes().ReadOnly {
-		t.Errorf("Expected true for mounter.IsReadOnly")
+	if !builder.GetAttributes().ReadOnly {
+		t.Errorf("Expected true for builder.IsReadOnly")
 	}
 }

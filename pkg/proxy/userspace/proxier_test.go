@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strconv"
 	"sync/atomic"
 	"testing"
@@ -83,20 +82,19 @@ func waitForClosedPortUDP(p *Proxier, proxyPort int) error {
 	return fmt.Errorf("port %d still open", proxyPort)
 }
 
-var tcpServerPort int32
-var udpServerPort int32
+var tcpServerPort int
+var udpServerPort int
 
-func TestMain(m *testing.M) {
+func init() {
 	// Don't handle panics
 	runtime.ReallyCrash = true
 
 	// TCP setup.
+	// TODO: Close() this when fix #19254
 	tcp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(r.URL.Path[1:]))
 	}))
-	defer tcp.Close()
-
 	u, err := url.Parse(tcp.URL)
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse: %v", err))
@@ -105,11 +103,10 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse: %v", err))
 	}
-	tcpServerPortValue, err := strconv.Atoi(port)
+	tcpServerPort, err = strconv.Atoi(port)
 	if err != nil {
 		panic(fmt.Sprintf("failed to atoi(%s): %v", port, err))
 	}
-	tcpServerPort = int32(tcpServerPortValue)
 
 	// UDP setup.
 	udp, err := newUDPEchoServer()
@@ -120,17 +117,11 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse: %v", err))
 	}
-	udpServerPortValue, err := strconv.Atoi(port)
+	udpServerPort, err = strconv.Atoi(port)
 	if err != nil {
 		panic(fmt.Sprintf("failed to atoi(%s): %v", port, err))
 	}
-	udpServerPort = int32(udpServerPortValue)
 	go udp.Loop()
-
-	ret := m.Run()
-	// it should be safe to call Close() multiple times.
-	tcp.Close()
-	os.Exit(ret)
 }
 
 func testEchoTCP(t *testing.T, address string, port int) {
@@ -573,7 +564,7 @@ func TestTCPProxyUpdateDeleteUpdate(t *testing.T) {
 		ObjectMeta: api.ObjectMeta{Name: service.Name, Namespace: service.Namespace},
 		Spec: api.ServiceSpec{ClusterIP: "1.2.3.4", Ports: []api.ServicePort{{
 			Name:     "p",
-			Port:     int32(svcInfo.proxyPort),
+			Port:     svcInfo.proxyPort,
 			Protocol: "TCP",
 		}}},
 	}})
@@ -625,7 +616,7 @@ func TestUDPProxyUpdateDeleteUpdate(t *testing.T) {
 		ObjectMeta: api.ObjectMeta{Name: service.Name, Namespace: service.Namespace},
 		Spec: api.ServiceSpec{ClusterIP: "1.2.3.4", Ports: []api.ServicePort{{
 			Name:     "p",
-			Port:     int32(svcInfo.proxyPort),
+			Port:     svcInfo.proxyPort,
 			Protocol: "UDP",
 		}}},
 	}})
@@ -761,7 +752,7 @@ func TestProxyUpdatePublicIPs(t *testing.T) {
 		Spec: api.ServiceSpec{
 			Ports: []api.ServicePort{{
 				Name:     "p",
-				Port:     int32(svcInfo.portal.port),
+				Port:     svcInfo.portal.port,
 				Protocol: "TCP",
 			}},
 			ClusterIP:   svcInfo.portal.ip.String(),
@@ -812,7 +803,7 @@ func TestProxyUpdatePortal(t *testing.T) {
 		ObjectMeta: api.ObjectMeta{Name: service.Name, Namespace: service.Namespace},
 		Spec: api.ServiceSpec{ClusterIP: "", Ports: []api.ServicePort{{
 			Name:     "p",
-			Port:     int32(svcInfo.proxyPort),
+			Port:     svcInfo.proxyPort,
 			Protocol: "TCP",
 		}}},
 	}})
@@ -825,7 +816,7 @@ func TestProxyUpdatePortal(t *testing.T) {
 		ObjectMeta: api.ObjectMeta{Name: service.Name, Namespace: service.Namespace},
 		Spec: api.ServiceSpec{ClusterIP: "None", Ports: []api.ServicePort{{
 			Name:     "p",
-			Port:     int32(svcInfo.proxyPort),
+			Port:     svcInfo.proxyPort,
 			Protocol: "TCP",
 		}}},
 	}})
@@ -838,7 +829,7 @@ func TestProxyUpdatePortal(t *testing.T) {
 		ObjectMeta: api.ObjectMeta{Name: service.Name, Namespace: service.Namespace},
 		Spec: api.ServiceSpec{ClusterIP: "1.2.3.4", Ports: []api.ServicePort{{
 			Name:     "p",
-			Port:     int32(svcInfo.proxyPort),
+			Port:     svcInfo.proxyPort,
 			Protocol: "TCP",
 		}}},
 	}})

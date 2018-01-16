@@ -43,16 +43,16 @@ const (
 
 func init() {
 	admission.RegisterPlugin("LimitRanger", func(client clientset.Interface, config io.Reader) (admission.Interface, error) {
-		return NewLimitRanger(client, &DefaultLimitRangerActions{})
+		return NewLimitRanger(client, Limit)
 	})
 }
 
 // limitRanger enforces usage limits on a per resource basis in the namespace
 type limitRanger struct {
 	*admission.Handler
-	client  clientset.Interface
-	actions LimitRangerActions
-	indexer cache.Indexer
+	client    clientset.Interface
+	limitFunc LimitFunc
+	indexer   cache.Indexer
 
 	// liveLookups holds the last few live lookups we've done to help ammortize cost on repeated lookup failures.
 	// This let's us handle the case of latent caches, by looking up actual results for a namespace on cache miss/no results.
@@ -68,7 +68,14 @@ type liveLookupEntry struct {
 
 // Admit admits resources into cluster that do not violate any defined LimitRange in the namespace
 func (l *limitRanger) Admit(a admission.Attributes) (err error) {
-	if !l.actions.SupportsAttributes(a) {
+
+	// Ignore all calls to subresources
+	if a.GetSubresource() != "" {
+		return nil
+	}
+
+	// ignore all calls that do not deal with pod resources since that is all this supports now.
+	if a.GetKind() != api.Kind("Pod") {
 		return nil
 	}
 
@@ -123,12 +130,7 @@ func (l *limitRanger) Admit(a admission.Attributes) (err error) {
 	// ensure it meets each prescribed min/max
 	for i := range items {
 		limitRange := items[i].(*api.LimitRange)
-
-		if !l.actions.SupportsLimit(limitRange) {
-			continue
-		}
-
-		err = l.actions.Limit(limitRange, a.GetResource().Resource, a.GetObject())
+		err = l.limitFunc(limitRange, a.GetResource().Resource, a.GetObject())
 		if err != nil {
 			return admission.NewForbidden(a, err)
 		}
@@ -137,7 +139,7 @@ func (l *limitRanger) Admit(a admission.Attributes) (err error) {
 }
 
 // NewLimitRanger returns an object that enforces limits based on the supplied limit function
-func NewLimitRanger(client clientset.Interface, actions LimitRangerActions) (admission.Interface, error) {
+func NewLimitRanger(client clientset.Interface, limitFunc LimitFunc) (admission.Interface, error) {
 	liveLookupCache, err := lru.New(10000)
 	if err != nil {
 		return nil, err
@@ -153,15 +155,10 @@ func NewLimitRanger(client clientset.Interface, actions LimitRangerActions) (adm
 	}
 	indexer, reflector := cache.NewNamespaceKeyedIndexerAndReflector(lw, &api.LimitRange{}, 0)
 	reflector.Run()
-
-	if actions == nil {
-		actions = &DefaultLimitRangerActions{}
-	}
-
 	return &limitRanger{
 		Handler:         admission.NewHandler(admission.Create, admission.Update),
 		client:          client,
-		actions:         actions,
+		limitFunc:       limitFunc,
 		indexer:         indexer,
 		liveLookupCache: liveLookupCache,
 		liveTTL:         time.Duration(30 * time.Second),
@@ -182,6 +179,17 @@ func Max(a int64, b int64) int64 {
 		return a
 	}
 	return b
+}
+
+// Limit enforces resource requirements of incoming resources against enumerated constraints
+// on the LimitRange.  It may modify the incoming object to apply default resource requirements
+// if not specified, and enumerated on the LimitRange
+func Limit(limitRange *api.LimitRange, resourceName string, obj runtime.Object) error {
+	switch resourceName {
+	case "pods":
+		return PodLimitFunc(limitRange, obj.(*api.Pod))
+	}
+	return nil
 }
 
 // defaultContainerResourceRequirements returns the default requirements for a container
@@ -373,38 +381,6 @@ func sum(inputs []api.ResourceList) api.ResourceList {
 		}
 	}
 	return result
-}
-
-// DefaultLimitRangerActions is the default implementatation of LimitRangerActions.
-type DefaultLimitRangerActions struct{}
-
-// ensure DefaultLimitRangerActions implements the LimitRangerActions interface.
-var _ LimitRangerActions = &DefaultLimitRangerActions{}
-
-// Limit enforces resource requirements of incoming resources against enumerated constraints
-// on the LimitRange.  It may modify the incoming object to apply default resource requirements
-// if not specified, and enumerated on the LimitRange
-func (d *DefaultLimitRangerActions) Limit(limitRange *api.LimitRange, resourceName string, obj runtime.Object) error {
-	switch resourceName {
-	case "pods":
-		return PodLimitFunc(limitRange, obj.(*api.Pod))
-	}
-	return nil
-}
-
-// SupportsAttributes ignores all calls that do not deal with pod resources since that is
-// all this supports now.  Also ignores any call that has a subresource defined.
-func (d *DefaultLimitRangerActions) SupportsAttributes(a admission.Attributes) bool {
-	if a.GetSubresource() != "" {
-		return false
-	}
-
-	return a.GetKind().GroupKind() == api.Kind("Pod")
-}
-
-// SupportsLimit always returns true.
-func (d *DefaultLimitRangerActions) SupportsLimit(limitRange *api.LimitRange) bool {
-	return true
 }
 
 // PodLimitFunc enforces resource requirements enumerated by the pod against

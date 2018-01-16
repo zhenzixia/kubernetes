@@ -27,7 +27,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	"k8s.io/kubernetes/pkg/api"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -58,7 +57,7 @@ spec:
         kubernetes.io/cluster-service: "true"
     spec:
       containers:
-      - image: gcr.io/google_containers/serve_hostname:v1.4
+      - image: gcr.io/google_containers/serve_hostname:1.1
         name: addon-test
         ports:
         - containerPort: 9376
@@ -88,7 +87,7 @@ spec:
         kubernetes.io/cluster-service: "true"
     spec:
       containers:
-      - image: gcr.io/google_containers/serve_hostname:v1.4
+      - image: gcr.io/google_containers/serve_hostname:1.1
         name: addon-test
         ports:
         - containerPort: 9376
@@ -156,7 +155,7 @@ spec:
         kubernetes.io/cluster-service: "true"
     spec:
       containers:
-      - image: gcr.io/google_containers/serve_hostname:v1.4
+      - image: gcr.io/google_containers/serve_hostname:1.1
         name: invalid-addon-test
         ports:
         - containerPort: 9376
@@ -189,28 +188,49 @@ type stringPair struct {
 	data, fileName string
 }
 
-var _ = framework.KubeDescribe("Addon update", func() {
+var _ = Describe("Addon update", func() {
 
 	var dir string
 	var sshClient *ssh.Client
-	f := framework.NewDefaultFramework("addon-update-test")
+	f := NewDefaultFramework("addon-update-test")
 
 	BeforeEach(func() {
 		// This test requires:
 		// - SSH master access
 		// ... so the provider check should be identical to the intersection of
 		// providers that provide those capabilities.
-		if !framework.ProviderIs("gce") {
+		if !providerIs("gce") {
 			return
 		}
 
 		var err error
 		sshClient, err = getMasterSSHClient()
 		Expect(err).NotTo(HaveOccurred())
+
+		// Reduce the addon update intervals so that we have faster response
+		// to changes in the addon directory.
+		// do not use "service" command because it clears the environment variables
+		switch testContext.OSDistro {
+		case "debian":
+			sshExecAndVerify(sshClient, "sudo TEST_ADDON_CHECK_INTERVAL_SEC=1 /etc/init.d/kube-addons restart")
+		case "trusty", "gci":
+			sshExecAndVerify(sshClient, "sudo initctl restart kube-addons TEST_ADDON_CHECK_INTERVAL_SEC=1")
+		default:
+			Failf("Unsupported OS distro type %s", testContext.OSDistro)
+		}
 	})
 
 	AfterEach(func() {
 		if sshClient != nil {
+			// restart addon_update with the default options
+			switch testContext.OSDistro {
+			case "debian":
+				sshExec(sshClient, "sudo /etc/init.d/kube-addons restart")
+			case "trusty", "gci":
+				sshExec(sshClient, "sudo initctl restart kube-addons")
+			default:
+				Failf("Unsupported OS distro type %s", testContext.OSDistro)
+			}
 			sshClient.Close()
 		}
 	})
@@ -222,7 +242,7 @@ var _ = framework.KubeDescribe("Addon update", func() {
 		// - master access
 		// ... so the provider check should be identical to the intersection of
 		// providers that provide those capabilities.
-		framework.SkipUnlessProviderIs("gce")
+		SkipUnlessProviderIs("gce")
 
 		//these tests are long, so I squeezed several cases in one scenario
 		Expect(sshClient).NotTo(BeNil())
@@ -317,32 +337,28 @@ var _ = framework.KubeDescribe("Addon update", func() {
 })
 
 func waitForServiceInAddonTest(c *client.Client, addonNamespace, name string, exist bool) {
-	framework.ExpectNoError(framework.WaitForService(c, addonNamespace, name, exist, addonTestPollInterval, addonTestPollTimeout))
+	expectNoError(waitForService(c, addonNamespace, name, exist, addonTestPollInterval, addonTestPollTimeout))
 }
 
 func waitForReplicationControllerInAddonTest(c *client.Client, addonNamespace, name string, exist bool) {
-	framework.ExpectNoError(framework.WaitForReplicationController(c, addonNamespace, name, exist, addonTestPollInterval, addonTestPollTimeout))
+	expectNoError(waitForReplicationController(c, addonNamespace, name, exist, addonTestPollInterval, addonTestPollTimeout))
 }
 
-// TODO use the framework.SSH code, either adding an SCP to it or copying files
-// differently.
+// TODO marekbiskup 2015-06-11: merge the ssh code into pkg/util/ssh.go after
+// kubernetes v1.0 is released. In particular the code of sshExec.
 func getMasterSSHClient() (*ssh.Client, error) {
 	// Get a signer for the provider.
-	signer, err := framework.GetSigner(framework.TestContext.Provider)
+	signer, err := getSigner(testContext.Provider)
 	if err != nil {
-		return nil, fmt.Errorf("error getting signer for provider %s: '%v'", framework.TestContext.Provider, err)
+		return nil, fmt.Errorf("error getting signer for provider %s: '%v'", testContext.Provider, err)
 	}
 
-	sshUser := os.Getenv("KUBE_SSH_USER")
-	if sshUser == "" {
-		sshUser = os.Getenv("USER")
-	}
 	config := &ssh.ClientConfig{
-		User: sshUser,
+		User: os.Getenv("USER"),
 		Auth: []ssh.AuthMethod{ssh.PublicKeys(signer)},
 	}
 
-	host := framework.GetMasterHost() + ":22"
+	host := getMasterHost() + ":22"
 	client, err := ssh.Dial("tcp", host, config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting SSH client to host %s: '%v'", host, err)
@@ -357,7 +373,7 @@ func sshExecAndVerify(client *ssh.Client, cmd string) {
 }
 
 func sshExec(client *ssh.Client, cmd string) (string, string, int, error) {
-	framework.Logf("Executing '%s' on %v", cmd, client.RemoteAddr())
+	Logf("Executing '%s' on %v", cmd, client.RemoteAddr())
 	session, err := client.NewSession()
 	if err != nil {
 		return "", "", 0, fmt.Errorf("error creating session to host %s: '%v'", client.RemoteAddr(), err)
@@ -389,7 +405,7 @@ func sshExec(client *ssh.Client, cmd string) (string, string, int, error) {
 }
 
 func writeRemoteFile(sshClient *ssh.Client, data, dir, fileName string, mode os.FileMode) error {
-	framework.Logf(fmt.Sprintf("Writing remote file '%s/%s' on %v", dir, fileName, sshClient.RemoteAddr()))
+	Logf(fmt.Sprintf("Writing remote file '%s/%s' on %v", dir, fileName, sshClient.RemoteAddr()))
 	session, err := sshClient.NewSession()
 	if err != nil {
 		return fmt.Errorf("error creating session to host %s: '%v'", sshClient.RemoteAddr(), err)

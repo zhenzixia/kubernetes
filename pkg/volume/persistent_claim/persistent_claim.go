@@ -18,7 +18,6 @@ package persistent_claim
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api"
@@ -39,7 +38,6 @@ var _ volume.VolumePlugin = &persistentClaimPlugin{}
 
 const (
 	persistentClaimPluginName = "kubernetes.io/persistent-claim"
-	volumeGidAnnotationKey    = "pv.beta.kubernetes.io/gid"
 )
 
 func (plugin *persistentClaimPlugin) Init(host volume.VolumeHost) error {
@@ -55,7 +53,7 @@ func (plugin *persistentClaimPlugin) CanSupport(spec *volume.Spec) bool {
 	return spec.Volume != nil && spec.Volume.PersistentVolumeClaim != nil
 }
 
-func (plugin *persistentClaimPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, opts volume.VolumeOptions) (volume.Mounter, error) {
+func (plugin *persistentClaimPlugin) NewBuilder(spec *volume.Spec, pod *api.Pod, opts volume.VolumeOptions) (volume.Builder, error) {
 	claim, err := plugin.host.GetKubeClient().Core().PersistentVolumeClaims(pod.Namespace).Get(spec.Volume.PersistentVolumeClaim.ClaimName)
 	if err != nil {
 		glog.Errorf("Error finding claim: %+v\n", spec.Volume.PersistentVolumeClaim.ClaimName)
@@ -82,28 +80,15 @@ func (plugin *persistentClaimPlugin) NewMounter(spec *volume.Spec, pod *api.Pod,
 		return nil, err
 	}
 
-	// If a GID annotation is provided set the GID attribute.
-	if volumeGid, ok := pv.Annotations[volumeGidAnnotationKey]; ok {
-		gid, err := strconv.ParseInt(volumeGid, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("Invalid value for %s %v", volumeGidAnnotationKey, err)
-		}
-
-		if pod.Spec.SecurityContext == nil {
-			pod.Spec.SecurityContext = &api.PodSecurityContext{}
-		}
-		pod.Spec.SecurityContext.SupplementalGroups = append(pod.Spec.SecurityContext.SupplementalGroups, gid)
-	}
-
-	mounter, err := plugin.host.NewWrapperMounter(claim.Spec.VolumeName, *volume.NewSpecFromPersistentVolume(pv, spec.ReadOnly), pod, opts)
+	builder, err := plugin.host.NewWrapperBuilder(claim.Spec.VolumeName, *volume.NewSpecFromPersistentVolume(pv, spec.ReadOnly), pod, opts)
 	if err != nil {
-		glog.Errorf("Error creating mounter for claim: %+v\n", claim.Name)
+		glog.Errorf("Error creating builder for claim: %+v\n", claim.Name)
 		return nil, err
 	}
 
-	return mounter, nil
+	return builder, nil
 }
 
-func (plugin *persistentClaimPlugin) NewUnmounter(_ string, _ types.UID) (volume.Unmounter, error) {
-	return nil, fmt.Errorf("This will never be called directly. The PV backing this claim has a unmounter.  Kubelet uses that unmounter, not this one, when removing orphaned volumes.")
+func (plugin *persistentClaimPlugin) NewCleaner(_ string, _ types.UID) (volume.Cleaner, error) {
+	return nil, fmt.Errorf("This will never be called directly. The PV backing this claim has a cleaner.  Kubelet uses that cleaner, not this one, when removing orphaned volumes.")
 }

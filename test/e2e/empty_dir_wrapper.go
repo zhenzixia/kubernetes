@@ -20,7 +20,6 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/intstr"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	"strconv"
 
@@ -29,8 +28,8 @@ import (
 
 // This test will create a pod with a secret volume and gitRepo volume
 // Thus requests a secret, a git server pod, and a git server service
-var _ = framework.KubeDescribe("EmptyDir wrapper volumes", func() {
-	f := framework.NewDefaultFramework("emptydir-wrapper")
+var _ = Describe("EmptyDir wrapper volumes", func() {
+	f := NewDefaultFramework("emptydir-wrapper")
 
 	It("should becomes running", func() {
 		name := "emptydir-wrapper-test-" + string(util.NewUUID())
@@ -49,7 +48,7 @@ var _ = framework.KubeDescribe("EmptyDir wrapper volumes", func() {
 
 		var err error
 		if secret, err = f.Client.Secrets(f.Namespace.Name).Create(secret); err != nil {
-			framework.Failf("unable to create test secret %s: %v", secret.Name, err)
+			Failf("unable to create test secret %s: %v", secret.Name, err)
 		}
 
 		gitServerPodName := "git-server-" + string(util.NewUUID())
@@ -69,7 +68,7 @@ var _ = framework.KubeDescribe("EmptyDir wrapper volumes", func() {
 						Image:           "gcr.io/google_containers/fakegitserver:0.1",
 						ImagePullPolicy: "IfNotPresent",
 						Ports: []api.ContainerPort{
-							{ContainerPort: int32(containerPort)},
+							{ContainerPort: containerPort},
 						},
 					},
 				},
@@ -77,7 +76,7 @@ var _ = framework.KubeDescribe("EmptyDir wrapper volumes", func() {
 		}
 
 		if gitServerPod, err = f.Client.Pods(f.Namespace.Name).Create(gitServerPod); err != nil {
-			framework.Failf("unable to create test git server pod %s: %v", gitServerPod.Name, err)
+			Failf("unable to create test git server pod %s: %v", gitServerPod.Name, err)
 		}
 
 		// Portal IP and port
@@ -92,7 +91,7 @@ var _ = framework.KubeDescribe("EmptyDir wrapper volumes", func() {
 				Ports: []api.ServicePort{
 					{
 						Name:       "http-portal",
-						Port:       int32(httpPort),
+						Port:       httpPort,
 						TargetPort: intstr.FromInt(containerPort),
 					},
 				},
@@ -100,7 +99,7 @@ var _ = framework.KubeDescribe("EmptyDir wrapper volumes", func() {
 		}
 
 		if gitServerSvc, err = f.Client.Services(f.Namespace.Name).Create(gitServerSvc); err != nil {
-			framework.Failf("unable to create test git server service %s: %v", gitServerSvc.Name, err)
+			Failf("unable to create test git server service %s: %v", gitServerSvc.Name, err)
 		}
 
 		gitVolumeName := "git-volume"
@@ -153,28 +152,28 @@ var _ = framework.KubeDescribe("EmptyDir wrapper volumes", func() {
 		}
 
 		if pod, err = f.Client.Pods(f.Namespace.Name).Create(pod); err != nil {
-			framework.Failf("unable to create pod %v: %v", pod.Name, err)
+			Failf("unable to create pod %v: %v", pod.Name, err)
 		}
 
 		defer func() {
 			By("Cleaning up the secret")
 			if err := f.Client.Secrets(f.Namespace.Name).Delete(secret.Name); err != nil {
-				framework.Failf("unable to delete secret %v: %v", secret.Name, err)
+				Failf("unable to delete secret %v: %v", secret.Name, err)
 			}
 			By("Cleaning up the git server pod")
 			if err = f.Client.Pods(f.Namespace.Name).Delete(gitServerPod.Name, api.NewDeleteOptions(0)); err != nil {
-				framework.Failf("unable to delete git server pod %v: %v", gitServerPod.Name, err)
+				Failf("unable to delete git server pod %v: %v", gitServerPod.Name, err)
 			}
 			By("Cleaning up the git server svc")
 			if err = f.Client.Services(f.Namespace.Name).Delete(gitServerSvc.Name); err != nil {
-				framework.Failf("unable to delete git server svc %v: %v", gitServerSvc.Name, err)
+				Failf("unable to delete git server svc %v: %v", gitServerSvc.Name, err)
 			}
 			By("Cleaning up the git vol pod")
 			if err = f.Client.Pods(f.Namespace.Name).Delete(pod.Name, api.NewDeleteOptions(0)); err != nil {
-				framework.Failf("unable to delete git vol pod %v: %v", pod.Name, err)
+				Failf("unable to delete git vol pod %v: %v", pod.Name, err)
 			}
 		}()
 
-		framework.ExpectNoError(framework.WaitForPodRunningInNamespace(f.Client, pod.Name, f.Namespace.Name))
+		expectNoError(waitForPodRunningInNamespace(f.Client, pod.Name, f.Namespace.Name))
 	})
 })

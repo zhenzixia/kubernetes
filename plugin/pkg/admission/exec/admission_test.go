@@ -24,6 +24,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/rest"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 	"k8s.io/kubernetes/pkg/client/testing/core"
+	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
@@ -90,7 +91,7 @@ func TestAdmission(t *testing.T) {
 func testAdmission(t *testing.T, pod *api.Pod, handler *denyExec, shouldAccept bool) {
 	mockClient := &fake.Clientset{}
 	mockClient.AddReactor("get", "pods", func(action core.Action) (bool, runtime.Object, error) {
-		if action.(core.GetAction).GetName() == pod.Name {
+		if action.(testclient.GetAction).GetName() == pod.Name {
 			return true, pod, nil
 		}
 		t.Errorf("Unexpected API call: %#v", action)
@@ -102,7 +103,7 @@ func testAdmission(t *testing.T, pod *api.Pod, handler *denyExec, shouldAccept b
 	// pods/exec
 	{
 		req := &rest.ConnectRequest{Name: pod.Name, ResourcePath: "pods/exec"}
-		err := handler.Admit(admission.NewAttributesRecord(req, api.Kind("Pod").WithVersion("version"), "test", "name", api.Resource("pods").WithVersion("version"), "exec", admission.Connect, nil))
+		err := handler.Admit(admission.NewAttributesRecord(req, api.Kind("Pod"), "test", "name", api.Resource("pods"), "exec", admission.Connect, nil))
 		if shouldAccept && err != nil {
 			t.Errorf("Unexpected error returned from admission handler: %v", err)
 		}
@@ -114,7 +115,7 @@ func testAdmission(t *testing.T, pod *api.Pod, handler *denyExec, shouldAccept b
 	// pods/attach
 	{
 		req := &rest.ConnectRequest{Name: pod.Name, ResourcePath: "pods/attach"}
-		err := handler.Admit(admission.NewAttributesRecord(req, api.Kind("Pod").WithVersion("version"), "test", "name", api.Resource("pods").WithVersion("version"), "attach", admission.Connect, nil))
+		err := handler.Admit(admission.NewAttributesRecord(req, api.Kind("Pod"), "test", "name", api.Resource("pods"), "attach", admission.Connect, nil))
 		if shouldAccept && err != nil {
 			t.Errorf("Unexpected error returned from admission handler: %v", err)
 		}

@@ -112,7 +112,6 @@ coreos:
         --configure-cbr0=${KUBERNETES_CONFIGURE_CBR0}
         Restart=always
         RestartSec=10
-        KillMode=process
 
     - name: kube-proxy.service
       command: start

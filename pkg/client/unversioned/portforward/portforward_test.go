@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -88,7 +87,7 @@ func TestParsePortsAndNew(t *testing.T) {
 
 		dialer := &fakeDialer{}
 		expectedStopChan := make(chan struct{})
-		pf, err := New(dialer, test.input, expectedStopChan, os.Stdout, os.Stderr)
+		pf, err := New(dialer, test.input, expectedStopChan)
 		haveError = err != nil
 		if e, a := test.expectNewError, haveError; e != a {
 			t.Fatalf("%d: New: error expected=%t, got %t: %s", i, e, a, err)
@@ -306,7 +305,7 @@ func TestForwardPorts(t *testing.T) {
 
 		stopChan := make(chan struct{}, 1)
 
-		pf, err := New(exec, test.ports, stopChan, os.Stdout, os.Stderr)
+		pf, err := New(exec, test.ports, stopChan)
 		if err != nil {
 			t.Fatalf("%s: unexpected error calling New: %v", testName, err)
 		}
@@ -321,7 +320,8 @@ func TestForwardPorts(t *testing.T) {
 			clientConn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", port))
 			if err != nil {
 				t.Errorf("%s: error dialing %d: %s", testName, port, err)
-				server.Close()
+				// TODO: Uncomment when fix #19254
+				// server.Close()
 				continue
 			}
 			defer clientConn.Close()
@@ -329,24 +329,28 @@ func TestForwardPorts(t *testing.T) {
 			n, err := clientConn.Write([]byte(data))
 			if err != nil && err != io.EOF {
 				t.Errorf("%s: Error sending data '%s': %s", testName, data, err)
-				server.Close()
+				// TODO: Uncomment when fix #19254
+				// server.Close()
 				continue
 			}
 			if n == 0 {
 				t.Errorf("%s: unexpected write of 0 bytes", testName)
-				server.Close()
+				// TODO: Uncomment when fix #19254
+				// server.Close()
 				continue
 			}
 			b := make([]byte, 4)
 			n, err = clientConn.Read(b)
 			if err != nil && err != io.EOF {
 				t.Errorf("%s: Error reading data: %s", testName, err)
-				server.Close()
+				// TODO: Uncomment when fix #19254
+				// server.Close()
 				continue
 			}
 			if !bytes.Equal([]byte(test.serverSends[port]), b) {
 				t.Errorf("%s: expected to read '%s', got '%s'", testName, test.serverSends[port], b)
-				server.Close()
+				// TODO: Uncomment when fix #19254
+				// server.Close()
 				continue
 			}
 		}
@@ -358,14 +362,16 @@ func TestForwardPorts(t *testing.T) {
 		if err != nil {
 			t.Errorf("%s: unexpected error: %s", testName, err)
 		}
-		server.Close()
+		// TODO: Uncomment when fix #19254
+		// server.Close()
 	}
 
 }
 
 func TestForwardPortsReturnsErrorWhenAllBindsFailed(t *testing.T) {
 	server := httptest.NewServer(fakePortForwardServer(t, "allBindsFailed", nil, nil))
-	defer server.Close()
+	// TODO: Uncomment when fix #19254
+	// defer server.Close()
 
 	url, _ := url.Parse(server.URL)
 	exec, err := remotecommand.NewExecutor(&restclient.Config{}, "POST", url)
@@ -376,7 +382,7 @@ func TestForwardPortsReturnsErrorWhenAllBindsFailed(t *testing.T) {
 	stopChan1 := make(chan struct{}, 1)
 	defer close(stopChan1)
 
-	pf1, err := New(exec, []string{"5555"}, stopChan1, os.Stdout, os.Stderr)
+	pf1, err := New(exec, []string{"5555"}, stopChan1)
 	if err != nil {
 		t.Fatalf("error creating pf1: %v", err)
 	}
@@ -384,7 +390,7 @@ func TestForwardPortsReturnsErrorWhenAllBindsFailed(t *testing.T) {
 	<-pf1.Ready
 
 	stopChan2 := make(chan struct{}, 1)
-	pf2, err := New(exec, []string{"5555"}, stopChan2, os.Stdout, os.Stderr)
+	pf2, err := New(exec, []string{"5555"}, stopChan2)
 	if err != nil {
 		t.Fatalf("error creating pf2: %v", err)
 	}

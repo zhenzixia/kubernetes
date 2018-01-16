@@ -34,21 +34,17 @@ import (
 //
 var pkgDeps = map[string][]string{
 	// L0 is the lowest level, core, nearly unavoidable packages.
-	"errors":                  {},
-	"io":                      {"errors", "sync"},
-	"runtime":                 {"unsafe", "runtime/internal/atomic", "runtime/internal/sys"},
-	"runtime/internal/sys":    {},
-	"runtime/internal/atomic": {"unsafe", "runtime/internal/sys"},
-	"internal/race":           {"runtime", "unsafe"},
-	"sync":                    {"internal/race", "runtime", "sync/atomic", "unsafe"},
-	"sync/atomic":             {"unsafe"},
-	"unsafe":                  {},
+	"errors":      {},
+	"io":          {"errors", "sync"},
+	"runtime":     {"unsafe"},
+	"sync":        {"runtime", "sync/atomic", "unsafe"},
+	"sync/atomic": {"unsafe"},
+	"unsafe":      {},
 
 	"L0": {
 		"errors",
 		"io",
 		"runtime",
-		"runtime/internal/atomic",
 		"sync",
 		"sync/atomic",
 		"unsafe",
@@ -132,16 +128,17 @@ var pkgDeps = map[string][]string{
 	// End of linear dependency definitions.
 
 	// Operating system access.
-	"syscall":                           {"L0", "internal/race", "internal/syscall/windows/sysdll", "unicode/utf16"},
+	"syscall":                           {"L0", "unicode/utf16"},
 	"internal/syscall/unix":             {"L0", "syscall"},
-	"internal/syscall/windows":          {"L0", "syscall", "internal/syscall/windows/sysdll"},
-	"internal/syscall/windows/registry": {"L0", "syscall", "internal/syscall/windows/sysdll", "unicode/utf16"},
-	"time":          {"L0", "syscall", "internal/syscall/windows/registry"},
-	"os":            {"L1", "os", "syscall", "time", "internal/syscall/windows"},
-	"path/filepath": {"L2", "os", "syscall"},
-	"io/ioutil":     {"L2", "os", "path/filepath", "time"},
-	"os/exec":       {"L2", "os", "path/filepath", "syscall"},
-	"os/signal":     {"L2", "os", "syscall"},
+	"internal/syscall/windows":          {"L0", "syscall"},
+	"internal/syscall/windows/registry": {"L0", "syscall", "unicode/utf16"},
+	"time":             {"L0", "syscall", "internal/syscall/windows/registry"},
+	"os":               {"L1", "os", "syscall", "time", "internal/syscall/windows"},
+	"path/filepath":    {"L2", "os", "syscall"},
+	"io/ioutil":        {"L2", "os", "path/filepath", "time"},
+	"os/exec":          {"L2", "os", "path/filepath", "syscall"},
+	"os/signal":        {"L2", "os", "syscall"},
+	"internal/syscall": {"L2", "runtime", "syscall", "sync/atomic", "unsafe"},
 
 	// OS enables basic operating system functionality,
 	// but not direct use of package syscall, nor os/signal.
@@ -165,7 +162,7 @@ var pkgDeps = map[string][]string{
 	"runtime/trace":  {"L0"},
 	"text/tabwriter": {"L2"},
 
-	"testing":          {"L2", "flag", "fmt", "os", "runtime/debug", "runtime/pprof", "runtime/trace", "time"},
+	"testing":          {"L2", "flag", "fmt", "os", "runtime/pprof", "runtime/trace", "time"},
 	"testing/iotest":   {"L2", "log"},
 	"testing/quick":    {"L2", "flag", "fmt", "reflect"},
 	"internal/testenv": {"L2", "os", "testing"},
@@ -218,7 +215,7 @@ var pkgDeps = map[string][]string{
 	"database/sql":             {"L4", "container/list", "database/sql/driver"},
 	"database/sql/driver":      {"L4", "time"},
 	"debug/dwarf":              {"L4"},
-	"debug/elf":                {"L4", "OS", "debug/dwarf", "compress/zlib"},
+	"debug/elf":                {"L4", "OS", "debug/dwarf"},
 	"debug/gosym":              {"L4"},
 	"debug/macho":              {"L4", "OS", "debug/dwarf"},
 	"debug/pe":                 {"L4", "OS", "debug/dwarf"},
@@ -260,8 +257,6 @@ var pkgDeps = map[string][]string{
 	},
 
 	// Cgo.
-	// If you add a dependency on CGO, you must add the package to
-	// cgoPackages in cmd/dist/test.go.
 	"runtime/cgo": {"L0", "C"},
 	"CGO":         {"C", "runtime/cgo"},
 
@@ -269,17 +264,16 @@ var pkgDeps = map[string][]string{
 	// that shows up in programs that use cgo.
 	"C": {},
 
-	// Race detector/MSan uses cgo.
+	// Race detector uses cgo.
 	"runtime/race": {"C"},
-	"runtime/msan": {"C"},
 
 	// Plan 9 alone needs io/ioutil and os.
 	"os/user": {"L4", "CGO", "io/ioutil", "os", "syscall"},
 
 	// Basic networking.
 	// Because net must be used by any package that wants to
-	// do networking portably, it must have a small dependency set: just L0+basic os.
-	"net": {"L0", "CGO", "math/rand", "os", "sort", "syscall", "time", "internal/syscall/windows", "internal/singleflight", "internal/race"},
+	// do networking portably, it must have a small dependency set: just L1+basic os.
+	"net": {"L1", "CGO", "os", "syscall", "time", "internal/syscall/windows", "internal/singleflight"},
 
 	// NET enables use of basic network-related packages.
 	"NET": {
@@ -318,7 +312,7 @@ var pkgDeps = map[string][]string{
 	// Random byte, number generation.
 	// This would be part of core crypto except that it imports
 	// math/big, which imports fmt.
-	"crypto/rand": {"L4", "CRYPTO", "OS", "math/big", "syscall", "internal/syscall/unix"},
+	"crypto/rand": {"L4", "CRYPTO", "OS", "math/big", "syscall", "internal/syscall/unix", "internal/syscall"},
 
 	// Mathematical crypto: dependencies on fmt (L4) and math/big.
 	// We could avoid some of the fmt, but math/big imports fmt anyway.
@@ -340,7 +334,7 @@ var pkgDeps = map[string][]string{
 
 	// SSL/TLS.
 	"crypto/tls": {
-		"L4", "CRYPTO-MATH", "OS",
+		"L4", "CRYPTO-MATH", "CGO", "OS",
 		"container/list", "crypto/x509", "encoding/pem", "net", "syscall",
 	},
 	"crypto/x509": {
@@ -358,7 +352,6 @@ var pkgDeps = map[string][]string{
 		"L4", "NET", "OS",
 		"compress/gzip", "crypto/tls", "mime/multipart", "runtime/debug",
 		"net/http/internal",
-		"internal/golang.org/x/net/http2/hpack",
 	},
 	"net/http/internal": {"L4"},
 
@@ -367,7 +360,7 @@ var pkgDeps = map[string][]string{
 	"net/http/cgi":       {"L4", "NET", "OS", "crypto/tls", "net/http", "regexp"},
 	"net/http/cookiejar": {"L4", "NET", "net/http"},
 	"net/http/fcgi":      {"L4", "NET", "OS", "net/http", "net/http/cgi"},
-	"net/http/httptest":  {"L4", "NET", "OS", "crypto/tls", "flag", "net/http", "net/http/internal"},
+	"net/http/httptest":  {"L4", "NET", "OS", "crypto/tls", "flag", "net/http"},
 	"net/http/httputil":  {"L4", "NET", "OS", "net/http", "net/http/internal"},
 	"net/http/pprof":     {"L4", "OS", "html/template", "net/http", "runtime/pprof", "runtime/trace"},
 	"net/rpc":            {"L4", "NET", "encoding/gob", "html/template", "net/http"},
@@ -448,6 +441,7 @@ func listStdPkgs(goroot string) ([]string, error) {
 }
 
 func TestDependencies(t *testing.T) {
+	return // go1.3 is really not happy with this test
 	iOS := runtime.GOOS == "darwin" && (runtime.GOARCH == "arm" || runtime.GOARCH == "arm64")
 	if runtime.GOOS == "nacl" || iOS {
 		// Tests run in a limited file system and we do not
@@ -462,23 +456,26 @@ func TestDependencies(t *testing.T) {
 	}
 	sort.Strings(all)
 
-	for _, pkg := range all {
-		imports, err := findImports(pkg)
-		if err != nil {
-			t.Error(err)
-			continue
-		}
-		ok := allowed(pkg)
-		var bad []string
-		for _, imp := range imports {
-			if !ok[imp] {
-				bad = append(bad, imp)
+	test := func(mustImport bool) {
+		for _, pkg := range all {
+			imports, err := findImports(pkg)
+			if err != nil {
+				t.Error(err)
+				continue
+			}
+			ok := allowed(pkg)
+			var bad []string
+			for _, imp := range imports {
+				if !ok[imp] {
+					bad = append(bad, imp)
+				}
+			}
+			if bad != nil {
+				t.Errorf("unexpected dependency: %s imports %v", pkg, bad)
 			}
 		}
-		if bad != nil {
-			t.Errorf("unexpected dependency: %s imports %v", pkg, bad)
-		}
 	}
+	test(true)
 }
 
 var buildIgnore = []byte("\n// +build ignore")

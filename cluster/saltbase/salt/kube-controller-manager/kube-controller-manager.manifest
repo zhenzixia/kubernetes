@@ -32,14 +32,10 @@
 {% set srv_kube_path = "/srv/kubernetes" -%}
 
 {% if grains.cloud is defined -%}
-  {% if grains.cloud not in ['vagrant', 'vsphere', 'photon-controller'] -%}
+  {% if grains.cloud not in ['vagrant', 'vsphere'] -%}
     {% set cloud_provider = "--cloud-provider=" + grains.cloud -%}
   {% endif -%}
   {% set service_account_key = "--service-account-private-key-file=/srv/kubernetes/server.key" -%}
-
-  {% if grains.cloud in [ 'openstack' ] and grains.cloud_config is defined -%}
-    {% set cloud_config = "--cloud-config=" + grains.cloud_config -%}
-  {% endif -%}
 
   {% if grains.cloud in [ 'aws', 'gce' ] and grains.cloud_config is defined -%}
     {% set cloud_config = "--cloud-config=" + grains.cloud_config -%}
@@ -50,7 +46,7 @@
 
 {% set root_ca_file = "" -%}
 
-{% if grains['cloud'] is defined and grains.cloud in [ 'aws', 'gce', 'vagrant', 'vsphere', 'photon-controller', 'openstack']    %}
+{% if grains['cloud'] is defined and grains.cloud in [ 'aws', 'gce', 'vagrant', 'vsphere' ]    %}
    {% set root_ca_file = "--root-ca-file=/srv/kubernetes/ca.crt" -%}
 {% endif -%}
 
@@ -72,11 +68,7 @@
 "kind": "Pod",
 "metadata": {
   "name":"kube-controller-manager",
-  "namespace": "kube-system",
-  "labels": {
-    "tier": "control-plane",
-    "component": "kube-controller-manager"
-  }
+  "namespace": "kube-system"
 },
 "spec":{
 "hostNetwork": true,
@@ -121,8 +113,8 @@
         { "name": "etcopenssl",
         "mountPath": "/etc/openssl",
         "readOnly": true},
-        { "name": "etcpki",
-        "mountPath": "/etc/pki",
+        { "name": "etcpkitls",
+        "mountPath": "/etc/pki/tls",
         "readOnly": true}
       ]
     }
@@ -150,9 +142,9 @@
     "hostPath": {
         "path": "/etc/openssl"}
   },
-  { "name": "etcpki",
+  { "name": "etcpkitls",
     "hostPath": {
-        "path": "/etc/pki"}
+        "path": "/etc/pki/tls"}
   }
 ]
 }}

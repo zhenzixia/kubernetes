@@ -8,10 +8,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"go/ast"
-	"go/doc"
-	"go/parser"
-	"go/token"
 	"io"
 	"io/ioutil"
 	"log"
@@ -24,6 +20,11 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"k8s.io/kubernetes/third_party/golang/go/ast"
+	"k8s.io/kubernetes/third_party/golang/go/doc"
+	"k8s.io/kubernetes/third_party/golang/go/parser"
+	"k8s.io/kubernetes/third_party/golang/go/token"
 )
 
 // A Context specifies the supporting context for a build.
@@ -110,7 +111,7 @@ func (ctxt *Context) splitPathList(s string) []string {
 	return filepath.SplitList(s)
 }
 
-// isAbsPath calls ctxt.IsAbsPath (if not nil) or else filepath.IsAbs.
+// isAbsPath calls ctxt.IsAbsSPath (if not nil) or else filepath.IsAbs.
 func (ctxt *Context) isAbsPath(path string) bool {
 	if f := ctxt.IsAbsPath; f != nil {
 		return f(path)
@@ -289,7 +290,7 @@ func defaultContext() Context {
 
 	c.GOARCH = envOr("GOARCH", runtime.GOARCH)
 	c.GOOS = envOr("GOOS", runtime.GOOS)
-	c.GOROOT = pathpkg.Clean(runtime.GOROOT())
+	c.GOROOT = runtime.GOROOT()
 	c.GOPATH = envOr("GOPATH", "")
 	c.Compiler = runtime.Compiler
 
@@ -298,7 +299,7 @@ func defaultContext() Context {
 	// in all releases >= Go 1.x. Code that requires Go 1.x or later should
 	// say "+build go1.x", and code that should only be built before Go 1.x
 	// (perhaps it is the stub to use in that case) should say "+build !go1.x".
-	c.ReleaseTags = []string{"go1.1", "go1.2", "go1.3", "go1.4", "go1.5", "go1.6"}
+	c.ReleaseTags = []string{"go1.1", "go1.2", "go1.3", "go1.4", "go1.5"}
 
 	switch os.Getenv("CGO_ENABLED") {
 	case "1":
@@ -343,21 +344,6 @@ const (
 	// or finds conflicting comments in multiple source files.
 	// See golang.org/s/go14customimport for more information.
 	ImportComment
-
-	// By default, Import searches vendor directories
-	// that apply in the given source directory before searching
-	// the GOROOT and GOPATH roots.
-	// If an Import finds and returns a package using a vendor
-	// directory, the resulting ImportPath is the complete path
-	// to the package, including the path elements leading up
-	// to and including "vendor".
-	// For example, if Import("y", "x/subdir", 0) finds
-	// "x/vendor/y", the returned package's ImportPath is "x/vendor/y",
-	// not plain "y".
-	// See golang.org/s/go15vendor for more information.
-	//
-	// Setting IgnoreVendor ignores vendor directories.
-	IgnoreVendor
 )
 
 // A Package describes the Go package found in a directory.
@@ -381,7 +367,6 @@ type Package struct {
 	GoFiles        []string // .go source files (excluding CgoFiles, TestGoFiles, XTestGoFiles)
 	CgoFiles       []string // .go source files that import "C"
 	IgnoredGoFiles []string // .go source files ignored for this build
-	InvalidGoFiles []string // .go source files with detected problems (parse error, wrong package name, and so on)
 	CFiles         []string // .c source files
 	CXXFiles       []string // .cc, .cpp and .cxx source files
 	MFiles         []string // .m (Objective-C) source files
@@ -490,22 +475,15 @@ func (ctxt *Context) Import(path string, srcDir string, mode ImportMode) (*Packa
 	switch ctxt.Compiler {
 	case "gccgo":
 		pkgtargetroot = "pkg/gccgo_" + ctxt.GOOS + "_" + ctxt.GOARCH + suffix
+		dir, elem := pathpkg.Split(p.ImportPath)
+		pkga = pkgtargetroot + "/" + dir + "lib" + elem + ".a"
 	case "gc":
 		pkgtargetroot = "pkg/" + ctxt.GOOS + "_" + ctxt.GOARCH + suffix
+		pkga = pkgtargetroot + "/" + p.ImportPath + ".a"
 	default:
 		// Save error for end of function.
 		pkgerr = fmt.Errorf("import %q: unknown compiler %q", path, ctxt.Compiler)
 	}
-	setPkga := func() {
-		switch ctxt.Compiler {
-		case "gccgo":
-			dir, elem := pathpkg.Split(p.ImportPath)
-			pkga = pkgtargetroot + "/" + dir + "lib" + elem + ".a"
-		case "gc":
-			pkga = pkgtargetroot + "/" + p.ImportPath + ".a"
-		}
-	}
-	setPkga()
 
 	binaryOnly := false
 	if IsLocalImport(path) {
@@ -566,49 +544,8 @@ func (ctxt *Context) Import(path string, srcDir string, mode ImportMode) (*Packa
 
 		// tried records the location of unsuccessful package lookups
 		var tried struct {
-			vendor []string
 			goroot string
 			gopath []string
-		}
-		gopath := ctxt.gopath()
-
-		// Vendor directories get first chance to satisfy import.
-		if mode&IgnoreVendor == 0 && srcDir != "" {
-			searchVendor := func(root string, isGoroot bool) bool {
-				sub, ok := ctxt.hasSubdir(root, srcDir)
-				if !ok || !strings.HasPrefix(sub, "src/") || strings.Contains(sub, "/testdata/") {
-					return false
-				}
-				for {
-					vendor := ctxt.joinPath(root, sub, "vendor")
-					if ctxt.isDir(vendor) {
-						dir := ctxt.joinPath(vendor, path)
-						if ctxt.isDir(dir) && hasGoFiles(ctxt, dir) {
-							p.Dir = dir
-							p.ImportPath = strings.TrimPrefix(pathpkg.Join(sub, "vendor", path), "src/")
-							p.Goroot = isGoroot
-							p.Root = root
-							setPkga() // p.ImportPath changed
-							return true
-						}
-						tried.vendor = append(tried.vendor, dir)
-					}
-					i := strings.LastIndex(sub, "/")
-					if i < 0 {
-						break
-					}
-					sub = sub[:i]
-				}
-				return false
-			}
-			if searchVendor(ctxt.GOROOT, true) {
-				goto Found
-			}
-			for _, root := range gopath {
-				if searchVendor(root, false) {
-					goto Found
-				}
-			}
 		}
 
 		// Determine directory from import path.
@@ -624,7 +561,7 @@ func (ctxt *Context) Import(path string, srcDir string, mode ImportMode) (*Packa
 			}
 			tried.goroot = dir
 		}
-		for _, root := range gopath {
+		for _, root := range ctxt.gopath() {
 			dir := ctxt.joinPath(root, "src", path)
 			isDir := ctxt.isDir(dir)
 			binaryOnly = !isDir && mode&AllowBinary != 0 && pkga != "" && ctxt.isFile(ctxt.joinPath(root, pkga))
@@ -638,22 +575,20 @@ func (ctxt *Context) Import(path string, srcDir string, mode ImportMode) (*Packa
 
 		// package was not found
 		var paths []string
-		format := "\t%s (vendor tree)"
-		for _, dir := range tried.vendor {
-			paths = append(paths, fmt.Sprintf(format, dir))
-			format = "\t%s"
-		}
 		if tried.goroot != "" {
 			paths = append(paths, fmt.Sprintf("\t%s (from $GOROOT)", tried.goroot))
 		} else {
 			paths = append(paths, "\t($GOROOT not set)")
 		}
-		format = "\t%s (from $GOPATH)"
-		for _, dir := range tried.gopath {
-			paths = append(paths, fmt.Sprintf(format, dir))
-			format = "\t%s"
+		var i int
+		var format = "\t%s (from $GOPATH)"
+		for ; i < len(tried.gopath); i++ {
+			if i > 0 {
+				format = "\t%s"
+			}
+			paths = append(paths, fmt.Sprintf(format, tried.gopath[i]))
 		}
-		if len(tried.gopath) == 0 {
+		if i == 0 {
 			paths = append(paths, "\t($GOPATH not set)")
 		}
 		return p, fmt.Errorf("cannot find package %q in any of:\n%s", path, strings.Join(paths, "\n"))
@@ -682,7 +617,6 @@ Found:
 		return p, err
 	}
 
-	var badGoError error
 	var Sfiles []string // files with ".S" (capital S)
 	var firstFile, firstCommentFile string
 	imported := make(map[string][]token.Position)
@@ -698,17 +632,9 @@ Found:
 		name := d.Name()
 		ext := nameExt(name)
 
-		badFile := func(err error) {
-			if badGoError == nil {
-				badGoError = err
-			}
-			p.InvalidGoFiles = append(p.InvalidGoFiles, name)
-		}
-
 		match, data, filename, err := ctxt.matchFile(p.Dir, name, true, allTags)
 		if err != nil {
-			badFile(err)
-			continue
+			return p, err
 		}
 		if !match {
 			if ext == ".go" {
@@ -753,8 +679,7 @@ Found:
 
 		pf, err := parser.ParseFile(fset, filename, data, parser.ImportsOnly|parser.ParseComments)
 		if err != nil {
-			badFile(err)
-			continue
+			return p, err
 		}
 
 		pkg := pf.Name.Name
@@ -774,12 +699,11 @@ Found:
 			p.Name = pkg
 			firstFile = name
 		} else if pkg != p.Name {
-			badFile(&MultiplePackageError{
+			return p, &MultiplePackageError{
 				Dir:      p.Dir,
 				Packages: []string{p.Name, pkg},
 				Files:    []string{firstFile, name},
-			})
-			p.InvalidGoFiles = append(p.InvalidGoFiles, name)
+			}
 		}
 		if pf.Doc != nil && p.Doc == "" {
 			p.Doc = doc.Synopsis(pf.Doc.Text())
@@ -790,12 +714,13 @@ Found:
 			if line != 0 {
 				com, err := strconv.Unquote(qcom)
 				if err != nil {
-					badFile(fmt.Errorf("%s:%d: cannot parse import comment", filename, line))
-				} else if p.ImportComment == "" {
+					return p, fmt.Errorf("%s:%d: cannot parse import comment", filename, line)
+				}
+				if p.ImportComment == "" {
 					p.ImportComment = com
 					firstCommentFile = name
 				} else if p.ImportComment != com {
-					badFile(fmt.Errorf("found import comments %q (%s) and %q (%s) in %s", p.ImportComment, firstCommentFile, com, name, p.Dir))
+					return p, fmt.Errorf("found import comments %q (%s) and %q (%s) in %s", p.ImportComment, firstCommentFile, com, name, p.Dir)
 				}
 			}
 		}
@@ -826,19 +751,18 @@ Found:
 				}
 				if path == "C" {
 					if isTest {
-						badFile(fmt.Errorf("use of cgo in test %s not supported", filename))
-					} else {
-						cg := spec.Doc
-						if cg == nil && len(d.Specs) == 1 {
-							cg = d.Doc
-						}
-						if cg != nil {
-							if err := ctxt.saveCgo(filename, p, cg); err != nil {
-								badFile(err)
-							}
-						}
-						isCgo = true
+						return p, fmt.Errorf("use of cgo in test %s not supported", filename)
 					}
+					cg := spec.Doc
+					if cg == nil && len(d.Specs) == 1 {
+						cg = d.Doc
+					}
+					if cg != nil {
+						if err := ctxt.saveCgo(filename, p, cg); err != nil {
+							return p, err
+						}
+					}
+					isCgo = true
 				}
 			}
 		}
@@ -856,9 +780,6 @@ Found:
 		} else {
 			p.GoFiles = append(p.GoFiles, name)
 		}
-	}
-	if badGoError != nil {
-		return p, badGoError
 	}
 	if len(p.GoFiles)+len(p.CgoFiles)+len(p.TestGoFiles)+len(p.XTestGoFiles) == 0 {
 		return p, &NoGoError{p.Dir}
@@ -882,20 +803,6 @@ Found:
 	}
 
 	return p, pkgerr
-}
-
-// hasGoFiles reports whether dir contains any files with names ending in .go.
-// For a vendor check we must exclude directories that contain no .go files.
-// Otherwise it is not possible to vendor just a/b/c and still import the
-// non-vendored a/b. See golang.org/issue/13832.
-func hasGoFiles(ctxt *Context, dir string) bool {
-	ents, _ := ctxt.readDir(dir)
-	for _, ent := range ents {
-		if !ent.IsDir() && strings.HasSuffix(ent.Name(), ".go") {
-			return true
-		}
-	}
-	return false
 }
 
 func findImportComment(data []byte) (s string, line int) {
@@ -1221,9 +1128,9 @@ func (ctxt *Context) saveCgo(filename string, di *Package, cg *ast.CommentGroup)
 		if err != nil {
 			return fmt.Errorf("%s: invalid #cgo line: %s", filename, orig)
 		}
-		var ok bool
 		for i, arg := range args {
-			if arg, ok = expandSrcDir(arg, di.Dir); !ok {
+			arg = expandSrcDir(arg, di.Dir)
+			if !safeCgoName(arg) {
 				return fmt.Errorf("%s: malformed #cgo argument: %s", filename, arg)
 			}
 			args[i] = arg
@@ -1247,47 +1154,25 @@ func (ctxt *Context) saveCgo(filename string, di *Package, cg *ast.CommentGroup)
 	return nil
 }
 
-// expandSrcDir expands any occurrence of ${SRCDIR}, making sure
-// the result is safe for the shell.
-func expandSrcDir(str string, srcdir string) (string, bool) {
+func expandSrcDir(str string, srcdir string) string {
 	// "\" delimited paths cause safeCgoName to fail
 	// so convert native paths with a different delimeter
-	// to "/" before starting (eg: on windows).
+	// to "/" before starting (eg: on windows)
 	srcdir = filepath.ToSlash(srcdir)
-
-	// Spaces are tolerated in ${SRCDIR}, but not anywhere else.
-	chunks := strings.Split(str, "${SRCDIR}")
-	if len(chunks) < 2 {
-		return str, safeCgoName(str, false)
-	}
-	ok := true
-	for _, chunk := range chunks {
-		ok = ok && (chunk == "" || safeCgoName(chunk, false))
-	}
-	ok = ok && (srcdir == "" || safeCgoName(srcdir, true))
-	res := strings.Join(chunks, srcdir)
-	return res, ok && res != ""
+	return strings.Replace(str, "${SRCDIR}", srcdir, -1)
 }
 
 // NOTE: $ is not safe for the shell, but it is allowed here because of linker options like -Wl,$ORIGIN.
 // We never pass these arguments to a shell (just to programs we construct argv for), so this should be okay.
 // See golang.org/issue/6038.
-// The @ is for OS X. See golang.org/issue/13720.
-const safeString = "+-.,/0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz:$@"
-const safeSpaces = " "
+var safeBytes = []byte("+-.,/0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz:$")
 
-var safeBytes = []byte(safeSpaces + safeString)
-
-func safeCgoName(s string, spaces bool) bool {
+func safeCgoName(s string) bool {
 	if s == "" {
 		return false
 	}
-	safe := safeBytes
-	if !spaces {
-		safe = safe[len(safeSpaces):]
-	}
 	for i := 0; i < len(s); i++ {
-		if c := s[i]; c < 0x80 && bytes.IndexByte(safe, c) < 0 {
+		if c := s[i]; c < 0x80 && bytes.IndexByte(safeBytes, c) < 0 {
 			return false
 		}
 	}

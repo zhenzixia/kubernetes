@@ -25,7 +25,6 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 const (
@@ -38,11 +37,11 @@ const (
 type KubeletManagedHostConfig struct {
 	hostNetworkPod *api.Pod
 	pod            *api.Pod
-	f              *framework.Framework
+	f              *Framework
 }
 
-var _ = framework.KubeDescribe("KubeletManagedEtcHosts", func() {
-	f := framework.NewDefaultFramework("e2e-kubelet-etc-hosts")
+var _ = Describe("KubeletManagedEtcHosts", func() {
+	f := NewDefaultFramework("e2e-kubelet-etc-hosts")
 	config := &KubeletManagedHostConfig{
 		f: f,
 	}
@@ -95,12 +94,12 @@ func (config *KubeletManagedHostConfig) createPodWithHostNetwork() {
 func (config *KubeletManagedHostConfig) createPod(podSpec *api.Pod) *api.Pod {
 	createdPod, err := config.getPodClient().Create(podSpec)
 	if err != nil {
-		framework.Failf("Failed to create %s pod: %v", podSpec.Name, err)
+		Failf("Failed to create %s pod: %v", podSpec.Name, err)
 	}
-	framework.ExpectNoError(config.f.WaitForPodRunning(podSpec.Name))
+	expectNoError(config.f.WaitForPodRunning(podSpec.Name))
 	createdPod, err = config.getPodClient().Get(podSpec.Name)
 	if err != nil {
-		framework.Failf("Failed to retrieve %s pod: %v", podSpec.Name, err)
+		Failf("Failed to retrieve %s pod: %v", podSpec.Name, err)
 	}
 	return createdPod
 }
@@ -112,31 +111,31 @@ func (config *KubeletManagedHostConfig) getPodClient() client.PodInterface {
 func assertEtcHostsIsKubeletManaged(etcHostsContent string) {
 	isKubeletManaged := strings.Contains(etcHostsContent, etcHostsPartialContent)
 	if !isKubeletManaged {
-		framework.Failf("/etc/hosts file should be kubelet managed, but is not: %q", etcHostsContent)
+		Failf("/etc/hosts file should be kubelet managed, but is not: %q", etcHostsContent)
 	}
 }
 
 func assertEtcHostsIsNotKubeletManaged(etcHostsContent string) {
 	isKubeletManaged := strings.Contains(etcHostsContent, etcHostsPartialContent)
 	if isKubeletManaged {
-		framework.Failf("/etc/hosts file should not be kubelet managed, but is: %q", etcHostsContent)
+		Failf("/etc/hosts file should not be kubelet managed, but is: %q", etcHostsContent)
 	}
 }
 
 func (config *KubeletManagedHostConfig) getEtcHostsContent(podName, containerName string) string {
-	cmd := framework.KubectlCmd("exec", fmt.Sprintf("--namespace=%v", config.f.Namespace.Name), podName, "-c", containerName, "cat", "/etc/hosts")
-	stdout, stderr, err := framework.StartCmdAndStreamOutput(cmd)
+	cmd := kubectlCmd("exec", fmt.Sprintf("--namespace=%v", config.f.Namespace.Name), podName, "-c", containerName, "cat", "/etc/hosts")
+	stdout, stderr, err := startCmdAndStreamOutput(cmd)
 	if err != nil {
-		framework.Failf("Failed to retrieve /etc/hosts, err: %q", err)
+		Failf("Failed to retrieve /etc/hosts, err: %q", err)
 	}
 	defer stdout.Close()
 	defer stderr.Close()
 
 	buf := make([]byte, 1000)
 	var n int
-	framework.Logf("reading from `kubectl exec` command's stdout")
+	Logf("reading from `kubectl exec` command's stdout")
 	if n, err = stdout.Read(buf); err != nil {
-		framework.Failf("Failed to read from kubectl exec stdout: %v", err)
+		Failf("Failed to read from kubectl exec stdout: %v", err)
 	}
 	return string(buf[:n])
 }

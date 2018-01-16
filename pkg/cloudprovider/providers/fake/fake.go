@@ -25,22 +25,24 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/cloudprovider"
+	"k8s.io/kubernetes/pkg/types"
 )
 
 const ProviderName = "fake"
 
 // FakeBalancer is a fake storage of balancer information
 type FakeBalancer struct {
-	Name           string
-	Region         string
-	LoadBalancerIP string
-	Ports          []api.ServicePort
-	Hosts          []string
+	Name       string
+	Region     string
+	ExternalIP net.IP
+	Ports      []*api.ServicePort
+	Hosts      []string
 }
 
 type FakeUpdateBalancerCall struct {
-	Service *api.Service
-	Hosts   []string
+	Name   string
+	Region string
+	Hosts  []string
 }
 
 // FakeCloud is a test-double implementation of Interface, LoadBalancer, Instances, and Routes. It is useful for testing.
@@ -121,7 +123,7 @@ func (f *FakeCloud) Routes() (cloudprovider.Routes, bool) {
 }
 
 // GetLoadBalancer is a stub implementation of LoadBalancer.GetLoadBalancer.
-func (f *FakeCloud) GetLoadBalancer(service *api.Service) (*api.LoadBalancerStatus, bool, error) {
+func (f *FakeCloud) GetLoadBalancer(name, region string) (*api.LoadBalancerStatus, bool, error) {
 	status := &api.LoadBalancerStatus{}
 	status.Ingress = []api.LoadBalancerIngress{{IP: f.ExternalIP.String()}}
 
@@ -130,22 +132,12 @@ func (f *FakeCloud) GetLoadBalancer(service *api.Service) (*api.LoadBalancerStat
 
 // EnsureLoadBalancer is a test-spy implementation of LoadBalancer.EnsureLoadBalancer.
 // It adds an entry "create" into the internal method call record.
-func (f *FakeCloud) EnsureLoadBalancer(service *api.Service, hosts []string, annotations map[string]string) (*api.LoadBalancerStatus, error) {
+func (f *FakeCloud) EnsureLoadBalancer(name, region string, externalIP net.IP, ports []*api.ServicePort, hosts []string, serviceName types.NamespacedName, affinityType api.ServiceAffinity, annotations map[string]string) (*api.LoadBalancerStatus, error) {
 	f.addCall("create")
 	if f.Balancers == nil {
 		f.Balancers = make(map[string]FakeBalancer)
 	}
-
-	name := cloudprovider.GetLoadBalancerName(service)
-	spec := service.Spec
-
-	zone, err := f.GetZone()
-	if err != nil {
-		return nil, err
-	}
-	region := zone.Region
-
-	f.Balancers[name] = FakeBalancer{name, region, spec.LoadBalancerIP, spec.Ports, hosts}
+	f.Balancers[name] = FakeBalancer{name, region, externalIP, ports, hosts}
 
 	status := &api.LoadBalancerStatus{}
 	status.Ingress = []api.LoadBalancerIngress{{IP: f.ExternalIP.String()}}
@@ -155,15 +147,15 @@ func (f *FakeCloud) EnsureLoadBalancer(service *api.Service, hosts []string, ann
 
 // UpdateLoadBalancer is a test-spy implementation of LoadBalancer.UpdateLoadBalancer.
 // It adds an entry "update" into the internal method call record.
-func (f *FakeCloud) UpdateLoadBalancer(service *api.Service, hosts []string) error {
+func (f *FakeCloud) UpdateLoadBalancer(name, region string, hosts []string) error {
 	f.addCall("update")
-	f.UpdateCalls = append(f.UpdateCalls, FakeUpdateBalancerCall{service, hosts})
+	f.UpdateCalls = append(f.UpdateCalls, FakeUpdateBalancerCall{name, region, hosts})
 	return f.Err
 }
 
 // EnsureLoadBalancerDeleted is a test-spy implementation of LoadBalancer.EnsureLoadBalancerDeleted.
 // It adds an entry "delete" into the internal method call record.
-func (f *FakeCloud) EnsureLoadBalancerDeleted(service *api.Service) error {
+func (f *FakeCloud) EnsureLoadBalancerDeleted(name, region string) error {
 	f.addCall("delete")
 	return f.Err
 }

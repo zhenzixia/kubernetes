@@ -29,16 +29,18 @@ config_hostname() {
 config_ip_firewall() {
   # We have seen that GCE image may have strict host firewall rules which drop
   # most inbound/forwarded packets. In such a case, add rules to accept all
-  # TCP/UDP packets.
+  # TCP/UDP/ICMP packets.
   if iptables -L INPUT | grep "Chain INPUT (policy DROP)" > /dev/null; then
-    echo "Add rules to accpet all inbound TCP/UDP packets"
+    echo "Add rules to accpet all inbound TCP/UDP/ICMP packets"
     iptables -A INPUT -w -p TCP -j ACCEPT
     iptables -A INPUT -w -p UDP -j ACCEPT
+    iptables -A INPUT -w -p ICMP -j ACCEPT
   fi
   if iptables -L FORWARD | grep "Chain FORWARD (policy DROP)" > /dev/null; then
-    echo "Add rules to accpet all forwarded TCP/UDP packets"
+    echo "Add rules to accpet all forwarded TCP/UDP/ICMP packets"
     iptables -A FORWARD -w -p TCP -j ACCEPT
     iptables -A FORWARD -w -p UDP -j ACCEPT
+    iptables -A FORWARD -w -p ICMP -j ACCEPT
   fi
 }
 
@@ -140,13 +142,15 @@ install_additional_packages() {
 # variable that will be used as the kubelet command line flags
 #   KUBELET_CMD_FLAGS
 assemble_kubelet_flags() {
-  log_level="--v=2"
+  KUBELET_CMD_FLAGS="--v=2"
   if [ -n "${KUBELET_TEST_LOG_LEVEL:-}" ]; then
-    log_level="${KUBELET_TEST_LOG_LEVEL}"
+    KUBELET_CMD_FLAGS="${KUBELET_TEST_LOG_LEVEL}"
   fi
-  KUBELET_CMD_FLAGS="${log_level} ${KUBELET_TEST_ARGS:-}"
   if [ -n "${KUBELET_PORT:-}" ]; then
     KUBELET_CMD_FLAGS="${KUBELET_CMD_FLAGS} --port=${KUBELET_PORT}"
+  fi
+  if [ -n "${KUBELET_TEST_ARGS:-}" ]; then
+    KUBELET_CMD_FLAGS="${KUBELET_CMD_FLAGS} ${KUBELET_TEST_ARGS}"
   fi
   if [ "${KUBERNETES_MASTER:-}" = "true" ]; then
     KUBELET_CMD_FLAGS="${KUBELET_CMD_FLAGS} --enable-debugging-handlers=false --hairpin-mode=none"
@@ -182,6 +186,16 @@ assemble_kubelet_flags() {
   echo "KUBELET_OPTS=\"${KUBELET_CMD_FLAGS}\"" > /etc/default/kubelet
 }
 
+start_kubelet(){
+  echo "Start kubelet"
+  # Delete docker0 to avoid interference
+  iptables -t nat -F || true
+  ip link set docker0 down || true
+  brctl delbr docker0 || true
+  . /etc/default/kubelet
+  /usr/bin/kubelet ${KUBELET_OPTS} 1>>/var/log/kubelet.log 2>&1
+}
+
 restart_docker_daemon() {
   DOCKER_OPTS="-p /var/run/docker.pid --bridge=cbr0 --iptables=false --ip-masq=false"
   if [ "${TEST_CLUSTER:-}" = "true" ]; then
@@ -193,9 +207,6 @@ restart_docker_daemon() {
     echo "Sleep 1 second to wait for cbr0"
     sleep 1
   done
-  # Remove docker0
-  ifconfig docker0 down
-  brctl delbr docker0
   # Ensure docker daemon is really functional before exiting. Operations afterwards may
   # assume it is running.
   while ! docker version > /dev/null; do
@@ -274,6 +285,14 @@ mount_master_pd() {
   chgrp -R etcd "${mount_point}/var/etcd"
 }
 
+# A helper function that adds an entry to a token file.
+# $1: account information
+# $2: token file
+add_token_entry() {
+  current_token=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
+  echo "${current_token},$1,$1" >> $2
+}
+
 # After the first boot and on upgrade, these files exists on the master-pd
 # and should never be touched again (except perhaps an additional service
 # account, see NB below.)
@@ -300,21 +319,46 @@ create_master_auth() {
     echo "${KUBE_BEARER_TOKEN},admin,admin" > "${known_tokens_csv}"
     echo "${KUBELET_TOKEN},kubelet,kubelet" >> "${known_tokens_csv}"
     echo "${KUBE_PROXY_TOKEN},kube_proxy,kube_proxy" >> "${known_tokens_csv}"
+
+    # Generate tokens for other "service accounts".  Append to known_tokens.
+    #
+    # NB: If this list ever changes, this script actually has to
+    # change to detect the existence of this file, kill any deleted
+    # old tokens and add any new tokens (to handle the upgrade case).
+    add_token_entry "system:scheduler" "${known_tokens_csv}"
+    add_token_entry "system:controller_manager" "${known_tokens_csv}"
+    add_token_entry "system:logging" "${known_tokens_csv}"
+    add_token_entry "system:monitoring" "${known_tokens_csv}"
+    add_token_entry "system:dns" "${known_tokens_csv}"
   fi
 
-  if [ -n "${PROJECT_ID:-}" ] && [ -n "${TOKEN_URL:-}" ] && [ -n "${TOKEN_BODY:-}" ] && [ -n "${NODE_NETWORK:-}" ]; then
-    cat <<EOF >/etc/gce.conf
+  use_cloud_config="false"
+  cat <<EOF >/etc/gce.conf
 [global]
+EOF
+  if [ -n "${PROJECT_ID:-}" ] && [ -n "${TOKEN_URL:-}" ] && [ -n "${TOKEN_BODY:-}" ] && [ -n "${NODE_NETWORK:-}" ]; then
+  use_cloud_config="true"
+  cat <<EOF >>/etc/gce.conf
 token-url = ${TOKEN_URL}
 token-body = ${TOKEN_BODY}
 project-id = ${PROJECT_ID}
 network-name = ${NODE_NETWORK}
 EOF
   fi
+  if [ -n "${NODE_INSTANCE_PREFIX:-}" ]; then
+    use_cloud_config="true"
+    cat <<EOF >>/etc/gce.conf
+node-tags = ${NODE_INSTANCE_PREFIX}
+node-instance-prefix = ${NODE_INSTANCE_PREFIX}
+EOF
+  fi
   if [ -n "${MULTIZONE:-}" ]; then
     cat <<EOF >>/etc/gce.conf
 multizone = ${MULTIZONE}
 EOF
+  fi
+  if [ "${use_cloud_config}" != "true" ]; then
+    rm -f /etc/gce.conf
   fi
 }
 
@@ -413,7 +457,8 @@ start_kube_apiserver() {
   timeout 30 docker load -i /home/kubernetes/kube-docker-files/kube-apiserver.tar
 
   # Calculate variables and assemble the command line.
-  params="--cloud-provider=gce --address=127.0.0.1 --etcd-servers=http://127.0.0.1:4001 --tls-cert-file=/etc/srv/kubernetes/server.cert --tls-private-key-file=/etc/srv/kubernetes/server.key --secure-port=443 --client-ca-file=/etc/srv/kubernetes/ca.crt --token-auth-file=/etc/srv/kubernetes/known_tokens.csv --basic-auth-file=/etc/srv/kubernetes/basic_auth.csv --allow-privileged=true --authorization-mode=ABAC --authorization-policy-file=/etc/srv/kubernetes/abac-authz-policy.jsonl --etcd-servers-overrides=/events#http://127.0.0.1:4002 ${APISERVER_TEST_ARGS:-}"
+  params="--cloud-provider=gce --address=127.0.0.1 --etcd-servers=http://127.0.0.1:4001 --tls-cert-file=/etc/srv/kubernetes/server.cert --tls-private-key-file=/etc/srv/kubernetes/server.key --secure-port=443 --client-ca-file=/etc/srv/kubernetes/ca.crt --token-auth-file=/etc/srv/kubernetes/known_tokens.csv --basic-auth-file=/etc/srv/kubernetes/basic_auth.csv --allow-privileged=true"
+  params="${params} --etcd-servers-overrides=/events#http://127.0.0.1:4002"
   if [ -n "${SERVICE_CLUSTER_IP_RANGE:-}" ]; then
     params="${params} --service-cluster-ip-range=${SERVICE_CLUSTER_IP_RANGE}"
   fi
@@ -425,6 +470,9 @@ start_kube_apiserver() {
   fi
   if [ -n "${RUNTIME_CONFIG:-}" ]; then
     params="${params} --runtime-config=${RUNTIME_CONFIG}"
+  fi
+  if [ -n "${APISERVER_TEST_ARGS:-}" ]; then
+    params="${params} ${APISERVER_TEST_ARGS}"
   fi
   log_level="--v=2"
   if [ -n "${API_SERVER_TEST_LOG_LEVEL:-}" ]; then
@@ -438,9 +486,7 @@ start_kube_apiserver() {
   fi
   readonly kube_apiserver_docker_tag=$(cat /home/kubernetes/kube-docker-files/kube-apiserver.docker_tag)
 
-  src_dir="/home/kubernetes/kube-manifests/kubernetes/gci-trusty"
-  cp "${src_dir}/abac-authz-policy.jsonl" /etc/srv/kubernetes/
-  src_file="${src_dir}/kube-apiserver.manifest"
+  src_file="/home/kubernetes/kube-manifests/kubernetes/gci-trusty/kube-apiserver.manifest"
   remove_salt_config_comments "${src_file}"
   # Evaluate variables
   sed -i -e "s@{{params}}@${params}@g" "${src_file}"
@@ -473,7 +519,7 @@ start_kube_controller_manager() {
   timeout 30 docker load -i /home/kubernetes/kube-docker-files/kube-controller-manager.tar
 
   # Calculate variables and assemble the command line.
-  params="--master=127.0.0.1:8080 --cloud-provider=gce --root-ca-file=/etc/srv/kubernetes/ca.crt --service-account-private-key-file=/etc/srv/kubernetes/server.key ${CONTROLLER_MANAGER_TEST_ARGS:-}"
+  params="--master=127.0.0.1:8080 --cloud-provider=gce --root-ca-file=/etc/srv/kubernetes/ca.crt --service-account-private-key-file=/etc/srv/kubernetes/server.key"
   if [ -n "${PROJECT_ID:-}" ] && [ -n "${TOKEN_URL:-}" ] && [ -n "${TOKEN_BODY:-}" ] && [ -n "${NODE_NETWORK:-}" ]; then
     params="${params} --cloud-config=/etc/gce.conf"
   fi
@@ -494,6 +540,9 @@ start_kube_controller_manager() {
     log_level="${CONTROLLER_MANAGER_TEST_LOG_LEVEL}"
   fi
   params="${params} ${log_level}"
+  if [ -n "${CONTROLLER_MANAGER_TEST_ARGS:-}" ]; then
+    params="${params} ${CONTROLLER_MANAGER_TEST_ARGS}"
+  fi
   readonly kube_rc_docker_tag=$(cat /home/kubernetes/kube-docker-files/kube-controller-manager.docker_tag)
 
   src_file="/home/kubernetes/kube-manifests/kubernetes/gci-trusty/kube-controller-manager.manifest"
@@ -524,11 +573,15 @@ start_kube_scheduler() {
   timeout 30 docker load -i "${kube_home}/kube-docker-files/kube-scheduler.tar"
 
   # Calculate variables and set them in the manifest.
+  params=""
   log_level="--v=2"
   if [ -n "${SCHEDULER_TEST_LOG_LEVEL:-}" ]; then
     log_level="${SCHEDULER_TEST_LOG_LEVEL}"
   fi
-  params="${log_level} ${SCHEDULER_TEST_ARGS:-}"
+  params="${params} ${log_level}"
+  if [ -n "${SCHEDULER_TEST_ARGS:-}" ]; then
+    params="${params} ${SCHEDULER_TEST_ARGS}"
+  fi
   readonly kube_scheduler_docker_tag=$(cat "${kube_home}/kube-docker-files/kube-scheduler.docker_tag")
 
   # Remove salt comments and replace variables with values
@@ -561,15 +614,15 @@ setup_addon_manifests() {
   if [ ! -d "${dst_dir}" ]; then
     mkdir -p "${dst_dir}"
   fi
-  files=$(find "${src_dir}" -name "*.yaml")
+  files=$(find "${src_dir}" -maxdepth 1 -name "*.yaml")
   if [ -n "${files}" ]; then
     cp "${src_dir}/"*.yaml "${dst_dir}"
   fi
-  files=$(find "${src_dir}" -name "*.json")
+  files=$(find "${src_dir}" -maxdepth 1 -name "*.json")
   if [ -n "${files}" ]; then
     cp "${src_dir}/"*.json "${dst_dir}"
   fi
-  files=$(find "${src_dir}" -name "*.yaml.in")
+  files=$(find "${src_dir}" -maxdepth 1 -name "*.yaml.in")
   if [ -n "${files}" ]; then
     cp "${src_dir}/"*.yaml.in "${dst_dir}"
   fi
@@ -578,8 +631,8 @@ setup_addon_manifests() {
   chmod 644 "${dst_dir}"/*
 }
 
-# Prepares the manifests of k8s addons, and starts the addon manager.
-start_kube_addons() {
+# Prepares the manifests of k8s addons static pods.
+prepare_kube_addons() {
   addon_src_dir="/home/kubernetes/kube-manifests/kubernetes/gci-trusty"
   addon_dst_dir="/etc/kubernetes/addons"
   # Set up manifests of other addons.
@@ -611,11 +664,9 @@ start_kube_addons() {
     sed -i -e "s@{{ *metrics_memory_per_node *}}@${metrics_memory_per_node}@g" "${controller_yaml}"
     sed -i -e "s@{{ *eventer_memory_per_node *}}@${eventer_memory_per_node}@g" "${controller_yaml}"
   fi
+  cp "${addon_src_dir}/namespace.yaml" "${addon_dst_dir}"
   if [ "${ENABLE_L7_LOADBALANCING:-}" = "glbc" ]; then
     setup_addon_manifests "addons" "cluster-loadbalancing/glbc"
-    glbc_yaml="${addon_dst_dir}/cluster-loadbalancing/glbc/glbc.yaml"
-    remove_salt_config_comments "${glbc_yaml}"
-    sed -i -e "s@{{ *kube_uid *}}@${KUBE_UID:-}@g" "${glbc_yaml}"
   fi
   if [ "${ENABLE_CLUSTER_DNS:-}" = "true" ]; then
     setup_addon_manifests "addons" "dns"
@@ -652,6 +703,42 @@ start_kube_addons() {
     setup_addon_manifests "admission-controls" "limit-range"
   fi
 
-  # Place addon manager pod manifest
-  cp "${addon_src_dir}/kube-addon-manager.yaml" /etc/kubernetes/manifests
+  # Prepare the scripts for running addons.
+  addon_script_dir="/var/lib/cloud/scripts/kubernetes"
+  mkdir -p "${addon_script_dir}"
+  cp "${addon_src_dir}/kube-addons.sh" "${addon_script_dir}"
+  cp "${addon_src_dir}/kube-addon-update.sh" "${addon_script_dir}"
+  chmod 544 "${addon_script_dir}/"*.sh
+  # In case that some GCE customized trusty may have a read-only /root.
+  mount -t tmpfs tmpfs /root
+  mount --bind -o remount,rw,noexec /root
+}
+
+reset_motd() {
+  # kubelet is installed both on the master and nodes, and the version is easy to parse (unlike kubectl)
+  readonly version="$(/usr/bin/kubelet --version=true | cut -f2 -d " ")"
+  # This logic grabs either a release tag (v1.2.1 or v1.2.1-alpha.1),
+  # or the git hash that's in the build info.
+  gitref="$(echo "${version}" | sed -r "s/(v[0-9]+\.[0-9]+\.[0-9]+)(-[a-z]+\.[0-9]+)?.*/\1\2/g")"
+  devel=""
+  if [ "${gitref}" != "${version}" ]; then
+    devel="
+Note: This looks like a development version, which might not be present on GitHub.
+If it isn't, the closest tag is at:
+  https://github.com/kubernetes/kubernetes/tree/${gitref}
+"
+    gitref=$(echo ${version} | sed -e 's/.*+//')
+  fi
+  cat > /etc/motd <<EOF
+Welcome to Kubernetes ${version}!
+You can find documentation for Kubernetes at:
+  http://docs.kubernetes.io/
+You can download the build image for this release at:
+  https://storage.googleapis.com/kubernetes-release/release/${version}/kubernetes-src.tar.gz
+It is based on the Kubernetes source at:
+  https://github.com/kubernetes/kubernetes/tree/${gitref}
+${devel}
+For Kubernetes copyright and licensing information, see:
+  /home/kubernetes/LICENSES
+EOF
 }

@@ -18,7 +18,6 @@ package fake
 
 import (
 	api "k8s.io/kubernetes/pkg/api"
-	unversioned "k8s.io/kubernetes/pkg/api/unversioned"
 	v1 "k8s.io/kubernetes/pkg/api/v1"
 	core "k8s.io/kubernetes/pkg/client/testing/core"
 	labels "k8s.io/kubernetes/pkg/labels"
@@ -31,11 +30,9 @@ type FakeResourceQuotas struct {
 	ns   string
 }
 
-var resourcequotasResource = unversioned.GroupVersionResource{Group: "", Version: "v1", Resource: "resourcequotas"}
-
 func (c *FakeResourceQuotas) Create(resourceQuota *v1.ResourceQuota) (result *v1.ResourceQuota, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewCreateAction(resourcequotasResource, c.ns, resourceQuota), &v1.ResourceQuota{})
+		Invokes(core.NewCreateAction("resourcequotas", c.ns, resourceQuota), &v1.ResourceQuota{})
 
 	if obj == nil {
 		return nil, err
@@ -45,7 +42,7 @@ func (c *FakeResourceQuotas) Create(resourceQuota *v1.ResourceQuota) (result *v1
 
 func (c *FakeResourceQuotas) Update(resourceQuota *v1.ResourceQuota) (result *v1.ResourceQuota, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewUpdateAction(resourcequotasResource, c.ns, resourceQuota), &v1.ResourceQuota{})
+		Invokes(core.NewUpdateAction("resourcequotas", c.ns, resourceQuota), &v1.ResourceQuota{})
 
 	if obj == nil {
 		return nil, err
@@ -55,7 +52,7 @@ func (c *FakeResourceQuotas) Update(resourceQuota *v1.ResourceQuota) (result *v1
 
 func (c *FakeResourceQuotas) UpdateStatus(resourceQuota *v1.ResourceQuota) (*v1.ResourceQuota, error) {
 	obj, err := c.Fake.
-		Invokes(core.NewUpdateSubresourceAction(resourcequotasResource, "status", c.ns, resourceQuota), &v1.ResourceQuota{})
+		Invokes(core.NewUpdateSubresourceAction("resourcequotas", "status", c.ns, resourceQuota), &v1.ResourceQuota{})
 
 	if obj == nil {
 		return nil, err
@@ -65,13 +62,13 @@ func (c *FakeResourceQuotas) UpdateStatus(resourceQuota *v1.ResourceQuota) (*v1.
 
 func (c *FakeResourceQuotas) Delete(name string, options *api.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(core.NewDeleteAction(resourcequotasResource, c.ns, name), &v1.ResourceQuota{})
+		Invokes(core.NewDeleteAction("resourcequotas", c.ns, name), &v1.ResourceQuota{})
 
 	return err
 }
 
 func (c *FakeResourceQuotas) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
-	action := core.NewDeleteCollectionAction(resourcequotasResource, c.ns, listOptions)
+	action := core.NewDeleteCollectionAction("resourcequotas", c.ns, listOptions)
 
 	_, err := c.Fake.Invokes(action, &v1.ResourceQuotaList{})
 	return err
@@ -79,7 +76,7 @@ func (c *FakeResourceQuotas) DeleteCollection(options *api.DeleteOptions, listOp
 
 func (c *FakeResourceQuotas) Get(name string) (result *v1.ResourceQuota, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewGetAction(resourcequotasResource, c.ns, name), &v1.ResourceQuota{})
+		Invokes(core.NewGetAction("resourcequotas", c.ns, name), &v1.ResourceQuota{})
 
 	if obj == nil {
 		return nil, err
@@ -89,7 +86,7 @@ func (c *FakeResourceQuotas) Get(name string) (result *v1.ResourceQuota, err err
 
 func (c *FakeResourceQuotas) List(opts api.ListOptions) (result *v1.ResourceQuotaList, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewListAction(resourcequotasResource, c.ns, opts), &v1.ResourceQuotaList{})
+		Invokes(core.NewListAction("resourcequotas", c.ns, opts), &v1.ResourceQuotaList{})
 
 	if obj == nil {
 		return nil, err
@@ -111,6 +108,6 @@ func (c *FakeResourceQuotas) List(opts api.ListOptions) (result *v1.ResourceQuot
 // Watch returns a watch.Interface that watches the requested resourceQuotas.
 func (c *FakeResourceQuotas) Watch(opts api.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(core.NewWatchAction(resourcequotasResource, c.ns, opts))
+		InvokesWatch(core.NewWatchAction("resourcequotas", c.ns, opts))
 
 }

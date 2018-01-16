@@ -39,7 +39,6 @@ type ResumeConfig struct {
 
 	Out       io.Writer
 	Filenames []string
-	Recursive bool
 }
 
 const (
@@ -69,7 +68,6 @@ func NewCmdRolloutResume(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 
 	usage := "Filename, directory, or URL to a file identifying the resource to get from a server."
 	kubectl.AddJsonFilenameFlag(cmd, &opts.Filenames, usage)
-	cmdutil.AddRecursiveFlag(cmd, &opts.Recursive)
 	return cmd
 }
 
@@ -78,7 +76,7 @@ func (o *ResumeConfig) CompleteResume(f *cmdutil.Factory, cmd *cobra.Command, ou
 		return cmdutil.UsageError(cmd, cmd.Use)
 	}
 
-	o.Mapper, o.Typer = f.Object(false)
+	o.Mapper, o.Typer = f.Object()
 	o.ResumeObject = f.ResumeObject
 	o.Out = out
 
@@ -89,7 +87,7 @@ func (o *ResumeConfig) CompleteResume(f *cmdutil.Factory, cmd *cobra.Command, ou
 
 	infos, err := resource.NewBuilder(o.Mapper, o.Typer, resource.ClientMapperFunc(f.ClientForMapping), f.Decoder(true)).
 		NamespaceParam(cmdNamespace).DefaultNamespace().
-		FilenameParam(enforceNamespace, o.Recursive, o.Filenames...).
+		FilenameParam(enforceNamespace, o.Filenames...).
 		ResourceTypeOrNameArgs(true, args...).
 		SingleResourceType().
 		Latest().

@@ -42,7 +42,7 @@ type FooList struct {
 	unversioned.TypeMeta `json:",inline"`
 	unversioned.ListMeta `json:"metadata,omitempty" description:"standard list metadata; see http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"`
 
-	Items []Foo `json:"items"`
+	items []Foo `json:"items"`
 }
 
 func TestCodec(t *testing.T) {
@@ -68,7 +68,7 @@ func TestCodec(t *testing.T) {
 			obj: &Foo{
 				ObjectMeta: api.ObjectMeta{
 					Name:              "bar",
-					CreationTimestamp: unversioned.Time{Time: time.Unix(100, 0)},
+					CreationTimestamp: unversioned.Time{time.Unix(100, 0)},
 				},
 				TypeMeta: unversioned.TypeMeta{Kind: "Foo"},
 			},
@@ -87,14 +87,13 @@ func TestCodec(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		d := &thirdPartyResourceDataDecoder{kind: "Foo", delegate: testapi.Extensions.Codec()}
-		e := &thirdPartyResourceDataEncoder{kind: "Foo", delegate: testapi.Extensions.Codec()}
+		codec := &thirdPartyResourceDataCodec{kind: "Foo", delegate: testapi.Extensions.Codec()}
 		data, err := json.Marshal(test.obj)
 		if err != nil {
 			t.Errorf("[%s] unexpected error: %v", test.name, err)
 			continue
 		}
-		obj, err := runtime.Decode(d, data)
+		obj, err := runtime.Decode(codec, data)
 		if err != nil && !test.expectErr {
 			t.Errorf("[%s] unexpected error: %v", test.name, err)
 			continue
@@ -122,7 +121,7 @@ func TestCodec(t *testing.T) {
 			t.Errorf("[%s]\nexpected\n%v\nsaw\n%v\n", test.name, test.obj, &output)
 		}
 
-		data, err = runtime.Encode(e, rsrcObj)
+		data, err = runtime.Encode(codec, rsrcObj)
 		if err != nil {
 			t.Errorf("[%s] unexpected error: %v", test.name, err)
 		}
@@ -174,7 +173,7 @@ func TestCreater(t *testing.T) {
 			t.Errorf("[%s] unexpected non-error", test.name)
 		}
 		if !reflect.DeepEqual(test.expectedObj, out) {
-			t.Errorf("[%s] unexpected error: expect: %v, got: %v", test.name, test.expectedObj, out)
+			t.Errorf("[%s] unexpected error: expect: %v, got: %v", test.expectedObj, out)
 		}
 
 	}

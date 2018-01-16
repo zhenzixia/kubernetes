@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"strings"
 
+	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/meta"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -79,24 +80,26 @@ func ObjectReaction(o ObjectRetriever, mapper meta.RESTMapper) ReactionFunc {
 			return true, resource, err
 
 		case CreateAction:
-			accessor, err := meta.Accessor(castAction.GetObject())
+			meta, err := api.ObjectMetaFor(castAction.GetObject())
 			if err != nil {
 				return true, nil, err
 			}
-			resource, err := o.Kind(kind, accessor.GetName())
+			resource, err := o.Kind(kind, meta.Name)
 			return true, resource, err
 
 		case UpdateAction:
-			accessor, err := meta.Accessor(castAction.GetObject())
+			meta, err := api.ObjectMetaFor(castAction.GetObject())
 			if err != nil {
 				return true, nil, err
 			}
-			resource, err := o.Kind(kind, accessor.GetName())
+			resource, err := o.Kind(kind, meta.Name)
 			return true, resource, err
 
 		default:
 			return false, nil, fmt.Errorf("no reaction implemented for %s", action)
 		}
+
+		return true, nil, nil
 	}
 }
 

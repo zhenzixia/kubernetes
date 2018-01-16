@@ -21,7 +21,6 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/sets"
@@ -124,7 +123,7 @@ func TestStoreToNodeConditionLister(t *testing.T) {
 }
 
 func TestStoreToReplicationControllerLister(t *testing.T) {
-	store := NewIndexer(MetaNamespaceKeyFunc, Indexers{NamespaceIndex: MetaNamespaceIndexFunc})
+	store := NewStore(MetaNamespaceKeyFunc)
 	lister := StoreToReplicationControllerLister{store}
 	testCases := []struct {
 		inRCs      []*api.ReplicationController
@@ -477,18 +476,18 @@ func TestStoreToJobLister(t *testing.T) {
 	store := NewStore(MetaNamespaceKeyFunc)
 	lister := StoreToJobLister{store}
 	testCases := []struct {
-		inJobs      []*batch.Job
-		list        func() ([]batch.Job, error)
+		inJobs      []*extensions.Job
+		list        func() ([]extensions.Job, error)
 		outJobNames sets.String
 		expectErr   bool
 		msg         string
 	}{
 		// Basic listing
 		{
-			inJobs: []*batch.Job{
+			inJobs: []*extensions.Job{
 				{ObjectMeta: api.ObjectMeta{Name: "basic"}},
 			},
-			list: func() ([]batch.Job, error) {
+			list: func() ([]extensions.Job, error) {
 				list, err := lister.List()
 				return list.Items, err
 			},
@@ -497,12 +496,12 @@ func TestStoreToJobLister(t *testing.T) {
 		},
 		// Listing multiple jobs
 		{
-			inJobs: []*batch.Job{
+			inJobs: []*extensions.Job{
 				{ObjectMeta: api.ObjectMeta{Name: "basic"}},
 				{ObjectMeta: api.ObjectMeta{Name: "complex"}},
 				{ObjectMeta: api.ObjectMeta{Name: "complex2"}},
 			},
-			list: func() ([]batch.Job, error) {
+			list: func() ([]extensions.Job, error) {
 				list, err := lister.List()
 				return list.Items, err
 			},
@@ -511,17 +510,17 @@ func TestStoreToJobLister(t *testing.T) {
 		},
 		// No pod labels
 		{
-			inJobs: []*batch.Job{
+			inJobs: []*extensions.Job{
 				{
 					ObjectMeta: api.ObjectMeta{Name: "basic", Namespace: "ns"},
-					Spec: batch.JobSpec{
+					Spec: extensions.JobSpec{
 						Selector: &unversioned.LabelSelector{
 							MatchLabels: map[string]string{"foo": "baz"},
 						},
 					},
 				},
 			},
-			list: func() ([]batch.Job, error) {
+			list: func() ([]extensions.Job, error) {
 				pod := &api.Pod{
 					ObjectMeta: api.ObjectMeta{Name: "pod", Namespace: "ns"},
 				}
@@ -533,12 +532,12 @@ func TestStoreToJobLister(t *testing.T) {
 		},
 		// No Job selectors
 		{
-			inJobs: []*batch.Job{
+			inJobs: []*extensions.Job{
 				{
 					ObjectMeta: api.ObjectMeta{Name: "basic", Namespace: "ns"},
 				},
 			},
-			list: func() ([]batch.Job, error) {
+			list: func() ([]extensions.Job, error) {
 				pod := &api.Pod{
 					ObjectMeta: api.ObjectMeta{
 						Name:      "pod",
@@ -554,10 +553,10 @@ func TestStoreToJobLister(t *testing.T) {
 		},
 		// Matching labels to selectors and namespace
 		{
-			inJobs: []*batch.Job{
+			inJobs: []*extensions.Job{
 				{
 					ObjectMeta: api.ObjectMeta{Name: "foo"},
-					Spec: batch.JobSpec{
+					Spec: extensions.JobSpec{
 						Selector: &unversioned.LabelSelector{
 							MatchLabels: map[string]string{"foo": "bar"},
 						},
@@ -565,14 +564,14 @@ func TestStoreToJobLister(t *testing.T) {
 				},
 				{
 					ObjectMeta: api.ObjectMeta{Name: "bar", Namespace: "ns"},
-					Spec: batch.JobSpec{
+					Spec: extensions.JobSpec{
 						Selector: &unversioned.LabelSelector{
 							MatchLabels: map[string]string{"foo": "bar"},
 						},
 					},
 				},
 			},
-			list: func() ([]batch.Job, error) {
+			list: func() ([]extensions.Job, error) {
 				pod := &api.Pod{
 					ObjectMeta: api.ObjectMeta{
 						Name:      "pod",
@@ -587,10 +586,10 @@ func TestStoreToJobLister(t *testing.T) {
 		},
 		// Matching labels to selectors and namespace, error case
 		{
-			inJobs: []*batch.Job{
+			inJobs: []*extensions.Job{
 				{
 					ObjectMeta: api.ObjectMeta{Name: "foo", Namespace: "foo"},
-					Spec: batch.JobSpec{
+					Spec: extensions.JobSpec{
 						Selector: &unversioned.LabelSelector{
 							MatchLabels: map[string]string{"foo": "bar"},
 						},
@@ -598,14 +597,14 @@ func TestStoreToJobLister(t *testing.T) {
 				},
 				{
 					ObjectMeta: api.ObjectMeta{Name: "bar", Namespace: "bar"},
-					Spec: batch.JobSpec{
+					Spec: extensions.JobSpec{
 						Selector: &unversioned.LabelSelector{
 							MatchLabels: map[string]string{"foo": "bar"},
 						},
 					},
 				},
 			},
-			list: func() ([]batch.Job, error) {
+			list: func() ([]extensions.Job, error) {
 				pod := &api.Pod{
 					ObjectMeta: api.ObjectMeta{
 						Name:      "pod",
@@ -645,7 +644,7 @@ func TestStoreToJobLister(t *testing.T) {
 }
 
 func TestStoreToPodLister(t *testing.T) {
-	store := NewIndexer(MetaNamespaceKeyFunc, Indexers{NamespaceIndex: MetaNamespaceIndexFunc})
+	store := NewStore(MetaNamespaceKeyFunc)
 	ids := []string{"foo", "bar", "baz"}
 	for _, id := range ids {
 		store.Add(&api.Pod{

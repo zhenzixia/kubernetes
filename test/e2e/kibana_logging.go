@@ -21,20 +21,19 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = framework.KubeDescribe("Kibana Logging Instances Is Alive", func() {
-	f := framework.NewDefaultFramework("kibana-logging")
+var _ = Describe("Kibana Logging Instances Is Alive", func() {
+	f := NewDefaultFramework("kibana-logging")
 
 	BeforeEach(func() {
 		// TODO: For now assume we are only testing cluster logging with Elasticsearch
 		// and Kibana on GCE. Once we are sure that Elasticsearch and Kibana cluster level logging
 		// works for other providers we should widen this scope of this test.
-		framework.SkipUnlessProviderIs("gce")
+		SkipUnlessProviderIs("gce")
 	})
 
 	It("should check that the Kibana logging instance is alive", func() {
@@ -48,7 +47,7 @@ const (
 )
 
 // ClusterLevelLoggingWithKibana is an end to end test that checks to see if Kibana is alive.
-func ClusterLevelLoggingWithKibana(f *framework.Framework) {
+func ClusterLevelLoggingWithKibana(f *Framework) {
 	// graceTime is how long to keep retrying requests for status information.
 	const graceTime = 2 * time.Minute
 
@@ -62,7 +61,7 @@ func ClusterLevelLoggingWithKibana(f *framework.Framework) {
 		if _, err = s.Get("kibana-logging"); err == nil {
 			break
 		}
-		framework.Logf("Attempt to check for the existence of the Kibana service failed after %v", time.Since(start))
+		Logf("Attempt to check for the existence of the Kibana service failed after %v", time.Since(start))
 	}
 	Expect(err).NotTo(HaveOccurred())
 
@@ -73,16 +72,16 @@ func ClusterLevelLoggingWithKibana(f *framework.Framework) {
 	pods, err := f.Client.Pods(api.NamespaceSystem).List(options)
 	Expect(err).NotTo(HaveOccurred())
 	for _, pod := range pods.Items {
-		err = framework.WaitForPodRunningInNamespace(f.Client, pod.Name, api.NamespaceSystem)
+		err = waitForPodRunningInNamespace(f.Client, pod.Name, api.NamespaceSystem)
 		Expect(err).NotTo(HaveOccurred())
 	}
 
 	By("Checking to make sure we get a response from the Kibana UI.")
 	err = nil
 	for start := time.Now(); time.Since(start) < graceTime; time.Sleep(5 * time.Second) {
-		proxyRequest, errProxy := framework.GetServicesProxyRequest(f.Client, f.Client.Get())
+		proxyRequest, errProxy := getServicesProxyRequest(f.Client, f.Client.Get())
 		if errProxy != nil {
-			framework.Logf("After %v failed to get services proxy request: %v", time.Since(start), errProxy)
+			Logf("After %v failed to get services proxy request: %v", time.Since(start), errProxy)
 			continue
 		}
 		// Query against the root URL for Kibana.
@@ -90,7 +89,7 @@ func ClusterLevelLoggingWithKibana(f *framework.Framework) {
 			Name("kibana-logging").
 			DoRaw()
 		if err != nil {
-			framework.Logf("After %v proxy call to kibana-logging failed: %v", time.Since(start), err)
+			Logf("After %v proxy call to kibana-logging failed: %v", time.Since(start), err)
 			continue
 		}
 		break

@@ -30,14 +30,14 @@ import (
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/storage/etcd/etcdtest"
 	etcdtesting "k8s.io/kubernetes/pkg/storage/etcd/testing"
-	"k8s.io/kubernetes/pkg/util/diff"
+	"k8s.io/kubernetes/pkg/util"
 )
 
 const defaultReplicas = 100
 
 func newStorage(t *testing.T) (*ReplicaSetStorage, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, "extensions")
-	restOptions := generic.RESTOptions{Storage: etcdStorage, Decorator: generic.UndecoratedStorage, DeleteCollectionWorkers: 1}
+	restOptions := generic.RESTOptions{etcdStorage, generic.UndecoratedStorage, 1}
 	replicaSetStorage := NewStorage(restOptions)
 	return &replicaSetStorage, server
 }
@@ -90,7 +90,7 @@ var validReplicaSet = *validNewReplicaSet()
 func TestCreate(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.ReplicaSet.Store)
+	test := registrytest.New(t, storage.ReplicaSet.Etcd)
 	rs := validNewReplicaSet()
 	rs.ObjectMeta = api.ObjectMeta{}
 	test.TestCreate(
@@ -110,7 +110,7 @@ func TestCreate(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.ReplicaSet.Store)
+	test := registrytest.New(t, storage.ReplicaSet.Etcd)
 	test.TestUpdate(
 		// valid
 		validNewReplicaSet(),
@@ -121,6 +121,11 @@ func TestUpdate(t *testing.T) {
 			return object
 		},
 		// invalid updateFunc
+		func(obj runtime.Object) runtime.Object {
+			object := obj.(*extensions.ReplicaSet)
+			object.UID = "newUID"
+			return object
+		},
 		func(obj runtime.Object) runtime.Object {
 			object := obj.(*extensions.ReplicaSet)
 			object.Name = ""
@@ -137,7 +142,7 @@ func TestUpdate(t *testing.T) {
 func TestDelete(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.ReplicaSet.Store)
+	test := registrytest.New(t, storage.ReplicaSet.Etcd)
 	test.TestDelete(validNewReplicaSet())
 }
 
@@ -194,21 +199,21 @@ func TestGenerationNumber(t *testing.T) {
 func TestGet(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.ReplicaSet.Store)
+	test := registrytest.New(t, storage.ReplicaSet.Etcd)
 	test.TestGet(validNewReplicaSet())
 }
 
 func TestList(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.ReplicaSet.Store)
+	test := registrytest.New(t, storage.ReplicaSet.Etcd)
 	test.TestList(validNewReplicaSet())
 }
 
 func TestWatch(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.ReplicaSet.Store)
+	test := registrytest.New(t, storage.ReplicaSet.Etcd)
 	test.TestWatch(
 		validNewReplicaSet(),
 		// matching labels
@@ -246,7 +251,7 @@ func TestScaleGet(t *testing.T) {
 	var rs extensions.ReplicaSet
 	ctx := api.WithNamespace(api.NewContext(), api.NamespaceDefault)
 	key := etcdtest.AddPrefix("/replicasets/" + api.NamespaceDefault + "/" + name)
-	if err := storage.ReplicaSet.Storage.Create(ctx, key, &validReplicaSet, &rs, 0); err != nil {
+	if err := storage.ReplicaSet.Storage.Set(ctx, key, &validReplicaSet, &rs, 0); err != nil {
 		t.Fatalf("error setting new replica set (key: %s) %v: %v", key, validReplicaSet, err)
 	}
 
@@ -272,7 +277,7 @@ func TestScaleGet(t *testing.T) {
 		t.Fatalf("error fetching scale for %s: %v", name, err)
 	}
 	if !api.Semantic.DeepEqual(got, want) {
-		t.Errorf("unexpected scale: %s", diff.ObjectDiff(got, want))
+		t.Errorf("unexpected scale: %s", util.ObjectDiff(got, want))
 	}
 }
 
@@ -285,7 +290,7 @@ func TestScaleUpdate(t *testing.T) {
 	var rs extensions.ReplicaSet
 	ctx := api.WithNamespace(api.NewContext(), api.NamespaceDefault)
 	key := etcdtest.AddPrefix("/replicasets/" + api.NamespaceDefault + "/" + name)
-	if err := storage.ReplicaSet.Storage.Create(ctx, key, &validReplicaSet, &rs, 0); err != nil {
+	if err := storage.ReplicaSet.Storage.Set(ctx, key, &validReplicaSet, &rs, 0); err != nil {
 		t.Fatalf("error setting new replica set (key: %s) %v: %v", key, validReplicaSet, err)
 	}
 	replicas := 12
@@ -295,7 +300,7 @@ func TestScaleUpdate(t *testing.T) {
 			Namespace: api.NamespaceDefault,
 		},
 		Spec: extensions.ScaleSpec{
-			Replicas: int32(replicas),
+			Replicas: replicas,
 		},
 	}
 
@@ -308,7 +313,7 @@ func TestScaleUpdate(t *testing.T) {
 		t.Fatalf("error fetching scale for %s: %v", name, err)
 	}
 	scale := obj.(*extensions.Scale)
-	if scale.Spec.Replicas != int32(replicas) {
+	if scale.Spec.Replicas != replicas {
 		t.Errorf("wrong replicas count expected: %d got: %d", replicas, scale.Spec.Replicas)
 	}
 
@@ -326,7 +331,7 @@ func TestStatusUpdate(t *testing.T) {
 
 	ctx := api.WithNamespace(api.NewContext(), api.NamespaceDefault)
 	key := etcdtest.AddPrefix("/replicasets/" + api.NamespaceDefault + "/foo")
-	if err := storage.ReplicaSet.Storage.Create(ctx, key, &validReplicaSet, nil, 0); err != nil {
+	if err := storage.ReplicaSet.Storage.Set(ctx, key, &validReplicaSet, nil, 0); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	update := extensions.ReplicaSet{

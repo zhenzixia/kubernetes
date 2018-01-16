@@ -60,7 +60,7 @@ func newReplicationController(replicas int) *api.ReplicationController {
 			ResourceVersion: "18",
 		},
 		Spec: api.ReplicationControllerSpec{
-			Replicas: int32(replicas),
+			Replicas: replicas,
 			Selector: map[string]string{"foo": "bar"},
 			Template: &api.PodTemplateSpec{
 				ObjectMeta: api.ObjectMeta{
@@ -242,7 +242,8 @@ func TestCreatePods(t *testing.T) {
 		ResponseBody: string(body),
 	}
 	testServer := httptest.NewServer(&fakeHandler)
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	clientset := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
 
 	podControl := RealPodControl{

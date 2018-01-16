@@ -87,9 +87,8 @@ func (tcp *tcpProxySocket) ListenPort() int {
 }
 
 func tryConnect(service proxy.ServicePortName, srcAddr net.Addr, protocol string, proxier *Proxier) (out net.Conn, err error) {
-	sessionAffinityReset := false
 	for _, dialTimeout := range endpointDialTimeout {
-		endpoint, err := proxier.loadBalancer.NextEndpoint(service, srcAddr, sessionAffinityReset)
+		endpoint, err := proxier.loadBalancer.NextEndpoint(service, srcAddr)
 		if err != nil {
 			glog.Errorf("Couldn't find an endpoint for %s: %v", service, err)
 			return nil, err
@@ -103,7 +102,6 @@ func tryConnect(service proxy.ServicePortName, srcAddr net.Addr, protocol string
 				panic("Dial failed: " + err.Error())
 			}
 			glog.Errorf("Dial failed: %v", err)
-			sessionAffinityReset = true
 			continue
 		}
 		return outConn, nil

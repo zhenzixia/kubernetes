@@ -376,7 +376,7 @@ func TestMigratingFileSourceMissingSkip(t *testing.T) {
 	}
 }
 
-func Example_noMergingOnExplicitPaths() {
+func ExampleNoMergingOnExplicitPaths() {
 	commandLineFile, _ := ioutil.TempFile("", "")
 	defer os.Remove(commandLineFile.Name())
 	envVarFile, _ := ioutil.TempFile("", "")
@@ -423,7 +423,7 @@ func Example_noMergingOnExplicitPaths() {
 	//     token: red-token
 }
 
-func Example_mergingSomeWithConflict() {
+func ExampleMergingSomeWithConflict() {
 	commandLineFile, _ := ioutil.TempFile("", "")
 	defer os.Remove(commandLineFile.Name())
 	envVarFile, _ := ioutil.TempFile("", "")
@@ -476,7 +476,7 @@ func Example_mergingSomeWithConflict() {
 	//     token: yellow-token
 }
 
-func Example_mergingEverythingNoConflicts() {
+func ExampleMergingEverythingNoConflicts() {
 	commandLineFile, _ := ioutil.TempFile("", "")
 	defer os.Remove(commandLineFile.Name())
 	envVarFile, _ := ioutil.TempFile("", "")

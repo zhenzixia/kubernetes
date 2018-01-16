@@ -21,54 +21,41 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/cache"
+	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
 )
 
 // NewSourceAPI creates config source that watches for changes to the services and endpoints.
-func NewSourceAPI(c cache.Getter, period time.Duration, servicesChan chan<- ServiceUpdate, endpointsChan chan<- EndpointsUpdate) {
+func NewSourceAPI(c *client.Client, period time.Duration, servicesChan chan<- ServiceUpdate, endpointsChan chan<- EndpointsUpdate) {
 	servicesLW := cache.NewListWatchFromClient(c, "services", api.NamespaceAll, fields.Everything())
-	cache.NewReflector(servicesLW, &api.Service{}, NewServiceStore(nil, servicesChan), period).Run()
-
 	endpointsLW := cache.NewListWatchFromClient(c, "endpoints", api.NamespaceAll, fields.Everything())
-	cache.NewReflector(endpointsLW, &api.Endpoints{}, NewEndpointsStore(nil, endpointsChan), period).Run()
+
+	newServicesSourceApiFromLW(servicesLW, period, servicesChan)
+	newEndpointsSourceApiFromLW(endpointsLW, period, endpointsChan)
 }
 
-// NewServiceStore creates an undelta store that expands updates to the store into
-// ServiceUpdate events on the channel. If no store is passed, a default store will
-// be initialized. Allows reuse of a cache store across multiple components.
-func NewServiceStore(store cache.Store, ch chan<- ServiceUpdate) cache.Store {
-	fn := func(objs []interface{}) {
+func newServicesSourceApiFromLW(servicesLW cache.ListerWatcher, period time.Duration, servicesChan chan<- ServiceUpdate) {
+	servicesPush := func(objs []interface{}) {
 		var services []api.Service
 		for _, o := range objs {
 			services = append(services, *(o.(*api.Service)))
 		}
-		ch <- ServiceUpdate{Op: SET, Services: services}
+		servicesChan <- ServiceUpdate{Op: SET, Services: services}
 	}
-	if store == nil {
-		store = cache.NewStore(cache.MetaNamespaceKeyFunc)
-	}
-	return &cache.UndeltaStore{
-		Store:    store,
-		PushFunc: fn,
-	}
+
+	serviceQueue := cache.NewUndeltaStore(servicesPush, cache.MetaNamespaceKeyFunc)
+	cache.NewReflector(servicesLW, &api.Service{}, serviceQueue, period).Run()
 }
 
-// NewEndpointsStore creates an undelta store that expands updates to the store into
-// EndpointsUpdate events on the channel. If no store is passed, a default store will
-// be initialized. Allows reuse of a cache store across multiple components.
-func NewEndpointsStore(store cache.Store, ch chan<- EndpointsUpdate) cache.Store {
-	fn := func(objs []interface{}) {
+func newEndpointsSourceApiFromLW(endpointsLW cache.ListerWatcher, period time.Duration, endpointsChan chan<- EndpointsUpdate) {
+	endpointsPush := func(objs []interface{}) {
 		var endpoints []api.Endpoints
 		for _, o := range objs {
 			endpoints = append(endpoints, *(o.(*api.Endpoints)))
 		}
-		ch <- EndpointsUpdate{Op: SET, Endpoints: endpoints}
+		endpointsChan <- EndpointsUpdate{Op: SET, Endpoints: endpoints}
 	}
-	if store == nil {
-		store = cache.NewStore(cache.MetaNamespaceKeyFunc)
-	}
-	return &cache.UndeltaStore{
-		Store:    store,
-		PushFunc: fn,
-	}
+
+	endpointQueue := cache.NewUndeltaStore(endpointsPush, cache.MetaNamespaceKeyFunc)
+	cache.NewReflector(endpointsLW, &api.Endpoints{}, endpointQueue, period).Run()
 }

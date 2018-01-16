@@ -20,9 +20,9 @@ import (
 	"testing"
 
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/autoscaling"
-	// Ensure that autoscaling/v1 package is initialized.
-	_ "k8s.io/kubernetes/pkg/apis/autoscaling/v1"
+	"k8s.io/kubernetes/pkg/apis/extensions"
+	// Ensure that extensions/v1beta1 package is initialized.
+	_ "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/registry/generic"
@@ -32,26 +32,26 @@ import (
 )
 
 func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) {
-	etcdStorage, server := registrytest.NewEtcdStorage(t, autoscaling.GroupName)
-	restOptions := generic.RESTOptions{Storage: etcdStorage, Decorator: generic.UndecoratedStorage, DeleteCollectionWorkers: 1}
+	etcdStorage, server := registrytest.NewEtcdStorage(t, extensions.GroupName)
+	restOptions := generic.RESTOptions{etcdStorage, generic.UndecoratedStorage, 1}
 	horizontalPodAutoscalerStorage, statusStorage := NewREST(restOptions)
 	return horizontalPodAutoscalerStorage, statusStorage, server
 }
 
-func validNewHorizontalPodAutoscaler(name string) *autoscaling.HorizontalPodAutoscaler {
-	cpu := int32(70)
-	return &autoscaling.HorizontalPodAutoscaler{
+func validNewHorizontalPodAutoscaler(name string) *extensions.HorizontalPodAutoscaler {
+	return &extensions.HorizontalPodAutoscaler{
 		ObjectMeta: api.ObjectMeta{
 			Name:      name,
 			Namespace: api.NamespaceDefault,
 		},
-		Spec: autoscaling.HorizontalPodAutoscalerSpec{
-			ScaleTargetRef: autoscaling.CrossVersionObjectReference{
-				Kind: "ReplicationController",
-				Name: "myrc",
+		Spec: extensions.HorizontalPodAutoscalerSpec{
+			ScaleRef: extensions.SubresourceReference{
+				Kind:        "ReplicationController",
+				Name:        "myrc",
+				Subresource: "scale",
 			},
-			MaxReplicas:                    5,
-			TargetCPUUtilizationPercentage: &cpu,
+			MaxReplicas:    5,
+			CPUUtilization: &extensions.CPUTargetUtilization{TargetPercentage: 70},
 		},
 	}
 }
@@ -59,27 +59,27 @@ func validNewHorizontalPodAutoscaler(name string) *autoscaling.HorizontalPodAuto
 func TestCreate(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	autoscaler := validNewHorizontalPodAutoscaler("foo")
 	autoscaler.ObjectMeta = api.ObjectMeta{}
 	test.TestCreate(
 		// valid
 		autoscaler,
 		// invalid
-		&autoscaling.HorizontalPodAutoscaler{},
+		&extensions.HorizontalPodAutoscaler{},
 	)
 }
 
 func TestUpdate(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestUpdate(
 		// valid
 		validNewHorizontalPodAutoscaler("foo"),
 		// updateFunc
 		func(obj runtime.Object) runtime.Object {
-			object := obj.(*autoscaling.HorizontalPodAutoscaler)
+			object := obj.(*extensions.HorizontalPodAutoscaler)
 			object.Spec.MaxReplicas = object.Spec.MaxReplicas + 1
 			return object
 		},
@@ -89,28 +89,28 @@ func TestUpdate(t *testing.T) {
 func TestDelete(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestDelete(validNewHorizontalPodAutoscaler("foo"))
 }
 
 func TestGet(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestGet(validNewHorizontalPodAutoscaler("foo"))
 }
 
 func TestList(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestList(validNewHorizontalPodAutoscaler("foo"))
 }
 
 func TestWatch(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestWatch(
 		validNewHorizontalPodAutoscaler("foo"),
 		// matching labels

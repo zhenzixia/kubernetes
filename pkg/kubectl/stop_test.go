@@ -25,7 +25,6 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
@@ -379,7 +378,7 @@ func TestReplicaSetStop(t *testing.T) {
 func TestJobStop(t *testing.T) {
 	name := "foo"
 	ns := "default"
-	zero := int32(0)
+	zero := 0
 	tests := []struct {
 		Name            string
 		Objs            []runtime.Object
@@ -389,26 +388,26 @@ func TestJobStop(t *testing.T) {
 		{
 			Name: "OnlyOneJob",
 			Objs: []runtime.Object{
-				&batch.Job{ // GET
+				&extensions.Job{ // GET
 					ObjectMeta: api.ObjectMeta{
 						Name:      name,
 						Namespace: ns,
 					},
-					Spec: batch.JobSpec{
+					Spec: extensions.JobSpec{
 						Parallelism: &zero,
 						Selector: &unversioned.LabelSelector{
 							MatchLabels: map[string]string{"k1": "v1"},
 						},
 					},
 				},
-				&batch.JobList{ // LIST
-					Items: []batch.Job{
+				&extensions.JobList{ // LIST
+					Items: []extensions.Job{
 						{
 							ObjectMeta: api.ObjectMeta{
 								Name:      name,
 								Namespace: ns,
 							},
-							Spec: batch.JobSpec{
+							Spec: extensions.JobSpec{
 								Parallelism: &zero,
 								Selector: &unversioned.LabelSelector{
 									MatchLabels: map[string]string{"k1": "v1"},
@@ -425,26 +424,26 @@ func TestJobStop(t *testing.T) {
 		{
 			Name: "JobWithDeadPods",
 			Objs: []runtime.Object{
-				&batch.Job{ // GET
+				&extensions.Job{ // GET
 					ObjectMeta: api.ObjectMeta{
 						Name:      name,
 						Namespace: ns,
 					},
-					Spec: batch.JobSpec{
+					Spec: extensions.JobSpec{
 						Parallelism: &zero,
 						Selector: &unversioned.LabelSelector{
 							MatchLabels: map[string]string{"k1": "v1"},
 						},
 					},
 				},
-				&batch.JobList{ // LIST
-					Items: []batch.Job{
+				&extensions.JobList{ // LIST
+					Items: []extensions.Job{
 						{
 							ObjectMeta: api.ObjectMeta{
 								Name:      name,
 								Namespace: ns,
 							},
-							Spec: batch.JobSpec{
+							Spec: extensions.JobSpec{
 								Parallelism: &zero,
 								Selector: &unversioned.LabelSelector{
 									MatchLabels: map[string]string{"k1": "v1"},
@@ -705,7 +704,7 @@ func TestSimpleStop(t *testing.T) {
 		}
 		actions := fake.Actions()
 		if len(test.actions) != len(actions) {
-			t.Errorf("unexpected actions: %v; expected %v (%s)", actions, test.actions, test.test)
+			t.Errorf("unexpected actions: %v; expected %v (%s)", fake.Actions, test.actions, test.test)
 		}
 		for i, action := range actions {
 			testAction := test.actions[i]

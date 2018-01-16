@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"strings"
 
+	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/meta"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -57,13 +58,7 @@ type ObjectScheme interface {
 // TODO: add support for sub resources
 func ObjectReaction(o ObjectRetriever, mapper meta.RESTMapper) ReactionFunc {
 	return func(action Action) (bool, runtime.Object, error) {
-		resource := action.GetResource()
-		kind, err := mapper.KindFor(resource)
-		// This is a temporary fix. Because there is no internal resource, so
-		// the caller has no way to express that it expects to get an internal
-		// kind back. A more proper fix will be directly specify the Kind when
-		// build the action.
-		kind.Version = resource.Version
+		kind, err := mapper.KindFor(unversioned.GroupVersionResource{Resource: action.GetResource()})
 		if err != nil {
 			return false, nil, fmt.Errorf("unrecognized action %s: %v", action.GetResource(), err)
 		}
@@ -84,24 +79,26 @@ func ObjectReaction(o ObjectRetriever, mapper meta.RESTMapper) ReactionFunc {
 			return true, resource, err
 
 		case CreateAction:
-			accessor, err := meta.Accessor(castAction.GetObject())
+			meta, err := api.ObjectMetaFor(castAction.GetObject())
 			if err != nil {
 				return true, nil, err
 			}
-			resource, err := o.Kind(kind, accessor.GetName())
+			resource, err := o.Kind(kind, meta.Name)
 			return true, resource, err
 
 		case UpdateAction:
-			accessor, err := meta.Accessor(castAction.GetObject())
+			meta, err := api.ObjectMetaFor(castAction.GetObject())
 			if err != nil {
 				return true, nil, err
 			}
-			resource, err := o.Kind(kind, accessor.GetName())
+			resource, err := o.Kind(kind, meta.Name)
 			return true, resource, err
 
 		default:
 			return false, nil, fmt.Errorf("no reaction implemented for %s", action)
 		}
+
+		return true, nil, nil
 	}
 }
 
@@ -155,9 +152,7 @@ func NewObjects(scheme ObjectScheme, decoder runtime.Decoder) ObjectRetriever {
 }
 
 func (o objects) Kind(kind unversioned.GroupVersionKind, name string) (runtime.Object, error) {
-	if len(kind.Version) == 0 {
-		kind.Version = runtime.APIVersionInternal
-	}
+	kind.Version = runtime.APIVersionInternal
 	empty, err := o.scheme.New(kind)
 	nilValue := reflect.Zero(reflect.TypeOf(empty)).Interface().(runtime.Object)
 
@@ -264,7 +259,7 @@ func (r *SimpleReactor) Handles(action Action) bool {
 	if !verbCovers {
 		return false
 	}
-	resourceCovers := r.Resource == "*" || r.Resource == action.GetResource().Resource
+	resourceCovers := r.Resource == "*" || r.Resource == action.GetResource()
 	if !resourceCovers {
 		return false
 	}
@@ -285,7 +280,7 @@ type SimpleWatchReactor struct {
 }
 
 func (r *SimpleWatchReactor) Handles(action Action) bool {
-	resourceCovers := r.Resource == "*" || r.Resource == action.GetResource().Resource
+	resourceCovers := r.Resource == "*" || r.Resource == action.GetResource()
 	if !resourceCovers {
 		return false
 	}
@@ -306,7 +301,7 @@ type SimpleProxyReactor struct {
 }
 
 func (r *SimpleProxyReactor) Handles(action Action) bool {
-	resourceCovers := r.Resource == "*" || r.Resource == action.GetResource().Resource
+	resourceCovers := r.Resource == "*" || r.Resource == action.GetResource()
 	if !resourceCovers {
 		return false
 	}

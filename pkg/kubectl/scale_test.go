@@ -22,7 +22,6 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	kerrors "k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
@@ -107,7 +106,7 @@ func TestReplicationControllerScale(t *testing.T) {
 	if action, ok := actions[0].(testclient.GetAction); !ok || action.GetResource() != "replicationcontrollers" || action.GetName() != name {
 		t.Errorf("unexpected action: %v, expected get-replicationController %s", actions[0], name)
 	}
-	if action, ok := actions[1].(testclient.UpdateAction); !ok || action.GetResource() != "replicationcontrollers" || action.GetObject().(*api.ReplicationController).Spec.Replicas != int32(count) {
+	if action, ok := actions[1].(testclient.UpdateAction); !ok || action.GetResource() != "replicationcontrollers" || action.GetObject().(*api.ReplicationController).Spec.Replicas != int(count) {
 		t.Errorf("unexpected action %v, expected update-replicationController with replicas = %d", actions[1], count)
 	}
 }
@@ -253,17 +252,17 @@ type ErrorJobs struct {
 	invalid bool
 }
 
-func (c *ErrorJobs) Update(job *batch.Job) (*batch.Job, error) {
+func (c *ErrorJobs) Update(job *extensions.Job) (*extensions.Job, error) {
 	if c.invalid {
-		return nil, kerrors.NewInvalid(batch.Kind(job.Kind), job.Name, nil)
+		return nil, kerrors.NewInvalid(extensions.Kind(job.Kind), job.Name, nil)
 	}
 	return nil, errors.New("Job update failure")
 }
 
-func (c *ErrorJobs) Get(name string) (*batch.Job, error) {
-	zero := int32(0)
-	return &batch.Job{
-		Spec: batch.JobSpec{
+func (c *ErrorJobs) Get(name string) (*extensions.Job, error) {
+	zero := 0
+	return &extensions.Job{
+		Spec: extensions.JobSpec{
 			Parallelism: &zero,
 		},
 	}, nil
@@ -317,7 +316,7 @@ func TestJobScale(t *testing.T) {
 	if action, ok := actions[0].(testclient.GetAction); !ok || action.GetResource() != "jobs" || action.GetName() != name {
 		t.Errorf("unexpected action: %v, expected get-replicationController %s", actions[0], name)
 	}
-	if action, ok := actions[1].(testclient.UpdateAction); !ok || action.GetResource() != "jobs" || *action.GetObject().(*batch.Job).Spec.Parallelism != int32(count) {
+	if action, ok := actions[1].(testclient.UpdateAction); !ok || action.GetResource() != "jobs" || *action.GetObject().(*extensions.Job).Spec.Parallelism != int(count) {
 		t.Errorf("unexpected action %v, expected update-job with parallelism = %d", actions[1], count)
 	}
 }
@@ -342,13 +341,13 @@ func TestJobScaleInvalid(t *testing.T) {
 }
 
 func TestJobScaleFailsPreconditions(t *testing.T) {
-	ten := int32(10)
-	fake := testclient.NewSimpleFake(&batch.Job{
-		Spec: batch.JobSpec{
+	ten := 10
+	fake := testclient.NewSimpleFake(&extensions.Job{
+		Spec: extensions.JobSpec{
 			Parallelism: &ten,
 		},
 	})
-	scaler := JobScaler{&testclient.FakeExperimental{Fake: fake}}
+	scaler := JobScaler{&testclient.FakeExperimental{fake}}
 	preconditions := ScalePrecondition{2, ""}
 	count := uint(3)
 	name := "foo"
@@ -364,10 +363,10 @@ func TestJobScaleFailsPreconditions(t *testing.T) {
 }
 
 func TestValidateJob(t *testing.T) {
-	zero, ten, twenty := int32(0), int32(10), int32(20)
+	zero, ten, twenty := 0, 10, 20
 	tests := []struct {
 		preconditions ScalePrecondition
-		job           batch.Job
+		job           extensions.Job
 		expectError   bool
 		test          string
 	}{
@@ -378,11 +377,11 @@ func TestValidateJob(t *testing.T) {
 		},
 		{
 			preconditions: ScalePrecondition{-1, ""},
-			job: batch.Job{
+			job: extensions.Job{
 				ObjectMeta: api.ObjectMeta{
 					ResourceVersion: "foo",
 				},
-				Spec: batch.JobSpec{
+				Spec: extensions.JobSpec{
 					Parallelism: &ten,
 				},
 			},
@@ -391,11 +390,11 @@ func TestValidateJob(t *testing.T) {
 		},
 		{
 			preconditions: ScalePrecondition{0, ""},
-			job: batch.Job{
+			job: extensions.Job{
 				ObjectMeta: api.ObjectMeta{
 					ResourceVersion: "foo",
 				},
-				Spec: batch.JobSpec{
+				Spec: extensions.JobSpec{
 					Parallelism: &zero,
 				},
 			},
@@ -404,11 +403,11 @@ func TestValidateJob(t *testing.T) {
 		},
 		{
 			preconditions: ScalePrecondition{-1, "foo"},
-			job: batch.Job{
+			job: extensions.Job{
 				ObjectMeta: api.ObjectMeta{
 					ResourceVersion: "foo",
 				},
-				Spec: batch.JobSpec{
+				Spec: extensions.JobSpec{
 					Parallelism: &ten,
 				},
 			},
@@ -417,11 +416,11 @@ func TestValidateJob(t *testing.T) {
 		},
 		{
 			preconditions: ScalePrecondition{10, "foo"},
-			job: batch.Job{
+			job: extensions.Job{
 				ObjectMeta: api.ObjectMeta{
 					ResourceVersion: "foo",
 				},
-				Spec: batch.JobSpec{
+				Spec: extensions.JobSpec{
 					Parallelism: &ten,
 				},
 			},
@@ -430,11 +429,11 @@ func TestValidateJob(t *testing.T) {
 		},
 		{
 			preconditions: ScalePrecondition{10, "foo"},
-			job: batch.Job{
+			job: extensions.Job{
 				ObjectMeta: api.ObjectMeta{
 					ResourceVersion: "foo",
 				},
-				Spec: batch.JobSpec{
+				Spec: extensions.JobSpec{
 					Parallelism: &twenty,
 				},
 			},
@@ -443,7 +442,7 @@ func TestValidateJob(t *testing.T) {
 		},
 		{
 			preconditions: ScalePrecondition{10, "foo"},
-			job: batch.Job{
+			job: extensions.Job{
 				ObjectMeta: api.ObjectMeta{
 					ResourceVersion: "foo",
 				},
@@ -453,11 +452,11 @@ func TestValidateJob(t *testing.T) {
 		},
 		{
 			preconditions: ScalePrecondition{10, "foo"},
-			job: batch.Job{
+			job: extensions.Job{
 				ObjectMeta: api.ObjectMeta{
 					ResourceVersion: "bar",
 				},
-				Spec: batch.JobSpec{
+				Spec: extensions.JobSpec{
 					Parallelism: &ten,
 				},
 			},
@@ -466,11 +465,11 @@ func TestValidateJob(t *testing.T) {
 		},
 		{
 			preconditions: ScalePrecondition{10, "foo"},
-			job: batch.Job{
+			job: extensions.Job{
 				ObjectMeta: api.ObjectMeta{
 					ResourceVersion: "bar",
 				},
-				Spec: batch.JobSpec{
+				Spec: extensions.JobSpec{
 					Parallelism: &twenty,
 				},
 			},
@@ -557,7 +556,7 @@ func TestDeploymentScale(t *testing.T) {
 	if action, ok := actions[0].(testclient.GetAction); !ok || action.GetResource() != "deployments" || action.GetName() != name {
 		t.Errorf("unexpected action: %v, expected get-replicationController %s", actions[0], name)
 	}
-	if action, ok := actions[1].(testclient.UpdateAction); !ok || action.GetResource() != "deployments" || action.GetObject().(*extensions.Deployment).Spec.Replicas != int32(count) {
+	if action, ok := actions[1].(testclient.UpdateAction); !ok || action.GetResource() != "deployments" || action.GetObject().(*extensions.Deployment).Spec.Replicas != int(count) {
 		t.Errorf("unexpected action %v, expected update-deployment with replicas = %d", actions[1], count)
 	}
 }
@@ -587,7 +586,7 @@ func TestDeploymentScaleFailsPreconditions(t *testing.T) {
 			Replicas: 10,
 		},
 	})
-	scaler := DeploymentScaler{&testclient.FakeExperimental{Fake: fake}}
+	scaler := DeploymentScaler{&testclient.FakeExperimental{fake}}
 	preconditions := ScalePrecondition{2, ""}
 	count := uint(3)
 	name := "foo"
@@ -603,7 +602,7 @@ func TestDeploymentScaleFailsPreconditions(t *testing.T) {
 }
 
 func TestValidateDeployment(t *testing.T) {
-	zero, ten, twenty := int32(0), int32(10), int32(20)
+	zero, ten, twenty := 0, 10, 20
 	tests := []struct {
 		preconditions ScalePrecondition
 		deployment    extensions.Deployment

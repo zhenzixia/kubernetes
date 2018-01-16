@@ -74,6 +74,7 @@ func main() {
 		"k8s.io/kubernetes/cmd/",
 		"k8s.io/kubernetes/plugin/",
 	}
+	arguments.OutputBase = ""
 	arguments.Recursive = true
 	// arguments.VerifyOnly = true
 

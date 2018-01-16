@@ -34,7 +34,6 @@
 KUBE_ROOT=$(dirname "${BASH_SOURCE}")/../..
 source "${KUBE_ROOT}/cluster/aws/${KUBE_CONFIG_FILE-"config-default.sh"}"
 source "${KUBE_ROOT}/cluster/common.sh"
-source "${KUBE_ROOT}/cluster/lib/util.sh"
 
 ALLOCATE_NODE_CIDRS=true
 
@@ -102,7 +101,7 @@ export AWS_DEFAULT_OUTPUT=text
 AWS_CMD="aws ec2"
 AWS_ASG_CMD="aws autoscaling"
 
-VPC_CIDR_BASE=${KUBE_VPC_CIDR_BASE:-172.20}
+VPC_CIDR_BASE=172.20
 MASTER_IP_SUFFIX=.9
 VPC_CIDR=${VPC_CIDR_BASE}.0.0/16
 SUBNET_CIDR=${VPC_CIDR_BASE}.0.0/24
@@ -247,13 +246,7 @@ function query-running-minions () {
            --query ${query}
 }
 
-function detect-node-names () {
-  # If this is called directly, VPC_ID might not be set
-  # (this is case from cluster/log-dump.sh)
-  if [[ -z "${VPC_ID:-}" ]]; then
-    VPC_ID=$(get_vpc_id)
-  fi
-
+function find-running-minions () {
   NODE_IDS=()
   NODE_NAMES=()
   for id in $(query-running-minions "Reservations[].Instances[].InstanceId"); do
@@ -264,14 +257,8 @@ function detect-node-names () {
   done
 }
 
-# Called to detect the project on GCE
-# Not needed on AWS
-function detect-project() {
-  :
-}
-
 function detect-nodes () {
-  detect-node-names
+  find-running-minions
 
   # This is inefficient, but we want NODE_NAMES / NODE_IDS to be ordered the same as KUBE_NODE_IP_ADDRESSES
   KUBE_NODE_IP_ADDRESSES=()
@@ -1244,7 +1231,7 @@ function wait-minions {
     max_attempts=90
   fi
   while true; do
-    detect-node-names > $LOG
+    find-running-minions > $LOG
     if [[ ${#NODE_IDS[@]} == ${NUM_NODES} ]]; then
       echo -e " ${color_green}${#NODE_IDS[@]} minions started; ready${color_norm}"
       break
@@ -1571,41 +1558,30 @@ function test-teardown {
 }
 
 
-# Gets the hostname (or IP) that we should SSH to for the given nodename
-# For the master, we use the nodename, for the nodes we use their instanceids
-function get_ssh_hostname {
+# SSH to a node by name ($1) and run a command ($2).
+function ssh-to-node {
   local node="$1"
+  local cmd="$2"
 
   if [[ "${node}" == "${MASTER_NAME}" ]]; then
     node=$(get_instanceid_from_name ${MASTER_NAME})
     if [[ -z "${node-}" ]]; then
-      echo "Could not detect Kubernetes master node.  Make sure you've launched a cluster with 'kube-up.sh'" 1>&2
+      echo "Could not detect Kubernetes master node.  Make sure you've launched a cluster with 'kube-up.sh'"
       exit 1
     fi
   fi
 
   local ip=$(get_instance_public_ip ${node})
   if [[ -z "$ip" ]]; then
-    echo "Could not detect IP for ${node}." 1>&2
+    echo "Could not detect IP for ${node}."
     exit 1
   fi
-  echo ${ip}
-}
-
-# SSH to a node by name ($1) and run a command ($2).
-function ssh-to-node {
-  local node="$1"
-  local cmd="$2"
-
-  local ip=$(get_ssh_hostname ${node})
 
   for try in $(seq 1 5); do
-    if ssh -oLogLevel=quiet -oConnectTimeout=30 -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" ${SSH_USER}@${ip} "echo test > /dev/null"; then
+    if ssh -oLogLevel=quiet -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" ${SSH_USER}@${ip} "${cmd}"; then
       break
     fi
-    sleep 5
   done
-  ssh -oLogLevel=quiet -oConnectTimeout=30 -oStrictHostKeyChecking=no -i "${AWS_SSH_KEY}" ${SSH_USER}@${ip} "${cmd}"
 }
 
 # Perform preparations required to run e2e tests

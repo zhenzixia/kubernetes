@@ -18,53 +18,53 @@ package etcd
 
 import (
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/batch"
+	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	"k8s.io/kubernetes/pkg/registry/generic"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/registry/job"
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
 // REST implements a RESTStorage for jobs against etcd
 type REST struct {
-	*registry.Store
+	*etcdgeneric.Etcd
 }
 
 // NewREST returns a RESTStorage object that will work against Jobs.
 func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 	prefix := "/jobs"
 
-	newListFunc := func() runtime.Object { return &batch.JobList{} }
+	newListFunc := func() runtime.Object { return &extensions.JobList{} }
 	storageInterface := opts.Decorator(
-		opts.Storage, cachesize.GetWatchCacheSizeByResource(cachesize.Jobs), &batch.Job{}, prefix, job.Strategy, newListFunc)
+		opts.Storage, cachesize.GetWatchCacheSizeByResource(cachesize.Jobs), &extensions.Job{}, prefix, job.Strategy, newListFunc)
 
-	store := &registry.Store{
-		NewFunc: func() runtime.Object { return &batch.Job{} },
+	store := &etcdgeneric.Etcd{
+		NewFunc: func() runtime.Object { return &extensions.Job{} },
 
 		// NewListFunc returns an object capable of storing results of an etcd list.
 		NewListFunc: newListFunc,
 		// Produces a path that etcd understands, to the root of the resource
 		// by combining the namespace in the context with the given prefix
 		KeyRootFunc: func(ctx api.Context) string {
-			return registry.NamespaceKeyRootFunc(ctx, prefix)
+			return etcdgeneric.NamespaceKeyRootFunc(ctx, prefix)
 		},
 		// Produces a path that etcd understands, to the resource by combining
 		// the namespace in the context with the given prefix
 		KeyFunc: func(ctx api.Context, name string) (string, error) {
-			return registry.NamespaceKeyFunc(ctx, prefix, name)
+			return etcdgeneric.NamespaceKeyFunc(ctx, prefix, name)
 		},
 		// Retrieve the name field of a job
 		ObjectNameFunc: func(obj runtime.Object) (string, error) {
-			return obj.(*batch.Job).Name, nil
+			return obj.(*extensions.Job).Name, nil
 		},
 		// Used to match objects based on labels/fields for list and watch
 		PredicateFunc: func(label labels.Selector, field fields.Selector) generic.Matcher {
 			return job.MatchJob(label, field)
 		},
-		QualifiedResource:       batch.Resource("jobs"),
+		QualifiedResource:       extensions.Resource("jobs"),
 		DeleteCollectionWorkers: opts.DeleteCollectionWorkers,
 
 		// Used to validate job creation
@@ -72,7 +72,6 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 		// Used to validate job updates
 		UpdateStrategy: job.Strategy,
-		DeleteStrategy: job.Strategy,
 
 		Storage: storageInterface,
 	}
@@ -85,11 +84,11 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 // StatusREST implements the REST endpoint for changing the status of a resourcequota.
 type StatusREST struct {
-	store *registry.Store
+	store *etcdgeneric.Etcd
 }
 
 func (r *StatusREST) New() runtime.Object {
-	return &batch.Job{}
+	return &extensions.Job{}
 }
 
 // Update alters the status subset of an object.

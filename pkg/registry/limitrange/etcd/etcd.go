@@ -22,13 +22,13 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	"k8s.io/kubernetes/pkg/registry/generic"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/registry/limitrange"
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
 type REST struct {
-	*registry.Store
+	*etcdgeneric.Etcd
 }
 
 // NewREST returns a RESTStorage object that will work against horizontal pod autoscalers.
@@ -39,14 +39,14 @@ func NewREST(opts generic.RESTOptions) *REST {
 	storageInterface := opts.Decorator(
 		opts.Storage, cachesize.GetWatchCacheSizeByResource(cachesize.LimitRanges), &api.LimitRange{}, prefix, limitrange.Strategy, newListFunc)
 
-	store := &registry.Store{
+	store := &etcdgeneric.Etcd{
 		NewFunc:     func() runtime.Object { return &api.LimitRange{} },
 		NewListFunc: newListFunc,
 		KeyRootFunc: func(ctx api.Context) string {
-			return registry.NamespaceKeyRootFunc(ctx, prefix)
+			return etcdgeneric.NamespaceKeyRootFunc(ctx, prefix)
 		},
 		KeyFunc: func(ctx api.Context, id string) (string, error) {
-			return registry.NamespaceKeyFunc(ctx, prefix, id)
+			return etcdgeneric.NamespaceKeyFunc(ctx, prefix, id)
 		},
 		ObjectNameFunc: func(obj runtime.Object) (string, error) {
 			return obj.(*api.LimitRange).Name, nil
@@ -59,7 +59,6 @@ func NewREST(opts generic.RESTOptions) *REST {
 
 		CreateStrategy: limitrange.Strategy,
 		UpdateStrategy: limitrange.Strategy,
-		DeleteStrategy: limitrange.Strategy,
 		ExportStrategy: limitrange.Strategy,
 
 		Storage: storageInterface,

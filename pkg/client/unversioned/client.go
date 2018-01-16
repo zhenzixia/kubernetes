@@ -119,8 +119,6 @@ type Client struct {
 	*AutoscalingClient
 	*BatchClient
 	*ExtensionsClient
-	*AppsClient
-	*PolicyClient
 	*discovery.DiscoveryClient
 }
 
@@ -156,10 +154,6 @@ func (c *Client) Batch() BatchInterface {
 
 func (c *Client) Extensions() ExtensionsInterface {
 	return c.ExtensionsClient
-}
-
-func (c *Client) Apps() AppsInterface {
-	return c.AppsClient
 }
 
 func (c *Client) Discovery() discovery.DiscoveryInterface {

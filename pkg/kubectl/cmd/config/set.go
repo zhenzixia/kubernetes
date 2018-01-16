@@ -17,7 +17,6 @@ limitations under the License.
 package config
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -25,9 +24,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-
-	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
-	"k8s.io/kubernetes/pkg/util/flag"
 )
 
 const (
@@ -36,17 +32,16 @@ const (
 )
 
 type setOptions struct {
-	configAccess  clientcmd.ConfigAccess
+	configAccess  ConfigAccess
 	propertyName  string
 	propertyValue string
-	setRawBytes   flag.Tristate
 }
 
 const set_long = `Sets an individual value in a kubeconfig file
 PROPERTY_NAME is a dot delimited name where each token represents either a attribute name or a map key.  Map keys may not contain dots.
-PROPERTY_VALUE is the new value you wish to set. Binary fields such as 'certificate-authority-data' expect a base64 encoded string unless the --set-raw-bytes flag is used.`
+PROPERTY_VALUE is the new value you wish to set.`
 
-func NewCmdConfigSet(out io.Writer, configAccess clientcmd.ConfigAccess) *cobra.Command {
+func NewCmdConfigSet(out io.Writer, configAccess ConfigAccess) *cobra.Command {
 	options := &setOptions{configAccess: configAccess}
 
 	cmd := &cobra.Command{
@@ -67,8 +62,6 @@ func NewCmdConfigSet(out io.Writer, configAccess clientcmd.ConfigAccess) *cobra.
 		},
 	}
 
-	f := cmd.Flags().VarPF(&options.setRawBytes, "set-raw-bytes", "", "When writing a []byte PROPERTY_VALUE, write the given string directly without base64 decoding.")
-	f.NoOptDefVal = "true"
 	return cmd
 }
 
@@ -86,18 +79,12 @@ func (o setOptions) run() error {
 	if err != nil {
 		return err
 	}
-
-	setRawBytes := false
-	if o.setRawBytes.Provided() {
-		setRawBytes = o.setRawBytes.Value()
-	}
-
-	err = modifyConfig(reflect.ValueOf(config), steps, o.propertyValue, false, setRawBytes)
+	err = modifyConfig(reflect.ValueOf(config), steps, o.propertyValue, false)
 	if err != nil {
 		return err
 	}
 
-	if err := clientcmd.ModifyConfig(o.configAccess, *config, false); err != nil {
+	if err := ModifyConfig(o.configAccess, *config, false); err != nil {
 		return err
 	}
 
@@ -128,7 +115,7 @@ func (o setOptions) validate() error {
 	return nil
 }
 
-func modifyConfig(curr reflect.Value, steps *navigationSteps, propertyValue string, unset bool, setRawBytes bool) error {
+func modifyConfig(curr reflect.Value, steps *navigationSteps, propertyValue string, unset bool) error {
 	currStep := steps.pop()
 
 	actualCurrValue := curr
@@ -158,7 +145,7 @@ func modifyConfig(curr reflect.Value, steps *navigationSteps, propertyValue stri
 			actualCurrValue.SetMapIndex(mapKey, currMapValue)
 		}
 
-		err := modifyConfig(currMapValue, steps, propertyValue, unset, setRawBytes)
+		err := modifyConfig(currMapValue, steps, propertyValue, unset)
 		if err != nil {
 			return err
 		}
@@ -170,31 +157,6 @@ func modifyConfig(curr reflect.Value, steps *navigationSteps, propertyValue stri
 			return fmt.Errorf("can't have more steps after a string. %v", steps)
 		}
 		actualCurrValue.SetString(propertyValue)
-		return nil
-
-	case reflect.Slice:
-		if steps.moreStepsRemaining() {
-			return fmt.Errorf("can't have more steps after bytes. %v", steps)
-		}
-		innerKind := actualCurrValue.Type().Elem().Kind()
-		if innerKind != reflect.Uint8 {
-			return fmt.Errorf("unrecognized slice type. %v", innerKind)
-		}
-
-		if unset {
-			actualCurrValue.Set(reflect.Zero(actualCurrValue.Type()))
-			return nil
-		}
-
-		if setRawBytes {
-			actualCurrValue.SetBytes([]byte(propertyValue))
-		} else {
-			val, err := base64.StdEncoding.DecodeString(propertyValue)
-			if err != nil {
-				return fmt.Errorf("error decoding input value: %v", err)
-			}
-			actualCurrValue.SetBytes(val)
-		}
 		return nil
 
 	case reflect.Bool:
@@ -234,7 +196,7 @@ func modifyConfig(curr reflect.Value, steps *navigationSteps, propertyValue stri
 					return nil
 				}
 
-				return modifyConfig(currFieldValue.Addr(), steps, propertyValue, unset, setRawBytes)
+				return modifyConfig(currFieldValue.Addr(), steps, propertyValue, unset)
 			}
 		}
 

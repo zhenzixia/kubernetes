@@ -29,35 +29,34 @@ import (
 	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/util/sets"
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
-var _ = framework.KubeDescribe("Ubernetes Lite", func() {
-	f := framework.NewDefaultFramework("ubernetes-lite")
+var _ = Describe("Ubernetes Lite", func() {
+	framework := NewDefaultFramework("ubernetes-lite")
 	var zoneCount int
 	var err error
-	image := "gcr.io/google_containers/serve_hostname:v1.4"
+	image := "gcr.io/google_containers/serve_hostname:1.1"
 	BeforeEach(func() {
 		if zoneCount <= 0 {
-			zoneCount, err = getZoneCount(f.Client)
+			zoneCount, err = getZoneCount(framework.Client)
 			Expect(err).NotTo(HaveOccurred())
 		}
 		By(fmt.Sprintf("Checking for multi-zone cluster.  Zone count = %d", zoneCount))
-		framework.SkipUnlessAtLeast(zoneCount, 2, "Zone count is %d, only run for multi-zone clusters, skipping test")
-		framework.SkipUnlessProviderIs("gce", "gke", "aws")
+		SkipUnlessAtLeast(zoneCount, 2, "Zone count is %d, only run for multi-zone clusters, skipping test")
+		SkipUnlessProviderIs("gce", "gke", "aws")
 		// TODO: SkipUnlessDefaultScheduler() // Non-default schedulers might not spread
 	})
 	It("should spread the pods of a service across zones", func() {
-		SpreadServiceOrFail(f, (2*zoneCount)+1, image)
+		SpreadServiceOrFail(framework, (2*zoneCount)+1, image)
 	})
 
 	It("should spread the pods of a replication controller across zones", func() {
-		SpreadRCOrFail(f, int32((2*zoneCount)+1), image)
+		SpreadRCOrFail(framework, (2*zoneCount)+1, image)
 	})
 })
 
 // Check that the pods comprising a service get spread evenly across available zones
-func SpreadServiceOrFail(f *framework.Framework, replicaCount int, image string) {
+func SpreadServiceOrFail(f *Framework, replicaCount int, image string) {
 	// First create the service
 	serviceName := "test-service"
 	serviceSpec := &api.Service{
@@ -88,16 +87,16 @@ func SpreadServiceOrFail(f *framework.Framework, replicaCount int, image string)
 			Containers: []api.Container{
 				{
 					Name:  "test",
-					Image: "gcr.io/google_containers/pause-amd64:3.0",
+					Image: "gcr.io/google_containers/pause:2.0",
 				},
 			},
 		},
 	}
-	framework.StartPods(f.Client, replicaCount, f.Namespace.Name, serviceName, *podSpec, false)
+	startPods(f.Client, replicaCount, f.Namespace.Name, serviceName, *podSpec, false)
 
 	// Wait for all of them to be scheduled
 	selector := labels.SelectorFromSet(labels.Set(map[string]string{"service": serviceName}))
-	pods, err := framework.WaitForPodsWithLabelScheduled(f.Client, f.Namespace.Name, selector)
+	pods, err := waitForPodsWithLabelScheduled(f.Client, f.Namespace.Name, selector)
 	Expect(err).NotTo(HaveOccurred())
 
 	// Now make sure they're spread across zones
@@ -181,7 +180,7 @@ func checkZoneSpreading(c *client.Client, pods *api.PodList, zoneNames []string)
 }
 
 // Check that the pods comprising a replication controller get spread evenly across available zones
-func SpreadRCOrFail(f *framework.Framework, replicaCount int32, image string) {
+func SpreadRCOrFail(f *Framework, replicaCount int, image string) {
 	name := "ubelite-spread-rc-" + string(util.NewUUID())
 	By(fmt.Sprintf("Creating replication controller %s", name))
 	controller, err := f.Client.ReplicationControllers(f.Namespace.Name).Create(&api.ReplicationController{
@@ -214,18 +213,18 @@ func SpreadRCOrFail(f *framework.Framework, replicaCount int32, image string) {
 	// Cleanup the replication controller when we are done.
 	defer func() {
 		// Resize the replication controller to zero to get rid of pods.
-		if err := framework.DeleteRC(f.Client, f.Namespace.Name, controller.Name); err != nil {
-			framework.Logf("Failed to cleanup replication controller %v: %v.", controller.Name, err)
+		if err := DeleteRC(f.Client, f.Namespace.Name, controller.Name); err != nil {
+			Logf("Failed to cleanup replication controller %v: %v.", controller.Name, err)
 		}
 	}()
 	// List the pods, making sure we observe all the replicas.
 	selector := labels.SelectorFromSet(labels.Set(map[string]string{"name": name}))
-	pods, err := framework.PodsCreated(f.Client, f.Namespace.Name, name, replicaCount)
+	pods, err := podsCreated(f.Client, f.Namespace.Name, name, replicaCount)
 	Expect(err).NotTo(HaveOccurred())
 
 	// Wait for all of them to be scheduled
 	By(fmt.Sprintf("Waiting for %d replicas of %s to be scheduled.  Selector: %v", replicaCount, name, selector))
-	pods, err = framework.WaitForPodsWithLabelScheduled(f.Client, f.Namespace.Name, selector)
+	pods, err = waitForPodsWithLabelScheduled(f.Client, f.Namespace.Name, selector)
 	Expect(err).NotTo(HaveOccurred())
 
 	// Now make sure they're spread across zones

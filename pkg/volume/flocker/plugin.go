@@ -18,18 +18,16 @@ package flocker
 
 import (
 	"fmt"
-	"path"
 	"time"
 
-	flockerclient "github.com/ClusterHQ/flocker-go"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/types"
-	"k8s.io/kubernetes/pkg/util/env"
+	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/exec"
 	"k8s.io/kubernetes/pkg/util/mount"
-	"k8s.io/kubernetes/pkg/util/strings"
 	"k8s.io/kubernetes/pkg/volume"
-	volumeutil "k8s.io/kubernetes/pkg/volume/util"
+
+	flockerclient "github.com/ClusterHQ/flocker-go"
 )
 
 const (
@@ -85,9 +83,9 @@ func (p *flockerPlugin) getFlockerVolumeSource(spec *volume.Spec) (*api.FlockerV
 	return spec.PersistentVolume.Spec.Flocker, readOnly
 }
 
-func (p *flockerPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, opts volume.VolumeOptions) (volume.Mounter, error) {
+func (p *flockerPlugin) NewBuilder(spec *volume.Spec, pod *api.Pod, opts volume.VolumeOptions) (volume.Builder, error) {
 	source, readOnly := p.getFlockerVolumeSource(spec)
-	mounter := flockerMounter{
+	builder := flockerBuilder{
 		flocker: &flocker{
 			datasetName: source.DatasetName,
 			pod:         pod,
@@ -98,15 +96,15 @@ func (p *flockerPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, opts volume.
 		opts:     opts,
 		readOnly: readOnly,
 	}
-	return &mounter, nil
+	return &builder, nil
 }
 
-func (p *flockerPlugin) NewUnmounter(datasetName string, podUID types.UID) (volume.Unmounter, error) {
+func (p *flockerPlugin) NewCleaner(datasetName string, podUID types.UID) (volume.Cleaner, error) {
 	// Flocker agent will take care of this, there is nothing we can do here
 	return nil, nil
 }
 
-type flockerMounter struct {
+type flockerBuilder struct {
 	*flocker
 	client   flockerclient.Clientable
 	exe      exec.Interface
@@ -115,45 +113,36 @@ type flockerMounter struct {
 	volume.MetricsNil
 }
 
-func (b flockerMounter) GetAttributes() volume.Attributes {
+func (b flockerBuilder) GetAttributes() volume.Attributes {
 	return volume.Attributes{
 		ReadOnly:        b.readOnly,
 		Managed:         false,
 		SupportsSELinux: false,
 	}
 }
-func (b flockerMounter) GetPath() string {
+func (b flockerBuilder) GetPath() string {
 	return b.flocker.path
 }
 
-func (b flockerMounter) SetUp(fsGroup *int64) error {
+func (b flockerBuilder) SetUp(fsGroup *int64) error {
 	return b.SetUpAt(b.flocker.datasetName, fsGroup)
 }
 
 // newFlockerClient uses environment variables and pod attributes to return a
 // flocker client capable of talking with the Flocker control service.
-func (b flockerMounter) newFlockerClient() (*flockerclient.Client, error) {
-	host := env.GetEnvAsStringOrFallback("FLOCKER_CONTROL_SERVICE_HOST", defaultHost)
-	port, err := env.GetEnvAsIntOrFallback("FLOCKER_CONTROL_SERVICE_PORT", defaultPort)
+func (b flockerBuilder) newFlockerClient() (*flockerclient.Client, error) {
+	host := util.GetEnvAsStringOrFallback("FLOCKER_CONTROL_SERVICE_HOST", defaultHost)
+	port, err := util.GetEnvAsIntOrFallback("FLOCKER_CONTROL_SERVICE_PORT", defaultPort)
 
 	if err != nil {
 		return nil, err
 	}
-	caCertPath := env.GetEnvAsStringOrFallback("FLOCKER_CONTROL_SERVICE_CA_FILE", defaultCACertFile)
-	keyPath := env.GetEnvAsStringOrFallback("FLOCKER_CONTROL_SERVICE_CLIENT_KEY_FILE", defaultClientKeyFile)
-	certPath := env.GetEnvAsStringOrFallback("FLOCKER_CONTROL_SERVICE_CLIENT_CERT_FILE", defaultClientCertFile)
+	caCertPath := util.GetEnvAsStringOrFallback("FLOCKER_CONTROL_SERVICE_CA_FILE", defaultCACertFile)
+	keyPath := util.GetEnvAsStringOrFallback("FLOCKER_CONTROL_SERVICE_CLIENT_KEY_FILE", defaultClientKeyFile)
+	certPath := util.GetEnvAsStringOrFallback("FLOCKER_CONTROL_SERVICE_CLIENT_CERT_FILE", defaultClientCertFile)
 
 	c, err := flockerclient.NewClient(host, port, b.flocker.pod.Status.HostIP, caCertPath, keyPath, certPath)
 	return c, err
-}
-
-func (b *flockerMounter) getMetaDir() string {
-	return path.Join(
-		b.plugin.host.GetPodPluginDir(
-			b.flocker.pod.UID, strings.EscapeQualifiedNameForDisk(flockerPluginName),
-		),
-		b.datasetName,
-	)
 }
 
 /*
@@ -167,11 +156,7 @@ control service:
    need to update the Primary UUID for this volume.
 5. Wait until the Primary UUID was updated or timeout.
 */
-func (b flockerMounter) SetUpAt(dir string, fsGroup *int64) error {
-	if volumeutil.IsReady(b.getMetaDir()) {
-		return nil
-	}
-
+func (b flockerBuilder) SetUpAt(dir string, fsGroup *int64) error {
 	if b.client == nil {
 		c, err := b.newFlockerClient()
 		if err != nil {
@@ -208,13 +193,12 @@ func (b flockerMounter) SetUpAt(dir string, fsGroup *int64) error {
 		b.flocker.path = s.Path
 	}
 
-	volumeutil.SetReady(b.getMetaDir())
 	return nil
 }
 
 // updateDatasetPrimary will update the primary in Flocker and wait for it to
 // be ready. If it never gets to ready state it will timeout and error.
-func (b flockerMounter) updateDatasetPrimary(datasetID, primaryUUID string) error {
+func (b flockerBuilder) updateDatasetPrimary(datasetID, primaryUUID string) error {
 	// We need to update the primary and wait for it to be ready
 	_, err := b.client.UpdatePrimaryForDataset(primaryUUID, datasetID)
 	if err != nil {

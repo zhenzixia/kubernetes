@@ -24,14 +24,13 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/util/intstr"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = framework.KubeDescribe("Networking", func() {
-	f := framework.NewDefaultFramework("nettest")
+var _ = Describe("Networking", func() {
+	f := NewDefaultFramework("nettest")
 
 	var svcname = "nettest"
 
@@ -42,16 +41,16 @@ var _ = framework.KubeDescribe("Networking", func() {
 		By("Executing a successful http request from the external internet")
 		resp, err := http.Get("http://google.com")
 		if err != nil {
-			framework.Failf("Unable to connect/talk to the internet: %v", err)
+			Failf("Unable to connect/talk to the internet: %v", err)
 		}
 		if resp.StatusCode != http.StatusOK {
-			framework.Failf("Unexpected error code, expected 200, got, %v (%v)", resp.StatusCode, resp)
+			Failf("Unexpected error code, expected 200, got, %v (%v)", resp.StatusCode, resp)
 		}
 	})
 
 	It("should provide Internet connection for containers [Conformance]", func() {
 		By("Running container which tries to wget google.com")
-		framework.ExpectNoError(framework.CheckConnectivityToHost(f, "", "wget-test", "google.com", 30))
+		expectNoError(CheckConnectivityToHost(f, "", "wget-test", "google.com"))
 	})
 
 	// First test because it has no dependencies on variables created later on.
@@ -70,7 +69,7 @@ var _ = framework.KubeDescribe("Networking", func() {
 				AbsPath(test.path).
 				DoRaw()
 			if err != nil {
-				framework.Failf("Failed: %v\nBody: %s", err, string(data))
+				Failf("Failed: %v\nBody: %s", err, string(data))
 			}
 		}
 	})
@@ -98,30 +97,30 @@ var _ = framework.KubeDescribe("Networking", func() {
 			},
 		})
 		if err != nil {
-			framework.Failf("unable to create test service named [%s] %v", svc.Name, err)
+			Failf("unable to create test service named [%s] %v", svc.Name, err)
 		}
 
 		// Clean up service
 		defer func() {
 			By("Cleaning up the service")
 			if err = f.Client.Services(f.Namespace.Name).Delete(svc.Name); err != nil {
-				framework.Failf("unable to delete svc %v: %v", svc.Name, err)
+				Failf("unable to delete svc %v: %v", svc.Name, err)
 			}
 		}()
 
 		By("Creating a webserver (pending) pod on each node")
 
-		nodes, err := framework.GetReadyNodes(f)
-		framework.ExpectNoError(err)
+		nodes, err := GetReadyNodes(f)
+		expectNoError(err)
 
 		if len(nodes.Items) == 1 {
 			// in general, the test requires two nodes. But for local development, often a one node cluster
 			// is created, for simplicity and speed. (see issue #10012). We permit one-node test
 			// only in some cases
-			if !framework.ProviderIs("local") {
-				framework.Failf(fmt.Sprintf("The test requires two Ready nodes on %s, but found just one.", framework.TestContext.Provider))
+			if !providerIs("local") {
+				Failf(fmt.Sprintf("The test requires two Ready nodes on %s, but found just one.", testContext.Provider))
 			}
-			framework.Logf("Only one ready node is detected. The test has limited scope in such setting. " +
+			Logf("Only one ready node is detected. The test has limited scope in such setting. " +
 				"Rerun it with at least two nodes to get complete coverage.")
 		}
 
@@ -132,7 +131,7 @@ var _ = framework.KubeDescribe("Networking", func() {
 			By("Cleaning up the webserver pods")
 			for _, podName := range podNames {
 				if err = f.Client.Pods(f.Namespace.Name).Delete(podName, nil); err != nil {
-					framework.Logf("Failed to delete pod %s: %v", podName, err)
+					Logf("Failed to delete pod %s: %v", podName, err)
 				}
 			}
 		}()
@@ -149,7 +148,7 @@ var _ = framework.KubeDescribe("Networking", func() {
 		//once response OK, evaluate response body for pass/fail.
 		var body []byte
 		getDetails := func() ([]byte, error) {
-			proxyRequest, errProxy := framework.GetServicesProxyRequest(f.Client, f.Client.Get())
+			proxyRequest, errProxy := getServicesProxyRequest(f.Client, f.Client.Get())
 			if errProxy != nil {
 				return nil, errProxy
 			}
@@ -160,7 +159,7 @@ var _ = framework.KubeDescribe("Networking", func() {
 		}
 
 		getStatus := func() ([]byte, error) {
-			proxyRequest, errProxy := framework.GetServicesProxyRequest(f.Client, f.Client.Get())
+			proxyRequest, errProxy := getServicesProxyRequest(f.Client, f.Client.Get())
 			if errProxy != nil {
 				return nil, errProxy
 			}
@@ -175,62 +174,61 @@ var _ = framework.KubeDescribe("Networking", func() {
 		timeout := time.Now().Add(3 * time.Minute)
 		for i := 0; !passed && timeout.After(time.Now()); i++ {
 			time.Sleep(2 * time.Second)
-			framework.Logf("About to make a proxy status call")
+			Logf("About to make a proxy status call")
 			start := time.Now()
 			body, err = getStatus()
-			framework.Logf("Proxy status call returned in %v", time.Since(start))
+			Logf("Proxy status call returned in %v", time.Since(start))
 			if err != nil {
-				framework.Logf("Attempt %v: service/pod still starting. (error: '%v')", i, err)
+				Logf("Attempt %v: service/pod still starting. (error: '%v')", i, err)
 				continue
 			}
 			// Finally, we pass/fail the test based on if the container's response body, as to whether or not it was able to find peers.
 			switch {
 			case string(body) == "pass":
-				framework.Logf("Passed on attempt %v. Cleaning up.", i)
+				Logf("Passed on attempt %v. Cleaning up.", i)
 				passed = true
 			case string(body) == "running":
-				framework.Logf("Attempt %v: test still running", i)
+				Logf("Attempt %v: test still running", i)
 			case string(body) == "fail":
 				if body, err = getDetails(); err != nil {
-					framework.Failf("Failed on attempt %v. Cleaning up. Error reading details: %v", i, err)
+					Failf("Failed on attempt %v. Cleaning up. Error reading details: %v", i, err)
 				} else {
-					framework.Failf("Failed on attempt %v. Cleaning up. Details:\n%s", i, string(body))
+					Failf("Failed on attempt %v. Cleaning up. Details:\n%s", i, string(body))
 				}
 			case strings.Contains(string(body), "no endpoints available"):
-				framework.Logf("Attempt %v: waiting on service/endpoints", i)
+				Logf("Attempt %v: waiting on service/endpoints", i)
 			default:
-				framework.Logf("Unexpected response:\n%s", body)
+				Logf("Unexpected response:\n%s", body)
 			}
 		}
 
 		if !passed {
 			if body, err = getDetails(); err != nil {
-				framework.Failf("Timed out. Cleaning up. Error reading details: %v", err)
+				Failf("Timed out. Cleaning up. Error reading details: %v", err)
 			} else {
-				framework.Failf("Timed out. Cleaning up. Details:\n%s", string(body))
+				Failf("Timed out. Cleaning up. Details:\n%s", string(body))
 			}
 		}
 		Expect(string(body)).To(Equal("pass"))
 	})
 
-	framework.KubeDescribe("Granular Checks", func() {
-
-		connectivityTimeout := 10
+	// Marked with [Flaky] until the tests prove themselves stable.
+	Describe("[Flaky] Granular Checks", func() {
 
 		It("should function for pod communication on a single node", func() {
 
 			By("Picking a node")
-			nodes, err := framework.GetReadyNodes(f)
-			framework.ExpectNoError(err)
+			nodes, err := GetReadyNodes(f)
+			expectNoError(err)
 			node := nodes.Items[0]
 
 			By("Creating a webserver pod")
 			podName := "same-node-webserver"
 			defer f.Client.Pods(f.Namespace.Name).Delete(podName, nil)
-			ip := framework.LaunchWebserverPod(f, podName, node.Name)
+			ip := LaunchWebserverPod(f, podName, node.Name)
 
 			By("Checking that the webserver is accessible from a pod on the same node")
-			framework.ExpectNoError(framework.CheckConnectivityToHost(f, node.Name, "same-node-wget", ip, connectivityTimeout))
+			expectNoError(CheckConnectivityToHost(f, node.Name, "same-node-wget", ip))
 		})
 
 		It("should function for pod communication between nodes", func() {
@@ -238,11 +236,11 @@ var _ = framework.KubeDescribe("Networking", func() {
 			podClient := f.Client.Pods(f.Namespace.Name)
 
 			By("Picking multiple nodes")
-			nodes, err := framework.GetReadyNodes(f)
-			framework.ExpectNoError(err)
+			nodes, err := GetReadyNodes(f)
+			expectNoError(err)
 
 			if len(nodes.Items) == 1 {
-				framework.Skipf("The test requires two Ready nodes on %s, but found just one.", framework.TestContext.Provider)
+				Skipf("The test requires two Ready nodes on %s, but found just one.", testContext.Provider)
 			}
 
 			node1 := nodes.Items[0]
@@ -251,15 +249,15 @@ var _ = framework.KubeDescribe("Networking", func() {
 			By("Creating a webserver pod")
 			podName := "different-node-webserver"
 			defer podClient.Delete(podName, nil)
-			ip := framework.LaunchWebserverPod(f, podName, node1.Name)
+			ip := LaunchWebserverPod(f, podName, node1.Name)
 
 			By("Checking that the webserver is accessible from a pod on a different node")
-			framework.ExpectNoError(framework.CheckConnectivityToHost(f, node2.Name, "different-node-wget", ip, connectivityTimeout))
+			expectNoError(CheckConnectivityToHost(f, node2.Name, "different-node-wget", ip))
 		})
 	})
 })
 
-func LaunchNetTestPodPerNode(f *framework.Framework, nodes *api.NodeList, name, version string) []string {
+func LaunchNetTestPodPerNode(f *Framework, nodes *api.NodeList, name, version string) []string {
 	podNames := []string{}
 
 	totalPods := len(nodes.Items)
@@ -293,7 +291,7 @@ func LaunchNetTestPodPerNode(f *framework.Framework, nodes *api.NodeList, name, 
 			},
 		})
 		Expect(err).NotTo(HaveOccurred())
-		framework.Logf("Created pod %s on node %s", pod.ObjectMeta.Name, node.Name)
+		Logf("Created pod %s on node %s", pod.ObjectMeta.Name, node.Name)
 		podNames = append(podNames, pod.ObjectMeta.Name)
 	}
 	return podNames

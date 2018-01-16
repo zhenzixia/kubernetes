@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"testing"
 
-	dockercontainer "github.com/docker/engine-api/types/container"
+	docker "github.com/fsouza/go-dockerclient"
 	"k8s.io/kubernetes/pkg/api"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
 )
@@ -35,28 +35,28 @@ func TestModifyContainerConfig(t *testing.T) {
 		name     string
 		podSc    *api.PodSecurityContext
 		sc       *api.SecurityContext
-		expected *dockercontainer.Config
+		expected *docker.Config
 	}{
 		{
 			name: "container.SecurityContext.RunAsUser set",
 			sc: &api.SecurityContext{
 				RunAsUser: &uid,
 			},
-			expected: &dockercontainer.Config{
+			expected: &docker.Config{
 				User: strconv.FormatInt(uid, 10),
 			},
 		},
 		{
 			name:     "no RunAsUser value set",
 			sc:       &api.SecurityContext{},
-			expected: &dockercontainer.Config{},
+			expected: &docker.Config{},
 		},
 		{
 			name: "pod.Spec.SecurityContext.RunAsUser set",
 			podSc: &api.PodSecurityContext{
 				RunAsUser: &uid,
 			},
-			expected: &dockercontainer.Config{
+			expected: &docker.Config{
 				User: strconv.FormatInt(uid, 10),
 			},
 		},
@@ -68,7 +68,7 @@ func TestModifyContainerConfig(t *testing.T) {
 			sc: &api.SecurityContext{
 				RunAsUser: &overrideUid,
 			},
-			expected: &dockercontainer.Config{
+			expected: &docker.Config{
 				User: strconv.FormatInt(overrideUid, 10),
 			},
 		},
@@ -79,7 +79,7 @@ func TestModifyContainerConfig(t *testing.T) {
 	for _, tc := range cases {
 		pod := &api.Pod{Spec: api.PodSpec{SecurityContext: tc.podSc}}
 		dummyContainer.SecurityContext = tc.sc
-		dockerCfg := &dockercontainer.Config{}
+		dockerCfg := &docker.Config{}
 
 		provider.ModifyContainerConfig(pod, dummyContainer, dockerCfg)
 
@@ -93,16 +93,16 @@ func TestModifyHostConfig(t *testing.T) {
 	priv := true
 	setPrivSC := &api.SecurityContext{}
 	setPrivSC.Privileged = &priv
-	setPrivHC := &dockercontainer.HostConfig{
+	setPrivHC := &docker.HostConfig{
 		Privileged: true,
 	}
 
-	setCapsHC := &dockercontainer.HostConfig{
+	setCapsHC := &docker.HostConfig{
 		CapAdd:  []string{"addCapA", "addCapB"},
 		CapDrop: []string{"dropCapA", "dropCapB"},
 	}
 
-	setSELinuxHC := &dockercontainer.HostConfig{}
+	setSELinuxHC := &docker.HostConfig{}
 	setSELinuxHC.SecurityOpt = []string{
 		fmt.Sprintf("%s:%s", dockerLabelUser, "user"),
 		fmt.Sprintf("%s:%s", dockerLabelRole, "role"),
@@ -117,7 +117,7 @@ func TestModifyHostConfig(t *testing.T) {
 		name     string
 		podSc    *api.PodSecurityContext
 		sc       *api.SecurityContext
-		expected *dockercontainer.HostConfig
+		expected *docker.HostConfig
 	}{
 		{
 			name:     "fully set container.SecurityContext",
@@ -164,7 +164,7 @@ func TestModifyHostConfig(t *testing.T) {
 	for _, tc := range cases {
 		pod := &api.Pod{Spec: api.PodSpec{SecurityContext: tc.podSc}}
 		dummyContainer.SecurityContext = tc.sc
-		dockerCfg := &dockercontainer.HostConfig{}
+		dockerCfg := &docker.HostConfig{}
 
 		provider.ModifyHostConfig(pod, dummyContainer, dockerCfg)
 
@@ -187,7 +187,7 @@ func TestModifyHostConfigPodSecurityContext(t *testing.T) {
 
 	testCases := map[string]struct {
 		securityContext *api.PodSecurityContext
-		expected        *dockercontainer.HostConfig
+		expected        *docker.HostConfig
 	}{
 		"nil": {
 			securityContext: nil,
@@ -219,7 +219,7 @@ func TestModifyHostConfigPodSecurityContext(t *testing.T) {
 
 	for k, v := range testCases {
 		dummyPod.Spec.SecurityContext = v.securityContext
-		dockerCfg := &dockercontainer.HostConfig{}
+		dockerCfg := &docker.HostConfig{}
 		provider.ModifyHostConfig(dummyPod, dummyContainer, dockerCfg)
 		if !reflect.DeepEqual(v.expected, dockerCfg) {
 			t.Errorf("unexpected modification of host config for %s.  Expected: %#v Got: %#v", k, v.expected, dockerCfg)
@@ -301,8 +301,8 @@ func inputSELinuxOptions() *api.SELinuxOptions {
 	}
 }
 
-func fullValidHostConfig() *dockercontainer.HostConfig {
-	return &dockercontainer.HostConfig{
+func fullValidHostConfig() *docker.HostConfig {
+	return &docker.HostConfig{
 		Privileged: true,
 		CapAdd:     []string{"addCapA", "addCapB"},
 		CapDrop:    []string{"dropCapA", "dropCapB"},

@@ -264,7 +264,8 @@ func TestRoundTripAndNewConnection(t *testing.T) {
 			stream := <-streamCh
 			io.Copy(stream, stream)
 		}))
-		defer server.Close()
+		// TODO: Uncomment when fix #19254
+		// defer server.Close()
 
 		serverURL, err := url.Parse(server.URL)
 		if err != nil {
@@ -304,7 +305,8 @@ func TestRoundTripAndNewConnection(t *testing.T) {
 				proxyURL.User = testCase.proxyAuth
 				return proxyURL, nil
 			}
-			defer proxy.Close()
+			// TODO: Uncomment when fix #19254
+			// defer proxy.Close()
 		}
 
 		client := &http.Client{Transport: spdyTransport}

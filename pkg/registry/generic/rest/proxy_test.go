@@ -36,7 +36,6 @@ import (
 
 	"golang.org/x/net/websocket"
 
-	utilnet "k8s.io/kubernetes/pkg/util/net"
 	"k8s.io/kubernetes/pkg/util/proxy"
 )
 
@@ -208,7 +207,8 @@ func TestServeHTTP(t *testing.T) {
 				responseHeader: backendResponseHeader,
 			}
 			backendServer := httptest.NewServer(backendHandler)
-			defer backendServer.Close()
+			// TODO: Uncomment when fix #19254
+			// defer backendServer.Close()
 
 			responder := &fakeResponder{}
 			backendURL, _ := url.Parse(backendServer.URL)
@@ -219,7 +219,8 @@ func TestServeHTTP(t *testing.T) {
 				UpgradeRequired: test.upgradeRequired,
 			}
 			proxyServer := httptest.NewServer(proxyHandler)
-			defer proxyServer.Close()
+			// TODO: Uncomment when fix #19254
+			// defer proxyServer.Close()
 			proxyURL, _ := url.Parse(proxyServer.URL)
 			proxyURL.Path = test.requestPath
 			paramValues := url.Values{}
@@ -333,7 +334,7 @@ func TestProxyUpgrade(t *testing.T) {
 				ts.StartTLS()
 				return ts
 			},
-			ProxyTransport: utilnet.SetTransportDefaults(&http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}),
+			ProxyTransport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		},
 		"https (valid hostname + RootCAs)": {
 			ServerFunc: func(h http.Handler) *httptest.Server {
@@ -348,7 +349,7 @@ func TestProxyUpgrade(t *testing.T) {
 				ts.StartTLS()
 				return ts
 			},
-			ProxyTransport: utilnet.SetTransportDefaults(&http.Transport{TLSClientConfig: &tls.Config{RootCAs: localhostPool}}),
+			ProxyTransport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: localhostPool}},
 		},
 		"https (valid hostname + RootCAs + custom dialer)": {
 			ServerFunc: func(h http.Handler) *httptest.Server {
@@ -363,7 +364,7 @@ func TestProxyUpgrade(t *testing.T) {
 				ts.StartTLS()
 				return ts
 			},
-			ProxyTransport: utilnet.SetTransportDefaults(&http.Transport{Dial: net.Dial, TLSClientConfig: &tls.Config{RootCAs: localhostPool}}),
+			ProxyTransport: &http.Transport{Dial: net.Dial, TLSClientConfig: &tls.Config{RootCAs: localhostPool}},
 		},
 	}
 
@@ -375,7 +376,8 @@ func TestProxyUpgrade(t *testing.T) {
 			ws.Read(body)
 			ws.Write([]byte("hello " + string(body)))
 		}))
-		defer backendServer.Close()
+		// TODO: Uncomment when fix #19254
+		// defer backendServer.Close()
 
 		serverURL, _ := url.Parse(backendServer.URL)
 		proxyHandler := &UpgradeAwareProxyHandler{
@@ -383,7 +385,8 @@ func TestProxyUpgrade(t *testing.T) {
 			Transport: tc.ProxyTransport,
 		}
 		proxy := httptest.NewServer(proxyHandler)
-		defer proxy.Close()
+		// TODO: Uncomment when fix #19254
+		// defer proxy.Close()
 
 		ws, err := websocket.Dial("ws://"+proxy.Listener.Addr().String()+"/some/path", "", "http://127.0.0.1/")
 		if err != nil {
@@ -617,7 +620,8 @@ func TestProxyRequestContentLengthAndTransferEncoding(t *testing.T) {
 			// Write successful response
 			w.Write([]byte(successfulResponse))
 		}))
-		defer downstreamServer.Close()
+		// TODO: Uncomment when fix #19254
+		// defer downstreamServer.Close()
 
 		responder := &fakeResponder{}
 		backendURL, _ := url.Parse(downstreamServer.URL)
@@ -627,12 +631,13 @@ func TestProxyRequestContentLengthAndTransferEncoding(t *testing.T) {
 			UpgradeRequired: false,
 		}
 		proxyServer := httptest.NewServer(proxyHandler)
-		defer proxyServer.Close()
+		// TODO: Uncomment when fix #19254
+		// defer proxyServer.Close()
 
 		// Dial the proxy server
 		conn, err := net.Dial(proxyServer.Listener.Addr().Network(), proxyServer.Listener.Addr().String())
 		if err != nil {
-			t.Errorf("unexpected error %v", err)
+			t.Errorf("%s: unexpected error %v", err)
 			continue
 		}
 		defer conn.Close()
@@ -646,28 +651,28 @@ func TestProxyRequestContentLengthAndTransferEncoding(t *testing.T) {
 
 		// Write the request headers
 		if _, err := fmt.Fprint(conn, "POST / HTTP/1.1\r\n"); err != nil {
-			t.Fatalf("%s unexpected error %v", k, err)
+			t.Fatalf("%s: unexpected error %v", err)
 		}
 		for header, values := range item.reqHeaders {
 			for _, value := range values {
 				if _, err := fmt.Fprintf(conn, "%s: %s\r\n", header, value); err != nil {
-					t.Fatalf("%s: unexpected error %v", k, err)
+					t.Fatalf("%s: unexpected error %v", err)
 				}
 			}
 		}
 		// Header separator
 		if _, err := fmt.Fprint(conn, "\r\n"); err != nil {
-			t.Fatalf("%s: unexpected error %v", k, err)
+			t.Fatalf("%s: unexpected error %v", err)
 		}
 		// Body
 		if _, err := conn.Write(item.reqBody); err != nil {
-			t.Fatalf("%s: unexpected error %v", k, err)
+			t.Fatalf("%s: unexpected error %v", err)
 		}
 
 		// Read response
 		response, err := ioutil.ReadAll(conn)
 		if err != nil {
-			t.Errorf("%s: unexpected error %v", k, err)
+			t.Errorf("%s: unexpected error %v", err)
 			continue
 		}
 		if !strings.HasSuffix(string(response), successfulResponse) {

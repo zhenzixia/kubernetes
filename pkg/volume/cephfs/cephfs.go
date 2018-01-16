@@ -65,7 +65,7 @@ func (plugin *cephfsPlugin) GetAccessModes() []api.PersistentVolumeAccessMode {
 	}
 }
 
-func (plugin *cephfsPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
+func (plugin *cephfsPlugin) NewBuilder(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Builder, error) {
 	cephvs := plugin.getVolumeSource(spec)
 	secret := ""
 	if cephvs.SecretRef != nil {
@@ -84,10 +84,10 @@ func (plugin *cephfsPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, _ volume
 			glog.V(1).Infof("found ceph secret info: %s", name)
 		}
 	}
-	return plugin.newMounterInternal(spec, pod.UID, plugin.host.GetMounter(), secret)
+	return plugin.newBuilderInternal(spec, pod.UID, plugin.host.GetMounter(), secret)
 }
 
-func (plugin *cephfsPlugin) newMounterInternal(spec *volume.Spec, podUID types.UID, mounter mount.Interface, secret string) (volume.Mounter, error) {
+func (plugin *cephfsPlugin) newBuilderInternal(spec *volume.Spec, podUID types.UID, mounter mount.Interface, secret string) (volume.Builder, error) {
 	cephvs := plugin.getVolumeSource(spec)
 	id := cephvs.User
 	if id == "" {
@@ -105,7 +105,7 @@ func (plugin *cephfsPlugin) newMounterInternal(spec *volume.Spec, podUID types.U
 		secret_file = "/etc/ceph/" + id + ".secret"
 	}
 
-	return &cephfsMounter{
+	return &cephfsBuilder{
 		cephfs: &cephfs{
 			podUID:      podUID,
 			volName:     spec.Name(),
@@ -120,12 +120,12 @@ func (plugin *cephfsPlugin) newMounterInternal(spec *volume.Spec, podUID types.U
 	}, nil
 }
 
-func (plugin *cephfsPlugin) NewUnmounter(volName string, podUID types.UID) (volume.Unmounter, error) {
-	return plugin.newUnmounterInternal(volName, podUID, plugin.host.GetMounter())
+func (plugin *cephfsPlugin) NewCleaner(volName string, podUID types.UID) (volume.Cleaner, error) {
+	return plugin.newCleanerInternal(volName, podUID, plugin.host.GetMounter())
 }
 
-func (plugin *cephfsPlugin) newUnmounterInternal(volName string, podUID types.UID, mounter mount.Interface) (volume.Unmounter, error) {
-	return &cephfsUnmounter{
+func (plugin *cephfsPlugin) newCleanerInternal(volName string, podUID types.UID, mounter mount.Interface) (volume.Cleaner, error) {
+	return &cephfsCleaner{
 		cephfs: &cephfs{
 			podUID:  podUID,
 			volName: volName,
@@ -157,13 +157,13 @@ type cephfs struct {
 	volume.MetricsNil
 }
 
-type cephfsMounter struct {
+type cephfsBuilder struct {
 	*cephfs
 }
 
-var _ volume.Mounter = &cephfsMounter{}
+var _ volume.Builder = &cephfsBuilder{}
 
-func (cephfsVolume *cephfsMounter) GetAttributes() volume.Attributes {
+func (cephfsVolume *cephfsBuilder) GetAttributes() volume.Attributes {
 	return volume.Attributes{
 		ReadOnly:        cephfsVolume.readonly,
 		Managed:         false,
@@ -172,12 +172,12 @@ func (cephfsVolume *cephfsMounter) GetAttributes() volume.Attributes {
 }
 
 // SetUp attaches the disk and bind mounts to the volume path.
-func (cephfsVolume *cephfsMounter) SetUp(fsGroup *int64) error {
+func (cephfsVolume *cephfsBuilder) SetUp(fsGroup *int64) error {
 	return cephfsVolume.SetUpAt(cephfsVolume.GetPath(), fsGroup)
 }
 
 // SetUpAt attaches the disk and bind mounts to the volume path.
-func (cephfsVolume *cephfsMounter) SetUpAt(dir string, fsGroup *int64) error {
+func (cephfsVolume *cephfsBuilder) SetUpAt(dir string, fsGroup *int64) error {
 	notMnt, err := cephfsVolume.mounter.IsLikelyNotMountPoint(dir)
 	glog.V(4).Infof("CephFS mount set up: %s %v %v", dir, !notMnt, err)
 	if err != nil && !os.IsNotExist(err) {
@@ -199,19 +199,19 @@ func (cephfsVolume *cephfsMounter) SetUpAt(dir string, fsGroup *int64) error {
 	return err
 }
 
-type cephfsUnmounter struct {
+type cephfsCleaner struct {
 	*cephfs
 }
 
-var _ volume.Unmounter = &cephfsUnmounter{}
+var _ volume.Cleaner = &cephfsCleaner{}
 
 // TearDown unmounts the bind mount
-func (cephfsVolume *cephfsUnmounter) TearDown() error {
+func (cephfsVolume *cephfsCleaner) TearDown() error {
 	return cephfsVolume.TearDownAt(cephfsVolume.GetPath())
 }
 
 // TearDownAt unmounts the bind mount
-func (cephfsVolume *cephfsUnmounter) TearDownAt(dir string) error {
+func (cephfsVolume *cephfsCleaner) TearDownAt(dir string) error {
 	return cephfsVolume.cleanup(dir)
 }
 

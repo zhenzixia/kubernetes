@@ -39,7 +39,7 @@ import (
 )
 
 // Controller is the controller manager for the core bootstrap Kubernetes controller
-// loops, which manage creating the "kubernetes" service, the "default" and "kube-system"
+// loops, which manage creating the "kubernetes" service, the "default"
 // namespace, and provide the IP repair check on service IPs
 type Controller struct {
 	NamespaceRegistry namespace.Registry
@@ -57,9 +57,6 @@ type Controller struct {
 
 	EndpointRegistry endpoint.Registry
 	EndpointInterval time.Duration
-
-	SystemNamespaces         []string
-	SystemNamespacesInterval time.Duration
 
 	PublicIP net.IP
 
@@ -97,20 +94,8 @@ func (c *Controller) Start() {
 		glog.Errorf("Unable to perform initial Kubernetes service initialization: %v", err)
 	}
 
-	c.runner = util.NewRunner(c.RunKubernetesNamespaces, c.RunKubernetesService, repairClusterIPs.RunUntil, repairNodePorts.RunUntil)
+	c.runner = util.NewRunner(c.RunKubernetesService, repairClusterIPs.RunUntil, repairNodePorts.RunUntil)
 	c.runner.Start()
-}
-
-// RunKubernetesNamespaces periodically makes sure that all internal namespaces exist
-func (c *Controller) RunKubernetesNamespaces(ch chan struct{}) {
-	wait.Until(func() {
-		// Loop the system namespace list, and create them if they do not exist
-		for _, ns := range c.SystemNamespaces {
-			if err := c.CreateNamespaceIfNeeded(ns); err != nil {
-				runtime.HandleError(fmt.Errorf("unable to create required kubernetes system namespace %s: %v", ns, err))
-			}
-		}
-	}, c.SystemNamespacesInterval, ch)
 }
 
 // RunKubernetesService periodically updates the kubernetes service
@@ -147,10 +132,10 @@ func (c *Controller) UpdateKubernetesService(reconcile bool) error {
 	return nil
 }
 
-// CreateNamespaceIfNeeded will create a namespace if it doesn't already exist
+// CreateNamespaceIfNeeded will create the namespace that contains the master services if it doesn't already exist
 func (c *Controller) CreateNamespaceIfNeeded(ns string) error {
 	ctx := api.NewContext()
-	if _, err := c.NamespaceRegistry.GetNamespace(ctx, ns); err == nil {
+	if _, err := c.NamespaceRegistry.GetNamespace(ctx, api.NamespaceDefault); err == nil {
 		// the namespace already exists
 		return nil
 	}
@@ -173,12 +158,12 @@ func createPortAndServiceSpec(servicePort int, nodePort int, servicePortName str
 	//Use the Cluster IP type for the service port if NodePort isn't provided.
 	//Otherwise, we will be binding the master service to a NodePort.
 	servicePorts := []api.ServicePort{{Protocol: api.ProtocolTCP,
-		Port:       int32(servicePort),
+		Port:       servicePort,
 		Name:       servicePortName,
 		TargetPort: intstr.FromInt(servicePort)}}
 	serviceType := api.ServiceTypeClusterIP
 	if nodePort > 0 {
-		servicePorts[0].NodePort = int32(nodePort)
+		servicePorts[0].NodePort = nodePort
 		serviceType = api.ServiceTypeNodePort
 	}
 	if extraServicePorts != nil {
@@ -190,7 +175,7 @@ func createPortAndServiceSpec(servicePort int, nodePort int, servicePortName str
 // createEndpointPortSpec creates an array of endpoint ports
 func createEndpointPortSpec(endpointPort int, endpointPortName string, extraEndpointPorts []api.EndpointPort) []api.EndpointPort {
 	endpointPorts := []api.EndpointPort{{Protocol: api.ProtocolTCP,
-		Port: int32(endpointPort),
+		Port: endpointPort,
 		Name: endpointPortName,
 	}}
 	if extraEndpointPorts != nil {
@@ -225,7 +210,7 @@ func (c *Controller) CreateOrUpdateMasterServiceIfNeeded(serviceName string, ser
 			// maintained by this code, not by the pod selector
 			Selector:        nil,
 			ClusterIP:       serviceIP.String(),
-			SessionAffinity: api.ServiceAffinityClientIP,
+			SessionAffinity: api.ServiceAffinityNone,
 			Type:            serviceType,
 		},
 	}

@@ -65,7 +65,7 @@ func addPods(store cache.Store, namespace string, nPods int, nPorts int, nNotRea
 		}
 		for j := 0; j < nPorts; j++ {
 			p.Spec.Containers[0].Ports = append(p.Spec.Containers[0].Ports,
-				api.ContainerPort{Name: fmt.Sprintf("port%d", i), ContainerPort: int32(8080 + j)})
+				api.ContainerPort{Name: fmt.Sprintf("port%d", i), ContainerPort: 8080 + j})
 		}
 		store.Add(p)
 	}
@@ -105,9 +105,10 @@ func TestSyncEndpointsItemsPreserveNoSelector(t *testing.T) {
 				Ports:     []api.EndpointPort{{Port: 1000}},
 			}},
 		}})
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	endpoints := NewEndpointControllerFromClient(client, controller.NoResyncPeriodFunc)
+	endpoints := NewEndpointController(client, controller.NoResyncPeriodFunc)
 	endpoints.podStoreSynced = alwaysReady
 	endpoints.serviceStore.Store.Add(&api.Service{
 		ObjectMeta: api.ObjectMeta{Name: "foo", Namespace: ns},
@@ -138,9 +139,10 @@ func TestCheckLeftoverEndpoints(t *testing.T) {
 				}},
 			}},
 		}})
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	endpoints := NewEndpointControllerFromClient(client, controller.NoResyncPeriodFunc)
+	endpoints := NewEndpointController(client, controller.NoResyncPeriodFunc)
 	endpoints.podStoreSynced = alwaysReady
 	endpoints.checkLeftoverEndpoints()
 
@@ -167,12 +169,13 @@ func TestSyncEndpointsProtocolTCP(t *testing.T) {
 				Ports:     []api.EndpointPort{{Port: 1000, Protocol: "TCP"}},
 			}},
 		}})
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	endpoints := NewEndpointControllerFromClient(client, controller.NoResyncPeriodFunc)
+	endpoints := NewEndpointController(client, controller.NoResyncPeriodFunc)
 	endpoints.podStoreSynced = alwaysReady
 
-	addPods(endpoints.podStore.Indexer, ns, 1, 1, 0)
+	addPods(endpoints.podStore.Store, ns, 1, 1, 0)
 	endpoints.serviceStore.Store.Add(&api.Service{
 		ObjectMeta: api.ObjectMeta{Name: "foo", Namespace: ns},
 		Spec: api.ServiceSpec{
@@ -210,11 +213,12 @@ func TestSyncEndpointsProtocolUDP(t *testing.T) {
 				Ports:     []api.EndpointPort{{Port: 1000, Protocol: "UDP"}},
 			}},
 		}})
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	endpoints := NewEndpointControllerFromClient(client, controller.NoResyncPeriodFunc)
+	endpoints := NewEndpointController(client, controller.NoResyncPeriodFunc)
 	endpoints.podStoreSynced = alwaysReady
-	addPods(endpoints.podStore.Indexer, ns, 1, 1, 0)
+	addPods(endpoints.podStore.Store, ns, 1, 1, 0)
 	endpoints.serviceStore.Store.Add(&api.Service{
 		ObjectMeta: api.ObjectMeta{Name: "foo", Namespace: ns},
 		Spec: api.ServiceSpec{
@@ -249,11 +253,12 @@ func TestSyncEndpointsItemsEmptySelectorSelectsAll(t *testing.T) {
 			},
 			Subsets: []api.EndpointSubset{},
 		}})
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	endpoints := NewEndpointControllerFromClient(client, controller.NoResyncPeriodFunc)
+	endpoints := NewEndpointController(client, controller.NoResyncPeriodFunc)
 	endpoints.podStoreSynced = alwaysReady
-	addPods(endpoints.podStore.Indexer, ns, 1, 1, 0)
+	addPods(endpoints.podStore.Store, ns, 1, 1, 0)
 	endpoints.serviceStore.Store.Add(&api.Service{
 		ObjectMeta: api.ObjectMeta{Name: "foo", Namespace: ns},
 		Spec: api.ServiceSpec{
@@ -287,11 +292,12 @@ func TestSyncEndpointsItemsEmptySelectorSelectsAllNotReady(t *testing.T) {
 			},
 			Subsets: []api.EndpointSubset{},
 		}})
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	endpoints := NewEndpointControllerFromClient(client, controller.NoResyncPeriodFunc)
+	endpoints := NewEndpointController(client, controller.NoResyncPeriodFunc)
 	endpoints.podStoreSynced = alwaysReady
-	addPods(endpoints.podStore.Indexer, ns, 0, 1, 1)
+	addPods(endpoints.podStore.Store, ns, 0, 1, 1)
 	endpoints.serviceStore.Store.Add(&api.Service{
 		ObjectMeta: api.ObjectMeta{Name: "foo", Namespace: ns},
 		Spec: api.ServiceSpec{
@@ -325,11 +331,12 @@ func TestSyncEndpointsItemsEmptySelectorSelectsAllMixed(t *testing.T) {
 			},
 			Subsets: []api.EndpointSubset{},
 		}})
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	endpoints := NewEndpointControllerFromClient(client, controller.NoResyncPeriodFunc)
+	endpoints := NewEndpointController(client, controller.NoResyncPeriodFunc)
 	endpoints.podStoreSynced = alwaysReady
-	addPods(endpoints.podStore.Indexer, ns, 1, 1, 1)
+	addPods(endpoints.podStore.Store, ns, 1, 1, 1)
 	endpoints.serviceStore.Store.Add(&api.Service{
 		ObjectMeta: api.ObjectMeta{Name: "foo", Namespace: ns},
 		Spec: api.ServiceSpec{
@@ -367,11 +374,12 @@ func TestSyncEndpointsItemsPreexisting(t *testing.T) {
 				Ports:     []api.EndpointPort{{Port: 1000}},
 			}},
 		}})
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	endpoints := NewEndpointControllerFromClient(client, controller.NoResyncPeriodFunc)
+	endpoints := NewEndpointController(client, controller.NoResyncPeriodFunc)
 	endpoints.podStoreSynced = alwaysReady
-	addPods(endpoints.podStore.Indexer, ns, 1, 1, 0)
+	addPods(endpoints.podStore.Store, ns, 1, 1, 0)
 	endpoints.serviceStore.Store.Add(&api.Service{
 		ObjectMeta: api.ObjectMeta{Name: "foo", Namespace: ns},
 		Spec: api.ServiceSpec{
@@ -408,11 +416,12 @@ func TestSyncEndpointsItemsPreexistingIdentical(t *testing.T) {
 				Ports:     []api.EndpointPort{{Port: 8080, Protocol: "TCP"}},
 			}},
 		}})
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	endpoints := NewEndpointControllerFromClient(client, controller.NoResyncPeriodFunc)
+	endpoints := NewEndpointController(client, controller.NoResyncPeriodFunc)
 	endpoints.podStoreSynced = alwaysReady
-	addPods(endpoints.podStore.Indexer, api.NamespaceDefault, 1, 1, 0)
+	addPods(endpoints.podStore.Store, api.NamespaceDefault, 1, 1, 0)
 	endpoints.serviceStore.Store.Add(&api.Service{
 		ObjectMeta: api.ObjectMeta{Name: "foo", Namespace: api.NamespaceDefault},
 		Spec: api.ServiceSpec{
@@ -428,12 +437,13 @@ func TestSyncEndpointsItems(t *testing.T) {
 	ns := "other"
 	testServer, endpointsHandler := makeTestServer(t, ns,
 		serverResponse{http.StatusOK, &api.Endpoints{}})
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	endpoints := NewEndpointControllerFromClient(client, controller.NoResyncPeriodFunc)
+	endpoints := NewEndpointController(client, controller.NoResyncPeriodFunc)
 	endpoints.podStoreSynced = alwaysReady
-	addPods(endpoints.podStore.Indexer, ns, 3, 2, 0)
-	addPods(endpoints.podStore.Indexer, "blah", 5, 2, 0) // make sure these aren't found!
+	addPods(endpoints.podStore.Store, ns, 3, 2, 0)
+	addPods(endpoints.podStore.Store, "blah", 5, 2, 0) // make sure these aren't found!
 	endpoints.serviceStore.Store.Add(&api.Service{
 		ObjectMeta: api.ObjectMeta{Name: "foo", Namespace: ns},
 		Spec: api.ServiceSpec{
@@ -471,11 +481,12 @@ func TestSyncEndpointsItemsWithLabels(t *testing.T) {
 	ns := "other"
 	testServer, endpointsHandler := makeTestServer(t, ns,
 		serverResponse{http.StatusOK, &api.Endpoints{}})
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	endpoints := NewEndpointControllerFromClient(client, controller.NoResyncPeriodFunc)
+	endpoints := NewEndpointController(client, controller.NoResyncPeriodFunc)
 	endpoints.podStoreSynced = alwaysReady
-	addPods(endpoints.podStore.Indexer, ns, 3, 2, 0)
+	addPods(endpoints.podStore.Store, ns, 3, 2, 0)
 	serviceLabels := map[string]string{"foo": "bar"}
 	endpoints.serviceStore.Store.Add(&api.Service{
 		ObjectMeta: api.ObjectMeta{
@@ -532,11 +543,12 @@ func TestSyncEndpointsItemsPreexistingLabelsChange(t *testing.T) {
 				Ports:     []api.EndpointPort{{Port: 1000}},
 			}},
 		}})
-	defer testServer.Close()
+	// TODO: Uncomment when fix #19254
+	// defer testServer.Close()
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: testServer.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	endpoints := NewEndpointControllerFromClient(client, controller.NoResyncPeriodFunc)
+	endpoints := NewEndpointController(client, controller.NoResyncPeriodFunc)
 	endpoints.podStoreSynced = alwaysReady
-	addPods(endpoints.podStore.Indexer, ns, 1, 1, 0)
+	addPods(endpoints.podStore.Store, ns, 1, 1, 0)
 	serviceLabels := map[string]string{"baz": "blah"}
 	endpoints.serviceStore.Store.Add(&api.Service{
 		ObjectMeta: api.ObjectMeta{

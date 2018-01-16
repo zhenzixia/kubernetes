@@ -32,7 +32,7 @@ type genClientForType struct {
 	outputPackage string
 	group         string
 	typeToMatch   *types.Type
-	imports       namer.ImportTracker
+	imports       *generator.ImportTracker
 }
 
 var _ generator.Generator = &genClientForType{}

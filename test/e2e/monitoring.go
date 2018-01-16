@@ -20,22 +20,22 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"time"
 
 	influxdb "github.com/influxdb/influxdb/client"
 	"k8s.io/kubernetes/pkg/api"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 )
 
-var _ = framework.KubeDescribe("Monitoring", func() {
-	f := framework.NewDefaultFramework("monitoring")
+var _ = Describe("Monitoring", func() {
+	f := NewDefaultFramework("monitoring")
 
 	BeforeEach(func() {
-		framework.SkipUnlessProviderIs("gce")
+		SkipUnlessProviderIs("gce")
 	})
 
 	It("should verify monitoring pods and all cluster nodes are available on influxdb using heapster.", func() {
@@ -191,7 +191,7 @@ func getInfluxdbData(c *client.Client, query string, tag string) (map[string]boo
 		return nil, fmt.Errorf("expected exactly one series for query %q.", query)
 	}
 	if len(response.Results[0].Series[0].Columns) != 1 {
-		framework.Failf("Expected one column for query %q. Found %v", query, response.Results[0].Series[0].Columns)
+		Failf("Expected one column for query %q. Found %v", query, response.Results[0].Series[0].Columns)
 	}
 	result := map[string]bool{}
 	for _, value := range response.Results[0].Series[0].Values {
@@ -217,34 +217,40 @@ func validatePodsAndNodes(c *client.Client, expectedPods, expectedNodes []string
 	pods, err := getInfluxdbData(c, podlistQuery, "pod_id")
 	if err != nil {
 		// We don't fail the test here because the influxdb service might still not be running.
-		framework.Logf("failed to query list of pods from influxdb. Query: %q, Err: %v", podlistQuery, err)
+		Logf("failed to query list of pods from influxdb. Query: %q, Err: %v", podlistQuery, err)
 		return false
 	}
 	nodes, err := getInfluxdbData(c, nodelistQuery, "hostname")
 	if err != nil {
-		framework.Logf("failed to query list of nodes from influxdb. Query: %q, Err: %v", nodelistQuery, err)
+		Logf("failed to query list of nodes from influxdb. Query: %q, Err: %v", nodelistQuery, err)
 		return false
 	}
 	if !expectedItemsExist(expectedPods, pods) {
-		framework.Logf("failed to find all expected Pods.\nExpected: %v\nActual: %v", expectedPods, pods)
+		Logf("failed to find all expected Pods.\nExpected: %v\nActual: %v", expectedPods, pods)
 		return false
 	}
 	if !expectedItemsExist(expectedNodes, nodes) {
-		framework.Logf("failed to find all expected Nodes.\nExpected: %v\nActual: %v", expectedNodes, nodes)
+		Logf("failed to find all expected Nodes.\nExpected: %v\nActual: %v", expectedNodes, nodes)
 		return false
 	}
 	return true
 }
 
+func getMasterHost() string {
+	masterUrl, err := url.Parse(testContext.Host)
+	expectNoError(err)
+	return masterUrl.Host
+}
+
 func testMonitoringUsingHeapsterInfluxdb(c *client.Client) {
 	// Check if heapster pods and services are up.
 	expectedPods, err := verifyExpectedRcsExistAndGetExpectedPods(c)
-	framework.ExpectNoError(err)
-	framework.ExpectNoError(expectedServicesExist(c))
+	expectNoError(err)
+	expectNoError(expectedServicesExist(c))
 	// TODO: Wait for all pods and services to be running.
 
 	expectedNodes, err := getAllNodesInCluster(c)
-	framework.ExpectNoError(err)
+	expectNoError(err)
 	startTime := time.Now()
 	for {
 		if validatePodsAndNodes(c, expectedPods, expectedNodes) {
@@ -257,7 +263,7 @@ func testMonitoringUsingHeapsterInfluxdb(c *client.Client) {
 		}
 		time.Sleep(sleepBetweenAttempts)
 	}
-	framework.Failf("monitoring using heapster and influxdb test failed")
+	Failf("monitoring using heapster and influxdb test failed")
 }
 
 func printDebugInfo(c *client.Client) {
@@ -265,10 +271,10 @@ func printDebugInfo(c *client.Client) {
 	options := api.ListOptions{LabelSelector: set.AsSelector()}
 	podList, err := c.Pods(api.NamespaceSystem).List(options)
 	if err != nil {
-		framework.Logf("Error while listing pods %v", err)
+		Logf("Error while listing pods %v", err)
 		return
 	}
 	for _, pod := range podList.Items {
-		framework.Logf("Kubectl output:\n%v", framework.RunKubectlOrDie("log", pod.Name, "--namespace=kube-system"))
+		Logf("Kubectl output:\n%v", runKubectlOrDie("log", pod.Name, "--namespace=kube-system"))
 	}
 }

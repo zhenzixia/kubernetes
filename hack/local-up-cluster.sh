@@ -37,8 +37,9 @@ DNS_REPLICAS=${KUBE_DNS_REPLICAS:-1}
 KUBECTL=${KUBECTL:-cluster/kubectl.sh}
 WAIT_FOR_URL_API_SERVER=${WAIT_FOR_URL_API_SERVER:-10}
 ENABLE_DAEMON=${ENABLE_DAEMON:-false}
-HOSTNAME_OVERRIDE=${HOSTNAME_OVERRIDE:-"127.0.0.1"}
-CLOUD_PROVIDER=${CLOUD_PROVIDER:-""}
+HOSTNAME_OVERRIDE=${HOSTNAME_OVERRIDE:-"192.168.3.130"}
+
+cd "${KUBE_ROOT}"
 
 if [ "$(id -u)" != "0" ]; then
     echo "WARNING : This script MAY be run as root for docker socket / iptables functionality; if failures occur, retry as root." 2>&1
@@ -100,9 +101,9 @@ function test_docker {
 set +e
 
 API_PORT=${API_PORT:-8080}
-API_HOST=${API_HOST:-127.0.0.1}
+API_HOST=${API_HOST:-192.168.3.130}
 # By default only allow CORS for requests on localhost
-API_CORS_ALLOWED_ORIGINS=${API_CORS_ALLOWED_ORIGINS:-"/127.0.0.1(:[0-9]+)?$,/localhost(:[0-9]+)?$"}
+API_CORS_ALLOWED_ORIGINS=${API_CORS_ALLOWED_ORIGINS:-"/192.168.3.130(:[0-9]+)?$,/localhost(:[0-9]+)?$"}
 KUBELET_PORT=${KUBELET_PORT:-10250}
 LOG_LEVEL=${LOG_LEVEL:-3}
 CONTAINER_RUNTIME=${CONTAINER_RUNTIME:-"docker"}
@@ -111,7 +112,6 @@ RKT_STAGE1_IMAGE=${RKT_STAGE1_IMAGE:-""}
 CHAOS_CHANCE=${CHAOS_CHANCE:-0.0}
 CPU_CFS_QUOTA=${CPU_CFS_QUOTA:-false}
 ENABLE_HOSTPATH_PROVISIONER=${ENABLE_HOSTPATH_PROVISIONER:-"false"}
-CLAIM_BINDER_SYNC_PERIOD=${CLAIM_BINDER_SYNC_PERIOD:-"10m"} # current k8s default
 
 function test_apiserver_off {
     # For the common local scenario, fail fast if server is already running.
@@ -266,10 +266,8 @@ function start_apiserver {
       --admission-control="${ADMISSION_CONTROL}" \
       --insecure-bind-address="${API_HOST}" \
       --insecure-port="${API_PORT}" \
-      --advertise-address="${API_HOST}" \
       --etcd-servers="http://127.0.0.1:4001" \
       --service-cluster-ip-range="10.0.0.0/24" \
-      --cloud-provider="${CLOUD_PROVIDER}" \
       --cors-allowed-origins="${API_CORS_ALLOWED_ORIGINS}" >"${APISERVER_LOG}" 2>&1 &
     APISERVER_PID=$!
 
@@ -291,8 +289,6 @@ function start_controller_manager {
       --root-ca-file="${ROOT_CA_FILE}" \
       --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
       ${node_cidr_args} \
-      --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
-      --cloud-provider="${CLOUD_PROVIDER}" \
       --master="${API_HOST}:${API_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
     CTLRMGR_PID=$!
 }
@@ -312,7 +308,7 @@ function start_kubelet {
             if ! chcon -R system_u:object_r:svirt_sandbox_file_t:s0 /var/lib/kubelet; then
                echo "Failed to apply selinux label to /var/lib/kubelet."
             fi
-         fi
+	 fi
       fi
       # Enable dns
       if [[ "${ENABLE_CLUSTER_DNS}" = true ]]; then
@@ -341,8 +337,7 @@ function start_kubelet {
         --rkt-path="${RKT_PATH}" \
         --rkt-stage1-image="${RKT_STAGE1_IMAGE}" \
         --hostname-override="${HOSTNAME_OVERRIDE}" \
-        --cloud-provider="${CLOUD_PROVIDER}" \
-        --address="127.0.0.1" \
+        --address="192.168.3.130" \
         --api-servers="${API_HOST}:${API_PORT}" \
         --cpu-cfs-quota=${CPU_CFS_QUOTA} \
         ${dns_args} \
@@ -367,7 +362,7 @@ function start_kubelet {
         -i \
         --cidfile=$KUBELET_CIDFILE \
         gcr.io/google_containers/kubelet \
-        /kubelet --v=3 --containerized ${priv_arg}--chaos-chance="${CHAOS_CHANCE}" --hostname-override="${HOSTNAME_OVERRIDE}" --cloud-provider="${CLOUD_PROVIDER}" --address="127.0.0.1" --api-servers="${API_HOST}:${API_PORT}" --port="$KUBELET_PORT" --resource-container="" &> $KUBELET_LOG &
+        /kubelet --v=3 --containerized ${priv_arg}--chaos-chance="${CHAOS_CHANCE}" --hostname-override="${HOSTNAME_OVERRIDE}" --address="192.168.3.130" --api-servers="${API_HOST}:${API_PORT}" --port="$KUBELET_PORT" --resource-container="" &> $KUBELET_LOG &
     fi
 }
 

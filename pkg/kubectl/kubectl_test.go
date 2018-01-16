@@ -142,23 +142,17 @@ func TestParseLiteralSource(t *testing.T) {
 		{
 			name:  "err 1",
 			input: "key==value",
-			key:   "key",
-			value: "=value",
-			err:   false,
+			err:   true,
 		},
 		{
 			name:  "err 2",
 			input: "key=value=",
-			key:   "key",
-			value: "value=",
-			err:   false,
+			err:   true,
 		},
 		{
 			name:  "err 3",
 			input: "key2=value==",
-			key:   "key2",
-			value: "value==",
-			err:   false,
+			err:   true,
 		},
 		{
 			name:  "err 4",

@@ -19,10 +19,12 @@ set -o nounset
 set -o pipefail
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
+
+KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
 source "${KUBE_ROOT}/hack/lib/init.sh"
 
 kube::golang::setup_env
 
 "${KUBE_ROOT}/hack/build-go.sh" cmd/libs/go2idl/import-boss
 
-$(kube::util::find-binary "import-boss") --verify-only
+"${KUBE_ROOT}/hack/after-build/run-import-boss.sh" --verify-only

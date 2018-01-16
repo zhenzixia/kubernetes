@@ -18,7 +18,6 @@ package fake
 
 import (
 	api "k8s.io/kubernetes/pkg/api"
-	unversioned "k8s.io/kubernetes/pkg/api/unversioned"
 	v1beta1 "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	core "k8s.io/kubernetes/pkg/client/testing/core"
 	labels "k8s.io/kubernetes/pkg/labels"
@@ -31,11 +30,9 @@ type FakeThirdPartyResources struct {
 	ns   string
 }
 
-var thirdpartyresourcesResource = unversioned.GroupVersionResource{Group: "extensions", Version: "v1beta1", Resource: "thirdpartyresources"}
-
 func (c *FakeThirdPartyResources) Create(thirdPartyResource *v1beta1.ThirdPartyResource) (result *v1beta1.ThirdPartyResource, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewCreateAction(thirdpartyresourcesResource, c.ns, thirdPartyResource), &v1beta1.ThirdPartyResource{})
+		Invokes(core.NewCreateAction("thirdpartyresources", c.ns, thirdPartyResource), &v1beta1.ThirdPartyResource{})
 
 	if obj == nil {
 		return nil, err
@@ -45,7 +42,7 @@ func (c *FakeThirdPartyResources) Create(thirdPartyResource *v1beta1.ThirdPartyR
 
 func (c *FakeThirdPartyResources) Update(thirdPartyResource *v1beta1.ThirdPartyResource) (result *v1beta1.ThirdPartyResource, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewUpdateAction(thirdpartyresourcesResource, c.ns, thirdPartyResource), &v1beta1.ThirdPartyResource{})
+		Invokes(core.NewUpdateAction("thirdpartyresources", c.ns, thirdPartyResource), &v1beta1.ThirdPartyResource{})
 
 	if obj == nil {
 		return nil, err
@@ -55,13 +52,13 @@ func (c *FakeThirdPartyResources) Update(thirdPartyResource *v1beta1.ThirdPartyR
 
 func (c *FakeThirdPartyResources) Delete(name string, options *api.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(core.NewDeleteAction(thirdpartyresourcesResource, c.ns, name), &v1beta1.ThirdPartyResource{})
+		Invokes(core.NewDeleteAction("thirdpartyresources", c.ns, name), &v1beta1.ThirdPartyResource{})
 
 	return err
 }
 
 func (c *FakeThirdPartyResources) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
-	action := core.NewDeleteCollectionAction(thirdpartyresourcesResource, c.ns, listOptions)
+	action := core.NewDeleteCollectionAction("thirdpartyresources", c.ns, listOptions)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.ThirdPartyResourceList{})
 	return err
@@ -69,7 +66,7 @@ func (c *FakeThirdPartyResources) DeleteCollection(options *api.DeleteOptions, l
 
 func (c *FakeThirdPartyResources) Get(name string) (result *v1beta1.ThirdPartyResource, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewGetAction(thirdpartyresourcesResource, c.ns, name), &v1beta1.ThirdPartyResource{})
+		Invokes(core.NewGetAction("thirdpartyresources", c.ns, name), &v1beta1.ThirdPartyResource{})
 
 	if obj == nil {
 		return nil, err
@@ -79,7 +76,7 @@ func (c *FakeThirdPartyResources) Get(name string) (result *v1beta1.ThirdPartyRe
 
 func (c *FakeThirdPartyResources) List(opts api.ListOptions) (result *v1beta1.ThirdPartyResourceList, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewListAction(thirdpartyresourcesResource, c.ns, opts), &v1beta1.ThirdPartyResourceList{})
+		Invokes(core.NewListAction("thirdpartyresources", c.ns, opts), &v1beta1.ThirdPartyResourceList{})
 
 	if obj == nil {
 		return nil, err
@@ -101,6 +98,6 @@ func (c *FakeThirdPartyResources) List(opts api.ListOptions) (result *v1beta1.Th
 // Watch returns a watch.Interface that watches the requested thirdPartyResources.
 func (c *FakeThirdPartyResources) Watch(opts api.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(core.NewWatchAction(thirdpartyresourcesResource, c.ns, opts))
+		InvokesWatch(core.NewWatchAction("thirdpartyresources", c.ns, opts))
 
 }

@@ -21,7 +21,6 @@ package mount
 import (
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/util/exec"
-	"path/filepath"
 )
 
 type Interface interface {
@@ -87,13 +86,8 @@ func GetMountRefs(mounter Interface, mountPath string) ([]string, error) {
 
 	// Find the device name.
 	deviceName := ""
-	// If mountPath is symlink, need get its target path.
-	slTarget, err := filepath.EvalSymlinks(mountPath)
-	if err != nil {
-		slTarget = mountPath
-	}
 	for i := range mps {
-		if mps[i].Path == slTarget {
+		if mps[i].Path == mountPath {
 			deviceName = mps[i].Device
 			break
 		}
@@ -105,7 +99,7 @@ func GetMountRefs(mounter Interface, mountPath string) ([]string, error) {
 		glog.Warningf("could not determine device for path: %q", mountPath)
 	} else {
 		for i := range mps {
-			if mps[i].Device == deviceName && mps[i].Path != slTarget {
+			if mps[i].Device == deviceName && mps[i].Path != mountPath {
 				refs = append(refs, mps[i].Path)
 			}
 		}
@@ -124,13 +118,8 @@ func GetDeviceNameFromMount(mounter Interface, mountPath string) (string, int, e
 	// Find the device name.
 	// FIXME if multiple devices mounted on the same mount path, only the first one is returned
 	device := ""
-	// If mountPath is symlink, need get its target path.
-	slTarget, err := filepath.EvalSymlinks(mountPath)
-	if err != nil {
-		slTarget = mountPath
-	}
 	for i := range mps {
-		if mps[i].Path == slTarget {
+		if mps[i].Path == mountPath {
 			device = mps[i].Device
 			break
 		}

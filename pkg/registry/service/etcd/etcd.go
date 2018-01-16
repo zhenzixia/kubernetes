@@ -22,13 +22,13 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	"k8s.io/kubernetes/pkg/registry/generic"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/registry/service"
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
 type REST struct {
-	*registry.Store
+	*etcdgeneric.Etcd
 }
 
 // NewREST returns a RESTStorage object that will work against services.
@@ -39,14 +39,14 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 	storageInterface := opts.Decorator(
 		opts.Storage, cachesize.GetWatchCacheSizeByResource(cachesize.Services), &api.Service{}, prefix, service.Strategy, newListFunc)
 
-	store := &registry.Store{
+	store := &etcdgeneric.Etcd{
 		NewFunc:     func() runtime.Object { return &api.Service{} },
 		NewListFunc: newListFunc,
 		KeyRootFunc: func(ctx api.Context) string {
-			return registry.NamespaceKeyRootFunc(ctx, prefix)
+			return etcdgeneric.NamespaceKeyRootFunc(ctx, prefix)
 		},
 		KeyFunc: func(ctx api.Context, name string) (string, error) {
-			return registry.NamespaceKeyFunc(ctx, prefix, name)
+			return etcdgeneric.NamespaceKeyFunc(ctx, prefix, name)
 		},
 		ObjectNameFunc: func(obj runtime.Object) (string, error) {
 			return obj.(*api.Service).Name, nil
@@ -59,7 +59,6 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 		CreateStrategy: service.Strategy,
 		UpdateStrategy: service.Strategy,
-		DeleteStrategy: service.Strategy,
 		ExportStrategy: service.Strategy,
 
 		Storage: storageInterface,
@@ -71,7 +70,7 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 // StatusREST implements the REST endpoint for changing the status of a service.
 type StatusREST struct {
-	store *registry.Store
+	store *etcdgeneric.Etcd
 }
 
 func (r *StatusREST) New() runtime.Object {

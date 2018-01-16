@@ -28,17 +28,16 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 	"k8s.io/kubernetes/pkg/util"
-	"k8s.io/kubernetes/pkg/util/flag"
 )
 
 type createClusterOptions struct {
-	configAccess          clientcmd.ConfigAccess
+	configAccess          ConfigAccess
 	name                  string
 	server                util.StringFlag
 	apiVersion            util.StringFlag
-	insecureSkipTLSVerify flag.Tristate
+	insecureSkipTLSVerify util.BoolFlag
 	certificateAuthority  util.StringFlag
-	embedCAData           flag.Tristate
+	embedCAData           util.BoolFlag
 }
 
 const (
@@ -54,7 +53,7 @@ kubectl config set-cluster e2e --certificate-authority=~/.kube/e2e/kubernetes.ca
 kubectl config set-cluster e2e --insecure-skip-tls-verify=true`
 )
 
-func NewCmdConfigSetCluster(out io.Writer, configAccess clientcmd.ConfigAccess) *cobra.Command {
+func NewCmdConfigSetCluster(out io.Writer, configAccess ConfigAccess) *cobra.Command {
 	options := &createClusterOptions{configAccess: configAccess}
 
 	cmd := &cobra.Command{
@@ -82,8 +81,7 @@ func NewCmdConfigSetCluster(out io.Writer, configAccess clientcmd.ConfigAccess) 
 	cmd.Flags().Var(&options.apiVersion, clientcmd.FlagAPIVersion, clientcmd.FlagAPIVersion+" for the cluster entry in kubeconfig")
 	f := cmd.Flags().VarPF(&options.insecureSkipTLSVerify, clientcmd.FlagInsecure, "", clientcmd.FlagInsecure+" for the cluster entry in kubeconfig")
 	f.NoOptDefVal = "true"
-	cmd.Flags().Var(&options.certificateAuthority, clientcmd.FlagCAFile, "path to "+clientcmd.FlagCAFile+" file for the cluster entry in kubeconfig")
-	cmd.MarkFlagFilename(clientcmd.FlagCAFile)
+	cmd.Flags().Var(&options.certificateAuthority, clientcmd.FlagCAFile, "path to "+clientcmd.FlagCAFile+" for the cluster entry in kubeconfig")
 	f = cmd.Flags().VarPF(&options.embedCAData, clientcmd.FlagEmbedCerts, "", clientcmd.FlagEmbedCerts+" for the cluster entry in kubeconfig")
 	f.NoOptDefVal = "true"
 
@@ -108,7 +106,7 @@ func (o createClusterOptions) run() error {
 	cluster := o.modifyCluster(*startingStanza)
 	config.Clusters[o.name] = &cluster
 
-	if err := clientcmd.ModifyConfig(o.configAccess, *config, true); err != nil {
+	if err := ModifyConfig(o.configAccess, *config, true); err != nil {
 		return err
 	}
 

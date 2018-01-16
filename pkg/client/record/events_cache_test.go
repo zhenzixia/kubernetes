@@ -25,7 +25,6 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/util"
-	"k8s.io/kubernetes/pkg/util/diff"
 )
 
 func makeObjectReference(kind, name, namespace string) api.ObjectReference {
@@ -87,7 +86,7 @@ func makeSimilarEvents(num int, template api.Event, messagePrefix string) []api.
 }
 
 func setCount(event api.Event, count int) api.Event {
-	event.Count = int32(count)
+	event.Count = count
 	return event
 }
 
@@ -119,7 +118,7 @@ func validateEvent(messagePrefix string, actualEvent *api.Event, expectedEvent *
 	}
 	recvEvent.Name = expectedEvent.Name
 	if e, a := expectedEvent, &recvEvent; !reflect.DeepEqual(e, a) {
-		t.Errorf("%v - diff: %s", messagePrefix, diff.ObjectGoPrintDiff(e, a))
+		t.Errorf("%v - diff: %s", messagePrefix, util.ObjectGoPrintDiff(e, a))
 	}
 	recvEvent.FirstTimestamp = actualFirstTimestamp
 	recvEvent.LastTimestamp = actualLastTimestamp

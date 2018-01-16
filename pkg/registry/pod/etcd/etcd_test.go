@@ -20,10 +20,11 @@ import (
 	"strings"
 	"testing"
 
+	etcd "github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
-	storeerr "k8s.io/kubernetes/pkg/api/errors/storage"
+	etcderrors "k8s.io/kubernetes/pkg/api/errors/etcd"
 	"k8s.io/kubernetes/pkg/api/rest"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
@@ -34,12 +35,12 @@ import (
 	"k8s.io/kubernetes/pkg/storage"
 	"k8s.io/kubernetes/pkg/storage/etcd/etcdtest"
 	etcdtesting "k8s.io/kubernetes/pkg/storage/etcd/testing"
-	"k8s.io/kubernetes/pkg/util/diff"
+	"k8s.io/kubernetes/pkg/util"
 )
 
 func newStorage(t *testing.T) (*REST, *BindingREST, *StatusREST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, "")
-	restOptions := generic.RESTOptions{Storage: etcdStorage, Decorator: generic.UndecoratedStorage, DeleteCollectionWorkers: 3}
+	restOptions := generic.RESTOptions{etcdStorage, generic.UndecoratedStorage, 3}
 	storage := NewStorage(restOptions, nil, nil)
 	return storage.Pod, storage.Binding, storage.Status, server
 }
@@ -82,7 +83,7 @@ func validChangedPod() *api.Pod {
 func TestCreate(t *testing.T) {
 	storage, _, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	pod := validNewPod()
 	pod.ObjectMeta = api.ObjectMeta{}
 	// Make an invalid pod with an an incorrect label.
@@ -108,7 +109,7 @@ func TestCreate(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	storage, _, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestUpdate(
 		// valid
 		validNewPod(),
@@ -124,7 +125,7 @@ func TestUpdate(t *testing.T) {
 func TestDelete(t *testing.T) {
 	storage, _, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store).ReturnDeletedObject()
+	test := registrytest.New(t, storage.Etcd).ReturnDeletedObject()
 	test.TestDelete(validNewPod())
 
 	scheduledPod := validNewPod()
@@ -137,15 +138,15 @@ type FailDeletionStorage struct {
 	Called *bool
 }
 
-func (f FailDeletionStorage) Delete(ctx context.Context, key string, out runtime.Object, precondition *storage.Preconditions) error {
+func (f FailDeletionStorage) Delete(ctx context.Context, key string, out runtime.Object) error {
 	*f.Called = true
-	return storage.NewKeyNotFoundError(key, 0)
+	return etcd.Error{Code: etcd.ErrorCodeKeyNotFound}
 }
 
 func newFailDeleteStorage(t *testing.T, called *bool) (*REST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, "")
 	failDeleteStorage := FailDeletionStorage{etcdStorage, called}
-	restOptions := generic.RESTOptions{Storage: failDeleteStorage, Decorator: generic.UndecoratedStorage, DeleteCollectionWorkers: 3}
+	restOptions := generic.RESTOptions{failDeleteStorage, generic.UndecoratedStorage, 3}
 	storage := NewStorage(restOptions, nil, nil)
 	return storage.Pod, server
 }
@@ -341,21 +342,21 @@ func TestResourceLocation(t *testing.T) {
 func TestGet(t *testing.T) {
 	storage, _, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestGet(validNewPod())
 }
 
 func TestList(t *testing.T) {
 	storage, _, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestList(validNewPod())
 }
 
 func TestWatch(t *testing.T) {
 	storage, _, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestWatch(
 		validNewPod(),
 		// matching labels
@@ -421,7 +422,7 @@ func TestEtcdCreateBindingNoPod(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected not-found-error but got nothing")
 	}
-	if !errors.IsNotFound(storeerr.InterpretGetError(err, api.Resource("pods"), "foo")) {
+	if !errors.IsNotFound(etcderrors.InterpretGetError(err, api.Resource("pods"), "foo")) {
 		t.Fatalf("Unexpected error returned: %#v", err)
 	}
 
@@ -429,7 +430,7 @@ func TestEtcdCreateBindingNoPod(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected not-found-error but got nothing")
 	}
-	if !errors.IsNotFound(storeerr.InterpretGetError(err, api.Resource("pods"), "foo")) {
+	if !errors.IsNotFound(etcderrors.InterpretGetError(err, api.Resource("pods"), "foo")) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 }
@@ -619,7 +620,7 @@ func TestEtcdUpdateNotScheduled(t *testing.T) {
 	podOut := obj.(*api.Pod)
 	// validChangedPod only changes the Labels, so were checking the update was valid
 	if !api.Semantic.DeepEqual(podIn.Labels, podOut.Labels) {
-		t.Errorf("objects differ: %v", diff.ObjectDiff(podOut, podIn))
+		t.Errorf("objects differ: %v", util.ObjectDiff(podOut, podIn))
 	}
 }
 
@@ -687,7 +688,7 @@ func TestEtcdUpdateScheduled(t *testing.T) {
 	podOut := obj.(*api.Pod)
 	// Check to verify the Spec and Label updates match from change above.  Those are the fields changed.
 	if !api.Semantic.DeepEqual(podOut.Spec, podIn.Spec) || !api.Semantic.DeepEqual(podOut.Labels, podIn.Labels) {
-		t.Errorf("objects differ: %v", diff.ObjectDiff(podOut, podIn))
+		t.Errorf("objects differ: %v", util.ObjectDiff(podOut, podIn))
 	}
 
 }
@@ -769,6 +770,6 @@ func TestEtcdUpdateStatus(t *testing.T) {
 	if !api.Semantic.DeepEqual(podOut.Spec, podIn.Spec) ||
 		!api.Semantic.DeepEqual(podOut.Labels, podIn.Labels) ||
 		!api.Semantic.DeepEqual(podOut.Status, podIn.Status) {
-		t.Errorf("objects differ: %v", diff.ObjectDiff(podOut, podIn))
+		t.Errorf("objects differ: %v", util.ObjectDiff(podOut, podIn))
 	}
 }

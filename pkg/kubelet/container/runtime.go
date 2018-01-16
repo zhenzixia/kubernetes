@@ -26,7 +26,7 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/types"
-	"k8s.io/kubernetes/pkg/util/flowcontrol"
+	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/volume"
 )
 
@@ -46,12 +46,6 @@ type ImageSpec struct {
 	Image string
 }
 
-// ImageStats contains statistics about all the images currently available.
-type ImageStats struct {
-	// Total amount of storage consumed by existing images.
-	TotalStorageBytes uint64
-}
-
 // Runtime interface defines the interfaces that should be implemented
 // by a container runtime.
 // Thread safety is required from implementations of this interface.
@@ -61,10 +55,8 @@ type Runtime interface {
 
 	// Version returns the version information of the container runtime.
 	Version() (Version, error)
-
-	// APIVersion returns the cached API version information of the container
-	// runtime. Implementation is expected to update this cache periodically.
-	// This may be different from the runtime engine's version.
+	// APIVersion returns the API version information of the container
+	// runtime. This may be different from the runtime engine's version.
 	// TODO(random-liu): We should fold this into Version()
 	APIVersion() (Version, error)
 	// Status returns error if the runtime is unhealthy; nil otherwise.
@@ -76,13 +68,10 @@ type Runtime interface {
 	// GarbageCollect removes dead containers using the specified container gc policy
 	GarbageCollect(gcPolicy ContainerGCPolicy) error
 	// Syncs the running pod into the desired pod.
-	SyncPod(pod *api.Pod, apiPodStatus api.PodStatus, podStatus *PodStatus, pullSecrets []api.Secret, backOff *flowcontrol.Backoff) PodSyncResult
+	SyncPod(pod *api.Pod, apiPodStatus api.PodStatus, podStatus *PodStatus, pullSecrets []api.Secret, backOff *util.Backoff) PodSyncResult
 	// KillPod kills all the containers of a pod. Pod may be nil, running pod must not be.
 	// TODO(random-liu): Return PodSyncResult in KillPod.
-	// gracePeriodOverride if specified allows the caller to override the pod default grace period.
-	// only hard kill paths are allowed to specify a gracePeriodOverride in the kubelet in order to not corrupt user data.
-	// it is useful when doing SIGKILL for hard eviction scenarios, or max grace period during soft eviction scenarios.
-	KillPod(pod *api.Pod, runningPod Pod, gracePeriodOverride *int64) error
+	KillPod(pod *api.Pod, runningPod Pod) error
 	// GetPodStatus retrieves the status of the pod, including the
 	// information of all containers in the pod that are visble in Runtime.
 	GetPodStatus(uid types.UID, name, namespace string) (*PodStatus, error)
@@ -95,8 +84,6 @@ type Runtime interface {
 	ListImages() ([]Image, error)
 	// Removes the specified image.
 	RemoveImage(image ImageSpec) error
-	// Returns Image statistics.
-	ImageStats() (*ImageStats, error)
 	// TODO(vmarmol): Unify pod and containerID args.
 	// GetContainerLogs returns logs of a specific container. By
 	// default, it returns a snapshot of the container log. Set 'follow' to true to
@@ -116,7 +103,7 @@ type ContainerAttacher interface {
 // CommandRunner encapsulates the command runner interfaces for testability.
 type ContainerCommandRunner interface {
 	// TODO(vmarmol): Merge RunInContainer and ExecInContainer.
-	// Runs the command in the container of the specified pod.
+	// Runs the command in the container of the specified pod using nsinit.
 	RunInContainer(containerID ContainerID, cmd []string) ([]byte, error)
 	// Runs the command in the container of the specified pod using nsenter.
 	// Attaches the processes stdin, stdout, and stderr. Optionally uses a
@@ -231,12 +218,14 @@ type Container struct {
 	// The name of the container, which should be the same as specified by
 	// api.Container.
 	Name string
-	// The image name of the container, this also includes the tag of the image,
-	// the expected form is "NAME:TAG".
+	// The image name of the container.
 	Image string
 	// Hash of the container, used for comparison. Optional for containers
 	// not managed by kubelet.
 	Hash uint64
+	// The timestamp of the creation time of the container.
+	// TODO(yifan): Consider to move it to api.ContainerStatus.
+	Created int64
 	// State is the state of the container.
 	State ContainerState
 }
@@ -272,8 +261,7 @@ type ContainerStatus struct {
 	FinishedAt time.Time
 	// Exit code of the container.
 	ExitCode int
-	// Name of the image, this also includes the tag of the image,
-	// the expected form is "NAME:TAG".
+	// Name of the image.
 	Image string
 	// ID of the image.
 	ImageID string
@@ -316,8 +304,6 @@ type Image struct {
 	ID string
 	// Other names by which this image is known.
 	RepoTags []string
-	// Digests by which this image is known.
-	RepoDigests []string
 	// The size of the image in bytes.
 	Size int64
 }
@@ -359,8 +345,6 @@ type RunContainerOptions struct {
 	Envs []EnvVar
 	// The mounts for the containers.
 	Mounts []Mount
-	// The host devices mapped into the containers.
-	Devices []string
 	// The port mappings for the containers.
 	PortMappings []PortMapping
 	// If the container has specified the TerminationMessagePath, then
@@ -381,8 +365,8 @@ type RunContainerOptions struct {
 
 // VolumeInfo contains information about the volume.
 type VolumeInfo struct {
-	// Mounter is the volume's mounter
-	Mounter volume.Mounter
+	// Builder is the volume's builder
+	Builder volume.Builder
 	// SELinuxLabeled indicates whether this volume has had the
 	// pod's SELinux label applied to it or not
 	SELinuxLabeled bool

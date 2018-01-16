@@ -23,11 +23,6 @@ import (
 	"k8s.io/kubernetes/cmd/libs/go2idl/types"
 )
 
-// Returns whether a name is a private Go name.
-func IsPrivateGoName(name string) bool {
-	return len(name) == 0 || strings.ToLower(name[:1]) == name[:1]
-}
-
 // NewPublicNamer is a helper function that returns a namer that makes
 // CamelCase names. See the NameStrategy struct for an explanation of the
 // arguments to this constructor.
@@ -278,8 +273,6 @@ func (ns *NameStrategy) Name(t *types.Type) string {
 type ImportTracker interface {
 	AddType(*types.Type)
 	LocalNameOf(packagePath string) string
-	PathOf(localName string) (string, bool)
-	ImportLines() []string
 }
 
 type rawNamer struct {

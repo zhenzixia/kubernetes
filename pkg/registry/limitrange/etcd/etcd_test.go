@@ -31,7 +31,7 @@ import (
 
 func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, "")
-	restOptions := generic.RESTOptions{Storage: etcdStorage, Decorator: generic.UndecoratedStorage, DeleteCollectionWorkers: 1}
+	restOptions := generic.RESTOptions{etcdStorage, generic.UndecoratedStorage, 1}
 	return NewREST(restOptions), server
 }
 
@@ -62,7 +62,7 @@ func validNewLimitRange() *api.LimitRange {
 func TestCreate(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store).GeneratesName()
+	test := registrytest.New(t, storage.Etcd).GeneratesName()
 	validLimitRange := validNewLimitRange()
 	validLimitRange.ObjectMeta = api.ObjectMeta{}
 	test.TestCreate(
@@ -78,7 +78,7 @@ func TestCreate(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store).AllowCreateOnUpdate()
+	test := registrytest.New(t, storage.Etcd).AllowCreateOnUpdate()
 	test.TestUpdate(
 		// valid
 		validNewLimitRange(),
@@ -106,28 +106,28 @@ func TestUpdate(t *testing.T) {
 func TestDelete(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestDelete(validNewLimitRange())
 }
 
 func TestGet(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestGet(validNewLimitRange())
 }
 
 func TestList(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestList(validNewLimitRange())
 }
 
 func TestWatch(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestWatch(
 		validNewLimitRange(),
 		// matching labels

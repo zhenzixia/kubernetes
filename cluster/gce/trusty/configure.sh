@@ -20,20 +20,28 @@
 # of needed functions. The script itself is not supposed to be executed in
 # other manners.
 
+set_broken_motd() {
+  cat > /etc/motd <<EOF
+Broken (or in progress) Kubernetes node setup! If you are using Ubuntu Trusty,
+check log file /var/log/syslog. If you are using GCI image, use
+"journalctl | grep kube" to find more information.
+EOF
+}
+
 download_kube_env() {
   # Fetch kube-env from GCE metadata server.
-  readonly tmp_kube_env="/tmp/kube-env.yaml"
+  readonly tmp_install_dir="/var/cache/kubernetes-install"
+  mkdir -p "${tmp_install_dir}"
   curl --fail --retry 5 --retry-delay 3 --silent --show-error \
     -H "X-Google-Metadata-Request: True" \
-    -o "${tmp_kube_env}" \
+    -o "${tmp_install_dir}/kube_env.yaml" \
     http://metadata.google.internal/computeMetadata/v1/instance/attributes/kube-env
   # Convert the yaml format file into a shell-style file.
   eval $(python -c '''
 import pipes,sys,yaml
 for k,v in yaml.load(sys.stdin).iteritems():
   print("readonly {var}={value}".format(var = k, value = pipes.quote(str(v))))
-''' < "${tmp_kube_env}" > /etc/kube-env)
-  rm -f "${tmp_kube_env}"
+''' < "${tmp_install_dir}/kube_env.yaml" > /etc/kube-env)
 }
 
 validate_hash() {
@@ -122,18 +130,36 @@ install_kube_binary_config() {
   # a test cluster.
   readonly BIN_PATH="/usr/bin"
   if ! which kubelet > /dev/null || ! which kubectl > /dev/null; then
+    # This should be the case of trusty.
     cp "${src_dir}/kubelet" "${BIN_PATH}"
     cp "${src_dir}/kubectl" "${BIN_PATH}"
-  elif [ "${TEST_CLUSTER:-}" = "true" ]; then
-    kube_bin="${kube_home}/bin"
+  else
+    # This should be the case of GCI.
+    readonly kube_bin="${kube_home}/bin"
     mkdir -p "${kube_bin}"
+    mount --bind "${kube_bin}" "${kube_bin}"
+    mount -o remount,rw,exec "${kube_bin}"
     cp "${src_dir}/kubelet" "${kube_bin}"
     cp "${src_dir}/kubectl" "${kube_bin}"
-    mount --bind "${kube_bin}/kubelet" "${BIN_PATH}/kubelet"
-    mount --bind -o remount,ro,^noexec "${BIN_PATH}/kubelet" "${BIN_PATH}/kubelet"
-    mount --bind "${kube_bin}/kubectl" "${BIN_PATH}/kubectl"
-    mount --bind -o remount,ro,^noexec "${BIN_PATH}/kubectl" "${BIN_PATH}/kubectl"
+    chmod 544 "${kube_bin}/kubelet"
+    chmod 544 "${kube_bin}/kubectl"
+    # If the built-in binary version is different from the expected version, we use
+    # the downloaded binary. The simplest implementation is to always use the downloaded
+    # binary without checking the version. But we have another version guardian in GKE.
+    # So, we compare the versions to ensure this run-time binary replacement is only
+    # applied for OSS kubernetes.
+    readonly builtin_version="$(/usr/bin/kubelet --version=true | cut -f2 -d " ")"
+    readonly required_version="$(/home/kubernetes/bin/kubelet --version=true | cut -f2 -d " ")"
+    if [ "${TEST_CLUSTER:-}" = "true" ] || [ "${builtin_version}" != "${required_version}" ]; then
+      mount --bind "${kube_bin}/kubelet" "${BIN_PATH}/kubelet"
+      mount --bind "${kube_bin}/kubectl" "${BIN_PATH}/kubectl"
+    else
+      # Remove downloaded binary just to prevent misuse.
+      rm -f "${kube_bin}/kubelet"
+      rm -f "${kube_bin}/kubectl"
+    fi
   fi
+  cp "${kube_home}/kubernetes/LICENSES" "${kube_home}"
 
   # Put kube-system pods manifests in /home/kubernetes/kube-manifests/.
   dst_dir="${kube_home}/kube-manifests"

@@ -99,7 +99,7 @@ func (fake *fakeDiskManager) Cleanup() {
 func (fake *fakeDiskManager) MakeGlobalPDName(disk iscsiDisk) string {
 	return fake.tmpDir
 }
-func (fake *fakeDiskManager) AttachDisk(b iscsiDiskMounter) error {
+func (fake *fakeDiskManager) AttachDisk(b iscsiDiskBuilder) error {
 	globalPath := b.manager.MakeGlobalPDName(*b.iscsiDisk)
 	err := os.MkdirAll(globalPath, 0750)
 	if err != nil {
@@ -113,7 +113,7 @@ func (fake *fakeDiskManager) AttachDisk(b iscsiDiskMounter) error {
 	return nil
 }
 
-func (fake *fakeDiskManager) DetachDisk(c iscsiDiskUnmounter, mntPath string) error {
+func (fake *fakeDiskManager) DetachDisk(c iscsiDiskCleaner, mntPath string) error {
 	globalPath := c.manager.MakeGlobalPDName(*c.iscsiDisk)
 	err := os.RemoveAll(globalPath)
 	if err != nil {
@@ -140,21 +140,21 @@ func doTestPlugin(t *testing.T, spec *volume.Spec) {
 	fakeManager := NewFakeDiskManager()
 	defer fakeManager.Cleanup()
 	fakeMounter := &mount.FakeMounter{}
-	mounter, err := plug.(*iscsiPlugin).newMounterInternal(spec, types.UID("poduid"), fakeManager, fakeMounter)
+	builder, err := plug.(*iscsiPlugin).newBuilderInternal(spec, types.UID("poduid"), fakeManager, fakeMounter)
 	if err != nil {
-		t.Errorf("Failed to make a new Mounter: %v", err)
+		t.Errorf("Failed to make a new Builder: %v", err)
 	}
-	if mounter == nil {
-		t.Error("Got a nil Mounter")
+	if builder == nil {
+		t.Error("Got a nil Builder")
 	}
 
-	path := mounter.GetPath()
+	path := builder.GetPath()
 	expectedPath := fmt.Sprintf("%s/pods/poduid/volumes/kubernetes.io~iscsi/vol1", tmpDir)
 	if path != expectedPath {
 		t.Errorf("Unexpected path, expected %q, got: %q", expectedPath, path)
 	}
 
-	if err := mounter.SetUp(nil); err != nil {
+	if err := builder.SetUp(nil); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(path); err != nil {
@@ -177,15 +177,15 @@ func doTestPlugin(t *testing.T, spec *volume.Spec) {
 
 	fakeManager2 := NewFakeDiskManager()
 	defer fakeManager2.Cleanup()
-	unmounter, err := plug.(*iscsiPlugin).newUnmounterInternal("vol1", types.UID("poduid"), fakeManager2, fakeMounter)
+	cleaner, err := plug.(*iscsiPlugin).newCleanerInternal("vol1", types.UID("poduid"), fakeManager2, fakeMounter)
 	if err != nil {
-		t.Errorf("Failed to make a new Unmounter: %v", err)
+		t.Errorf("Failed to make a new Cleaner: %v", err)
 	}
-	if unmounter == nil {
-		t.Error("Got a nil Unmounter")
+	if cleaner == nil {
+		t.Error("Got a nil Cleaner")
 	}
 
-	if err := unmounter.TearDown(); err != nil {
+	if err := cleaner.TearDown(); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(path); err == nil {
@@ -277,21 +277,21 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 	plugMgr.InitPlugins(ProbeVolumePlugins(), volumetest.NewFakeVolumeHost(tmpDir, client, nil))
 	plug, _ := plugMgr.FindPluginByName(iscsiPluginName)
 
-	// readOnly bool is supplied by persistent-claim volume source when its mounter creates other volumes
+	// readOnly bool is supplied by persistent-claim volume source when its builder creates other volumes
 	spec := volume.NewSpecFromPersistentVolume(pv, true)
 	pod := &api.Pod{ObjectMeta: api.ObjectMeta{UID: types.UID("poduid")}}
-	mounter, _ := plug.NewMounter(spec, pod, volume.VolumeOptions{})
+	builder, _ := plug.NewBuilder(spec, pod, volume.VolumeOptions{})
 
-	if !mounter.GetAttributes().ReadOnly {
-		t.Errorf("Expected true for mounter.IsReadOnly")
+	if !builder.GetAttributes().ReadOnly {
+		t.Errorf("Expected true for builder.IsReadOnly")
 	}
 }
 
-func TestPortalMounter(t *testing.T) {
-	if portal := portalMounter("127.0.0.1"); portal != "127.0.0.1:3260" {
+func TestPortalBuilder(t *testing.T) {
+	if portal := portalBuilder("127.0.0.1"); portal != "127.0.0.1:3260" {
 		t.Errorf("wrong portal: %s", portal)
 	}
-	if portal := portalMounter("127.0.0.1:3260"); portal != "127.0.0.1:3260" {
+	if portal := portalBuilder("127.0.0.1:3260"); portal != "127.0.0.1:3260" {
 		t.Errorf("wrong portal: %s", portal)
 	}
 }

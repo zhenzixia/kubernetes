@@ -18,24 +18,27 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+GINKGO_PARALLEL=${GINKGO_PARALLEL:-n} # set to 'y' to run tests in parallel
 KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
+
 source "${KUBE_ROOT}/cluster/common.sh"
 source "${KUBE_ROOT}/hack/lib/init.sh"
 
+# Ginkgo will build the e2e tests, so we need to make sure that the environment
+# is set up correctly (including Godeps, etc).
+kube::golang::setup_env
 # Find the ginkgo binary build as part of the release.
 ginkgo=$(kube::util::find-binary "ginkgo")
 e2e_test=$(kube::util::find-binary "e2e.test")
 
 # --- Setup some env vars.
 
-GINKGO_PARALLEL=${GINKGO_PARALLEL:-n} # set to 'y' to run tests in parallel
-
 : ${KUBECTL:="${KUBE_ROOT}/cluster/kubectl.sh"}
 : ${KUBE_CONFIG_FILE:="config-test.sh"}
 
 export KUBECTL KUBE_CONFIG_FILE
 
-source "${KUBE_ROOT}/cluster/kube-util.sh"
+source "${KUBE_ROOT}/cluster/kube-env.sh"
 
 # ---- Do cloud-provider-specific setup
 if [[ -n "${KUBERNETES_CONFORMANCE_TEST:-}" ]]; then
@@ -49,6 +52,8 @@ if [[ -n "${KUBERNETES_CONFORMANCE_TEST:-}" ]]; then
     )
 else
     echo "Setting up for KUBERNETES_PROVIDER=\"${KUBERNETES_PROVIDER}\"."
+
+    source "${KUBE_ROOT}/cluster/${KUBERNETES_PROVIDER}/util.sh"
 
     prepare-e2e
 

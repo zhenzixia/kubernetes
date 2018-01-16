@@ -54,7 +54,7 @@ func benchmarkScheduling(numNodes, numScheduledPods int, b *testing.B) {
 	c := schedulerConfigFactory.Client
 
 	makeNodes(c, numNodes)
-	makePodsFromRC(c, "rc1", numScheduledPods)
+	makePods(c, numScheduledPods)
 	for {
 		scheduled := schedulerConfigFactory.ScheduledPodLister.Store.List()
 		if len(scheduled) >= numScheduledPods {
@@ -64,7 +64,7 @@ func benchmarkScheduling(numNodes, numScheduledPods int, b *testing.B) {
 	}
 	// start benchmark
 	b.ResetTimer()
-	makePodsFromRC(c, "rc2", b.N)
+	makePods(c, b.N)
 	for {
 		// This can potentially affect performance of scheduler, since List() is done under mutex.
 		// TODO: Setup watch on apiserver and wait until all pods scheduled.

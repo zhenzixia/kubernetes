@@ -25,7 +25,6 @@ import (
 	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/util/wait"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -36,49 +35,49 @@ const (
 	probTestInitialDelaySeconds = 30
 )
 
-var _ = framework.KubeDescribe("Probing container", func() {
-	f := framework.NewDefaultFramework("container-probe")
+var _ = Describe("Probing container", func() {
+	framework := NewDefaultFramework("container-probe")
 	var podClient client.PodInterface
 	probe := webserverProbeBuilder{}
 
 	BeforeEach(func() {
-		podClient = f.Client.Pods(f.Namespace.Name)
+		podClient = framework.Client.Pods(framework.Namespace.Name)
 	})
 
 	It("with readiness probe should not be ready before initial delay and never restart [Conformance]", func() {
 		p, err := podClient.Create(makePodSpec(probe.withInitialDelay().build(), nil))
-		framework.ExpectNoError(err)
+		expectNoError(err)
 
-		Expect(wait.Poll(framework.Poll, 240*time.Second, func() (bool, error) {
+		Expect(wait.Poll(poll, 240*time.Second, func() (bool, error) {
 			p, err := podClient.Get(p.Name)
 			if err != nil {
 				return false, err
 			}
 			ready := api.IsPodReady(p)
 			if !ready {
-				framework.Logf("pod is not yet ready; pod has phase %q.", p.Status.Phase)
+				Logf("pod is not yet ready; pod has phase %q.", p.Status.Phase)
 				return false, nil
 			}
 			return true, nil
 		})).NotTo(HaveOccurred(), "pod never became ready")
 
 		p, err = podClient.Get(p.Name)
-		framework.ExpectNoError(err)
-		isReady, err := framework.PodRunningReady(p)
-		framework.ExpectNoError(err)
+		expectNoError(err)
+		isReady, err := podRunningReady(p)
+		expectNoError(err)
 		Expect(isReady).To(BeTrue(), "pod should be ready")
 
 		// We assume the pod became ready when the container became ready. This
 		// is true for a single container pod.
 		readyTime, err := getTransitionTimeForReadyCondition(p)
-		framework.ExpectNoError(err)
+		expectNoError(err)
 		startedTime, err := getContainerStartedTime(p, probTestContainerName)
-		framework.ExpectNoError(err)
+		expectNoError(err)
 
-		framework.Logf("Container started at %v, pod became ready at %v", startedTime, readyTime)
+		Logf("Container started at %v, pod became ready at %v", startedTime, readyTime)
 		initialDelay := probTestInitialDelaySeconds * time.Second
 		if readyTime.Sub(startedTime) < initialDelay {
-			framework.Failf("Pod became ready before it's %v initial delay", initialDelay)
+			Failf("Pod became ready before it's %v initial delay", initialDelay)
 		}
 
 		restartCount := getRestartCount(p)
@@ -87,9 +86,9 @@ var _ = framework.KubeDescribe("Probing container", func() {
 
 	It("with readiness probe that fails should never be ready and never restart [Conformance]", func() {
 		p, err := podClient.Create(makePodSpec(probe.withFailing().build(), nil))
-		framework.ExpectNoError(err)
+		expectNoError(err)
 
-		err = wait.Poll(framework.Poll, 180*time.Second, func() (bool, error) {
+		err = wait.Poll(poll, 180*time.Second, func() (bool, error) {
 			p, err := podClient.Get(p.Name)
 			if err != nil {
 				return false, err
@@ -97,13 +96,13 @@ var _ = framework.KubeDescribe("Probing container", func() {
 			return api.IsPodReady(p), nil
 		})
 		if err != wait.ErrWaitTimeout {
-			framework.Failf("expecting wait timeout error but got: %v", err)
+			Failf("expecting wait timeout error but got: %v", err)
 		}
 
 		p, err = podClient.Get(p.Name)
-		framework.ExpectNoError(err)
+		expectNoError(err)
 
-		isReady, err := framework.PodRunningReady(p)
+		isReady, err := podRunningReady(p)
 		Expect(isReady).NotTo(BeTrue(), "pod should be not ready")
 
 		restartCount := getRestartCount(p)
@@ -137,7 +136,7 @@ func getTransitionTimeForReadyCondition(p *api.Pod) (time.Time, error) {
 func getRestartCount(p *api.Pod) int {
 	count := 0
 	for _, containerStatus := range p.Status.ContainerStatuses {
-		count += int(containerStatus.RestartCount)
+		count += containerStatus.RestartCount
 	}
 	return count
 }

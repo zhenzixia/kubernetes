@@ -76,20 +76,20 @@ func TestPlugin(t *testing.T) {
 		},
 	}
 
-	mounter, err := plug.(*cephfsPlugin).newMounterInternal(volume.NewSpecFromVolume(spec), types.UID("poduid"), &mount.FakeMounter{}, "secrets")
-	volumePath := mounter.GetPath()
+	builder, err := plug.(*cephfsPlugin).newBuilderInternal(volume.NewSpecFromVolume(spec), types.UID("poduid"), &mount.FakeMounter{}, "secrets")
+	volumePath := builder.GetPath()
 	if err != nil {
-		t.Errorf("Failed to make a new Mounter: %v", err)
+		t.Errorf("Failed to make a new Builder: %v", err)
 	}
-	if mounter == nil {
-		t.Errorf("Got a nil Mounter")
+	if builder == nil {
+		t.Errorf("Got a nil Builder")
 	}
 	volpath := path.Join(tmpDir, "pods/poduid/volumes/kubernetes.io~cephfs/vol1")
-	path := mounter.GetPath()
+	path := builder.GetPath()
 	if path != volpath {
 		t.Errorf("Got unexpected path: %s", path)
 	}
-	if err := mounter.SetUp(nil); err != nil {
+	if err := builder.SetUp(nil); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(volumePath); err != nil {
@@ -99,14 +99,14 @@ func TestPlugin(t *testing.T) {
 			t.Errorf("SetUp() failed: %v", err)
 		}
 	}
-	unmounter, err := plug.(*cephfsPlugin).newUnmounterInternal("vol1", types.UID("poduid"), &mount.FakeMounter{})
+	cleaner, err := plug.(*cephfsPlugin).newCleanerInternal("vol1", types.UID("poduid"), &mount.FakeMounter{})
 	if err != nil {
-		t.Errorf("Failed to make a new Unmounter: %v", err)
+		t.Errorf("Failed to make a new Cleaner: %v", err)
 	}
-	if unmounter == nil {
-		t.Errorf("Got a nil Unmounter")
+	if cleaner == nil {
+		t.Errorf("Got a nil Cleaner")
 	}
-	if err := unmounter.TearDown(); err != nil {
+	if err := cleaner.TearDown(); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(volumePath); err == nil {

@@ -62,8 +62,8 @@ func (plugin *gitRepoPlugin) CanSupport(spec *volume.Spec) bool {
 	return spec.Volume != nil && spec.Volume.GitRepo != nil
 }
 
-func (plugin *gitRepoPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, opts volume.VolumeOptions) (volume.Mounter, error) {
-	return &gitRepoVolumeMounter{
+func (plugin *gitRepoPlugin) NewBuilder(spec *volume.Spec, pod *api.Pod, opts volume.VolumeOptions) (volume.Builder, error) {
+	return &gitRepoVolumeBuilder{
 		gitRepoVolume: &gitRepoVolume{
 			volName: spec.Name(),
 			podUID:  pod.UID,
@@ -78,8 +78,8 @@ func (plugin *gitRepoPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, opts vo
 	}, nil
 }
 
-func (plugin *gitRepoPlugin) NewUnmounter(volName string, podUID types.UID) (volume.Unmounter, error) {
-	return &gitRepoVolumeUnmounter{
+func (plugin *gitRepoPlugin) NewCleaner(volName string, podUID types.UID) (volume.Cleaner, error) {
+	return &gitRepoVolumeCleaner{
 		&gitRepoVolume{
 			volName: volName,
 			podUID:  podUID,
@@ -104,8 +104,8 @@ func (gr *gitRepoVolume) GetPath() string {
 	return gr.plugin.host.GetPodVolumeDir(gr.podUID, utilstrings.EscapeQualifiedNameForDisk(name), gr.volName)
 }
 
-// gitRepoVolumeMounter builds git repo volumes.
-type gitRepoVolumeMounter struct {
+// gitRepoVolumeBuilder builds git repo volumes.
+type gitRepoVolumeBuilder struct {
 	*gitRepoVolume
 
 	pod      api.Pod
@@ -116,9 +116,9 @@ type gitRepoVolumeMounter struct {
 	opts     volume.VolumeOptions
 }
 
-var _ volume.Mounter = &gitRepoVolumeMounter{}
+var _ volume.Builder = &gitRepoVolumeBuilder{}
 
-func (b *gitRepoVolumeMounter) GetAttributes() volume.Attributes {
+func (b *gitRepoVolumeBuilder) GetAttributes() volume.Attributes {
 	return volume.Attributes{
 		ReadOnly:        false,
 		Managed:         true,
@@ -127,18 +127,18 @@ func (b *gitRepoVolumeMounter) GetAttributes() volume.Attributes {
 }
 
 // SetUp creates new directory and clones a git repo.
-func (b *gitRepoVolumeMounter) SetUp(fsGroup *int64) error {
+func (b *gitRepoVolumeBuilder) SetUp(fsGroup *int64) error {
 	return b.SetUpAt(b.GetPath(), fsGroup)
 }
 
 // SetUpAt creates new directory and clones a git repo.
-func (b *gitRepoVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
+func (b *gitRepoVolumeBuilder) SetUpAt(dir string, fsGroup *int64) error {
 	if volumeutil.IsReady(b.getMetaDir()) {
 		return nil
 	}
 
 	// Wrap EmptyDir, let it do the setup.
-	wrapped, err := b.plugin.host.NewWrapperMounter(b.volName, wrappedVolumeSpec, &b.pod, b.opts)
+	wrapped, err := b.plugin.host.NewWrapperBuilder(b.volName, wrappedVolumeSpec, &b.pod, b.opts)
 	if err != nil {
 		return err
 	}
@@ -188,39 +188,37 @@ func (b *gitRepoVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
 		return fmt.Errorf("failed to exec 'git reset --hard': %s: %v", output, err)
 	}
 
-	volume.SetVolumeOwnership(b, fsGroup)
-
 	volumeutil.SetReady(b.getMetaDir())
 	return nil
 }
 
-func (b *gitRepoVolumeMounter) getMetaDir() string {
+func (b *gitRepoVolumeBuilder) getMetaDir() string {
 	return path.Join(b.plugin.host.GetPodPluginDir(b.podUID, utilstrings.EscapeQualifiedNameForDisk(gitRepoPluginName)), b.volName)
 }
 
-func (b *gitRepoVolumeMounter) execCommand(command string, args []string, dir string) ([]byte, error) {
+func (b *gitRepoVolumeBuilder) execCommand(command string, args []string, dir string) ([]byte, error) {
 	cmd := b.exec.Command(command, args...)
 	cmd.SetDir(dir)
 	return cmd.CombinedOutput()
 }
 
-// gitRepoVolumeUnmounter cleans git repo volumes.
-type gitRepoVolumeUnmounter struct {
+// gitRepoVolumeCleaner cleans git repo volumes.
+type gitRepoVolumeCleaner struct {
 	*gitRepoVolume
 }
 
-var _ volume.Unmounter = &gitRepoVolumeUnmounter{}
+var _ volume.Cleaner = &gitRepoVolumeCleaner{}
 
 // TearDown simply deletes everything in the directory.
-func (c *gitRepoVolumeUnmounter) TearDown() error {
+func (c *gitRepoVolumeCleaner) TearDown() error {
 	return c.TearDownAt(c.GetPath())
 }
 
 // TearDownAt simply deletes everything in the directory.
-func (c *gitRepoVolumeUnmounter) TearDownAt(dir string) error {
+func (c *gitRepoVolumeCleaner) TearDownAt(dir string) error {
 
 	// Wrap EmptyDir, let it do the teardown.
-	wrapped, err := c.plugin.host.NewWrapperUnmounter(c.volName, wrappedVolumeSpec, c.podUID)
+	wrapped, err := c.plugin.host.NewWrapperCleaner(c.volName, wrappedVolumeSpec, c.podUID)
 	if err != nil {
 		return err
 	}

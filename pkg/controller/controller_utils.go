@@ -24,7 +24,6 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/meta"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -413,17 +412,17 @@ func (r RealPodControl) CreatePodsOnNode(nodeName, namespace string, template *a
 	return r.createPods(nodeName, namespace, template, object)
 }
 
-func GetPodFromTemplate(template *api.PodTemplateSpec, parentObject runtime.Object) (*api.Pod, error) {
+func (r RealPodControl) createPods(nodeName, namespace string, template *api.PodTemplateSpec, object runtime.Object) error {
 	desiredLabels := getPodsLabelSet(template)
-	desiredAnnotations, err := getPodsAnnotationSet(template, parentObject)
+	desiredAnnotations, err := getPodsAnnotationSet(template, object)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	accessor, err := meta.Accessor(parentObject)
+	meta, err := api.ObjectMetaFor(object)
 	if err != nil {
-		return nil, fmt.Errorf("parentObject does not have ObjectMeta, %v", err)
+		return fmt.Errorf("object does not have ObjectMeta, %v", err)
 	}
-	prefix := getPodsPrefix(accessor.GetName())
+	prefix := getPodsPrefix(meta.Name)
 
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{
@@ -433,15 +432,7 @@ func GetPodFromTemplate(template *api.PodTemplateSpec, parentObject runtime.Obje
 		},
 	}
 	if err := api.Scheme.Convert(&template.Spec, &pod.Spec); err != nil {
-		return nil, fmt.Errorf("unable to convert pod template: %v", err)
-	}
-	return pod, nil
-}
-
-func (r RealPodControl) createPods(nodeName, namespace string, template *api.PodTemplateSpec, object runtime.Object) error {
-	pod, err := GetPodFromTemplate(template, object)
-	if err != nil {
-		return err
+		return fmt.Errorf("unable to convert pod template: %v", err)
 	}
 	if len(nodeName) != 0 {
 		pod.Spec.NodeName = nodeName
@@ -453,19 +444,14 @@ func (r RealPodControl) createPods(nodeName, namespace string, template *api.Pod
 		r.Recorder.Eventf(object, api.EventTypeWarning, "FailedCreate", "Error creating: %v", err)
 		return fmt.Errorf("unable to create pods: %v", err)
 	} else {
-		accessor, err := meta.Accessor(object)
-		if err != nil {
-			glog.Errorf("parentObject does not have ObjectMeta, %v", err)
-			return nil
-		}
-		glog.V(4).Infof("Controller %v created pod %v", accessor.GetName(), newPod.Name)
+		glog.V(4).Infof("Controller %v created pod %v", meta.Name, newPod.Name)
 		r.Recorder.Eventf(object, api.EventTypeNormal, "SuccessfulCreate", "Created pod: %v", newPod.Name)
 	}
 	return nil
 }
 
 func (r RealPodControl) DeletePod(namespace string, podID string, object runtime.Object) error {
-	accessor, err := meta.Accessor(object)
+	meta, err := api.ObjectMetaFor(object)
 	if err != nil {
 		return fmt.Errorf("object does not have ObjectMeta, %v", err)
 	}
@@ -473,7 +459,7 @@ func (r RealPodControl) DeletePod(namespace string, podID string, object runtime
 		r.Recorder.Eventf(object, api.EventTypeWarning, "FailedDelete", "Error deleting: %v", err)
 		return fmt.Errorf("unable to delete pods: %v", err)
 	} else {
-		glog.V(4).Infof("Controller %v deleted pod %v", accessor.GetName(), podID)
+		glog.V(4).Infof("Controller %v deleted pod %v", meta.Name, podID)
 		r.Recorder.Eventf(object, api.EventTypeNormal, "SuccessfulDelete", "Deleted pod: %v", podID)
 	}
 	return nil
@@ -589,7 +575,7 @@ func podReadyTime(pod *api.Pod) unversioned.Time {
 func maxContainerRestarts(pod *api.Pod) int {
 	maxRestarts := 0
 	for _, c := range pod.Status.ContainerStatuses {
-		maxRestarts = integer.IntMax(maxRestarts, int(c.RestartCount))
+		maxRestarts = integer.IntMax(maxRestarts, c.RestartCount)
 	}
 	return maxRestarts
 }

@@ -42,7 +42,7 @@ func schedulePods(numNodes, numPods int) {
 	c := schedulerConfigFactory.Client
 
 	makeNodes(c, numNodes)
-	makePodsFromRC(c, "rc1", numPods)
+	makePods(c, numPods)
 
 	prev := 0
 	start := time.Now()

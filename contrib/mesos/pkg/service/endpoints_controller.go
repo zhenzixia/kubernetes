@@ -76,7 +76,7 @@ func NewEndpointController(client *clientset.Clientset) *endpointController {
 		},
 	)
 
-	e.podStore.Indexer, e.podController = framework.NewIndexerInformer(
+	e.podStore.Store, e.podController = framework.NewInformer(
 		&cache.ListWatch{
 			ListFunc: func(options api.ListOptions) (runtime.Object, error) {
 				return e.client.Core().Pods(api.NamespaceAll).List(options)
@@ -92,7 +92,6 @@ func NewEndpointController(client *clientset.Clientset) *endpointController {
 			UpdateFunc: e.updatePod,
 			DeleteFunc: e.deletePod,
 		},
-		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	)
 	return e
 }
@@ -321,7 +320,7 @@ func (e *endpointController) syncService(key string) {
 			}
 
 			// HACK(jdef): use HostIP instead of pod.CurrentState.PodIP for generic mesos compat
-			epp := api.EndpointPort{Name: portName, Port: int32(portNum), Protocol: portProto}
+			epp := api.EndpointPort{Name: portName, Port: portNum, Protocol: portProto}
 			epa := api.EndpointAddress{IP: pod.Status.HostIP, TargetRef: &api.ObjectReference{
 				Kind:            "Pod",
 				Namespace:       pod.ObjectMeta.Namespace,
@@ -417,7 +416,7 @@ func findPort(pod *api.Pod, svcPort *api.ServicePort) (int, int, error) {
 			for _, port := range container.Ports {
 				if port.Name == name && port.Protocol == svcPort.Protocol {
 					hostPort, err := findMappedPortName(pod, port.Protocol, name)
-					return hostPort, int(port.ContainerPort), err
+					return hostPort, port.ContainerPort, err
 				}
 			}
 		}
@@ -430,9 +429,9 @@ func findPort(pod *api.Pod, svcPort *api.ServicePort) (int, int, error) {
 		p := portName.IntValue()
 		for _, container := range pod.Spec.Containers {
 			for _, port := range container.Ports {
-				if int(port.ContainerPort) == p && port.Protocol == svcPort.Protocol {
+				if port.ContainerPort == p && port.Protocol == svcPort.Protocol {
 					hostPort, err := findMappedPort(pod, port.Protocol, p)
-					return hostPort, int(port.ContainerPort), err
+					return hostPort, port.ContainerPort, err
 				}
 			}
 		}

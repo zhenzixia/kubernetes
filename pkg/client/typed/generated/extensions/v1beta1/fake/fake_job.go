@@ -18,7 +18,6 @@ package fake
 
 import (
 	api "k8s.io/kubernetes/pkg/api"
-	unversioned "k8s.io/kubernetes/pkg/api/unversioned"
 	v1beta1 "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	core "k8s.io/kubernetes/pkg/client/testing/core"
 	labels "k8s.io/kubernetes/pkg/labels"
@@ -31,11 +30,9 @@ type FakeJobs struct {
 	ns   string
 }
 
-var jobsResource = unversioned.GroupVersionResource{Group: "extensions", Version: "v1beta1", Resource: "jobs"}
-
 func (c *FakeJobs) Create(job *v1beta1.Job) (result *v1beta1.Job, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewCreateAction(jobsResource, c.ns, job), &v1beta1.Job{})
+		Invokes(core.NewCreateAction("jobs", c.ns, job), &v1beta1.Job{})
 
 	if obj == nil {
 		return nil, err
@@ -45,7 +42,7 @@ func (c *FakeJobs) Create(job *v1beta1.Job) (result *v1beta1.Job, err error) {
 
 func (c *FakeJobs) Update(job *v1beta1.Job) (result *v1beta1.Job, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewUpdateAction(jobsResource, c.ns, job), &v1beta1.Job{})
+		Invokes(core.NewUpdateAction("jobs", c.ns, job), &v1beta1.Job{})
 
 	if obj == nil {
 		return nil, err
@@ -55,7 +52,7 @@ func (c *FakeJobs) Update(job *v1beta1.Job) (result *v1beta1.Job, err error) {
 
 func (c *FakeJobs) UpdateStatus(job *v1beta1.Job) (*v1beta1.Job, error) {
 	obj, err := c.Fake.
-		Invokes(core.NewUpdateSubresourceAction(jobsResource, "status", c.ns, job), &v1beta1.Job{})
+		Invokes(core.NewUpdateSubresourceAction("jobs", "status", c.ns, job), &v1beta1.Job{})
 
 	if obj == nil {
 		return nil, err
@@ -65,13 +62,13 @@ func (c *FakeJobs) UpdateStatus(job *v1beta1.Job) (*v1beta1.Job, error) {
 
 func (c *FakeJobs) Delete(name string, options *api.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(core.NewDeleteAction(jobsResource, c.ns, name), &v1beta1.Job{})
+		Invokes(core.NewDeleteAction("jobs", c.ns, name), &v1beta1.Job{})
 
 	return err
 }
 
 func (c *FakeJobs) DeleteCollection(options *api.DeleteOptions, listOptions api.ListOptions) error {
-	action := core.NewDeleteCollectionAction(jobsResource, c.ns, listOptions)
+	action := core.NewDeleteCollectionAction("jobs", c.ns, listOptions)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.JobList{})
 	return err
@@ -79,7 +76,7 @@ func (c *FakeJobs) DeleteCollection(options *api.DeleteOptions, listOptions api.
 
 func (c *FakeJobs) Get(name string) (result *v1beta1.Job, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewGetAction(jobsResource, c.ns, name), &v1beta1.Job{})
+		Invokes(core.NewGetAction("jobs", c.ns, name), &v1beta1.Job{})
 
 	if obj == nil {
 		return nil, err
@@ -89,7 +86,7 @@ func (c *FakeJobs) Get(name string) (result *v1beta1.Job, err error) {
 
 func (c *FakeJobs) List(opts api.ListOptions) (result *v1beta1.JobList, err error) {
 	obj, err := c.Fake.
-		Invokes(core.NewListAction(jobsResource, c.ns, opts), &v1beta1.JobList{})
+		Invokes(core.NewListAction("jobs", c.ns, opts), &v1beta1.JobList{})
 
 	if obj == nil {
 		return nil, err
@@ -111,6 +108,6 @@ func (c *FakeJobs) List(opts api.ListOptions) (result *v1beta1.JobList, err erro
 // Watch returns a watch.Interface that watches the requested jobs.
 func (c *FakeJobs) Watch(opts api.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(core.NewWatchAction(jobsResource, c.ns, opts))
+		InvokesWatch(core.NewWatchAction("jobs", c.ns, opts))
 
 }

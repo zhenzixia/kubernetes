@@ -68,7 +68,7 @@ func (plugin *downwardAPIPlugin) CanSupport(spec *volume.Spec) bool {
 	return spec.Volume != nil && spec.Volume.DownwardAPI != nil
 }
 
-func (plugin *downwardAPIPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, opts volume.VolumeOptions) (volume.Mounter, error) {
+func (plugin *downwardAPIPlugin) NewBuilder(spec *volume.Spec, pod *api.Pod, opts volume.VolumeOptions) (volume.Builder, error) {
 	v := &downwardAPIVolume{
 		volName: spec.Name(),
 		pod:     pod,
@@ -79,14 +79,14 @@ func (plugin *downwardAPIPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, opt
 	for _, fileInfo := range spec.Volume.DownwardAPI.Items {
 		v.fieldReferenceFileNames[fileInfo.FieldRef.FieldPath] = path.Clean(fileInfo.Path)
 	}
-	return &downwardAPIVolumeMounter{
+	return &downwardAPIVolumeBuilder{
 		downwardAPIVolume: v,
 		opts:              &opts,
 	}, nil
 }
 
-func (plugin *downwardAPIPlugin) NewUnmounter(volName string, podUID types.UID) (volume.Unmounter, error) {
-	return &downwardAPIVolumeUnmounter{
+func (plugin *downwardAPIPlugin) NewCleaner(volName string, podUID types.UID) (volume.Cleaner, error) {
+	return &downwardAPIVolumeCleaner{
 		&downwardAPIVolume{
 			volName: volName,
 			podUID:  podUID,
@@ -100,20 +100,20 @@ type downwardAPIVolume struct {
 	volName                 string
 	fieldReferenceFileNames map[string]string
 	pod                     *api.Pod
-	podUID                  types.UID // TODO: remove this redundancy as soon NewUnmounter func will have *api.POD and not only types.UID
+	podUID                  types.UID // TODO: remove this redundancy as soon NewCleaner func will have *api.POD and not only types.UID
 	plugin                  *downwardAPIPlugin
 	volume.MetricsNil
 }
 
-// downwardAPIVolumeMounter fetches info from downward API from the pod
+// downwardAPIVolumeBuilder fetches info from downward API from the pod
 // and dumps it in files
-type downwardAPIVolumeMounter struct {
+type downwardAPIVolumeBuilder struct {
 	*downwardAPIVolume
 	opts *volume.VolumeOptions
 }
 
-// downwardAPIVolumeMounter implements volume.Mounter interface
-var _ volume.Mounter = &downwardAPIVolumeMounter{}
+// downwardAPIVolumeBuilder implements volume.Builder interface
+var _ volume.Builder = &downwardAPIVolumeBuilder{}
 
 // downward API volumes are always ReadOnlyManaged
 func (d *downwardAPIVolume) GetAttributes() volume.Attributes {
@@ -128,14 +128,14 @@ func (d *downwardAPIVolume) GetAttributes() volume.Attributes {
 // This function is not idempotent by design. We want the data to be refreshed periodically.
 // The internal sync interval of kubelet will drive the refresh of data.
 // TODO: Add volume specific ticker and refresh loop
-func (b *downwardAPIVolumeMounter) SetUp(fsGroup *int64) error {
+func (b *downwardAPIVolumeBuilder) SetUp(fsGroup *int64) error {
 	return b.SetUpAt(b.GetPath(), fsGroup)
 }
 
-func (b *downwardAPIVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
+func (b *downwardAPIVolumeBuilder) SetUpAt(dir string, fsGroup *int64) error {
 	glog.V(3).Infof("Setting up a downwardAPI volume %v for pod %v/%v at %v", b.volName, b.pod.Namespace, b.pod.Name, dir)
 	// Wrap EmptyDir. Here we rely on the idempotency of the wrapped plugin to avoid repeatedly mounting
-	wrapped, err := b.plugin.host.NewWrapperMounter(b.volName, wrappedVolumeSpec, b.pod, *b.opts)
+	wrapped, err := b.plugin.host.NewWrapperBuilder(b.volName, wrappedVolumeSpec, b.pod, *b.opts)
 	if err != nil {
 		glog.Errorf("Couldn't setup downwardAPI volume %v for pod %v/%v: %s", b.volName, b.pod.Namespace, b.pod.Name, err.Error())
 		return err
@@ -357,28 +357,28 @@ func (d *downwardAPIVolume) GetPath() string {
 }
 
 // downwardAPIVolumeCleander handles cleaning up downwardAPI volumes
-type downwardAPIVolumeUnmounter struct {
+type downwardAPIVolumeCleaner struct {
 	*downwardAPIVolume
 }
 
-// downwardAPIVolumeUnmounter implements volume.Unmounter interface
-var _ volume.Unmounter = &downwardAPIVolumeUnmounter{}
+// downwardAPIVolumeCleaner implements volume.Cleaner interface
+var _ volume.Cleaner = &downwardAPIVolumeCleaner{}
 
-func (c *downwardAPIVolumeUnmounter) TearDown() error {
+func (c *downwardAPIVolumeCleaner) TearDown() error {
 	return c.TearDownAt(c.GetPath())
 }
 
-func (c *downwardAPIVolumeUnmounter) TearDownAt(dir string) error {
+func (c *downwardAPIVolumeCleaner) TearDownAt(dir string) error {
 	glog.V(3).Infof("Tearing down volume %v for pod %v at %v", c.volName, c.podUID, dir)
 
 	// Wrap EmptyDir, let it do the teardown.
-	wrapped, err := c.plugin.host.NewWrapperUnmounter(c.volName, wrappedVolumeSpec, c.podUID)
+	wrapped, err := c.plugin.host.NewWrapperCleaner(c.volName, wrappedVolumeSpec, c.podUID)
 	if err != nil {
 		return err
 	}
 	return wrapped.TearDownAt(dir)
 }
 
-func (b *downwardAPIVolumeMounter) getMetaDir() string {
+func (b *downwardAPIVolumeBuilder) getMetaDir() string {
 	return path.Join(b.plugin.host.GetPodPluginDir(b.podUID, utilstrings.EscapeQualifiedNameForDisk(downwardAPIPluginName)), b.volName)
 }

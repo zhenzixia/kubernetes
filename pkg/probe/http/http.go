@@ -25,14 +25,13 @@ import (
 	"time"
 
 	"k8s.io/kubernetes/pkg/probe"
-	utilnet "k8s.io/kubernetes/pkg/util/net"
 
 	"github.com/golang/glog"
 )
 
 func New() HTTPProber {
 	tlsConfig := &tls.Config{InsecureSkipVerify: true}
-	transport := utilnet.SetTransportDefaults(&http.Transport{TLSClientConfig: tlsConfig, DisableKeepAlives: true})
+	transport := &http.Transport{TLSClientConfig: tlsConfig, DisableKeepAlives: true}
 	return httpProber{transport}
 }
 

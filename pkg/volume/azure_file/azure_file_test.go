@@ -105,20 +105,20 @@ func TestPlugin(t *testing.T) {
 	}
 	fake := &mount.FakeMounter{}
 	pod := &api.Pod{ObjectMeta: api.ObjectMeta{UID: types.UID("poduid")}}
-	mounter, err := plug.(*azureFilePlugin).newMounterInternal(volume.NewSpecFromVolume(spec), pod, &fakeAzureSvc{}, fake)
+	builder, err := plug.(*azureFilePlugin).newBuilderInternal(volume.NewSpecFromVolume(spec), pod, &fakeAzureSvc{}, fake)
 	if err != nil {
-		t.Errorf("Failed to make a new Mounter: %v", err)
+		t.Errorf("Failed to make a new Builder: %v", err)
 	}
-	if mounter == nil {
-		t.Errorf("Got a nil Mounter")
+	if builder == nil {
+		t.Errorf("Got a nil Builder")
 	}
 	volPath := path.Join(tmpDir, "pods/poduid/volumes/kubernetes.io~azure-file/vol1")
-	path := mounter.GetPath()
+	path := builder.GetPath()
 	if path != volPath {
 		t.Errorf("Got unexpected path: %s", path)
 	}
 
-	if err := mounter.SetUp(nil); err != nil {
+	if err := builder.SetUp(nil); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(path); err != nil {
@@ -136,15 +136,15 @@ func TestPlugin(t *testing.T) {
 		}
 	}
 
-	unmounter, err := plug.(*azureFilePlugin).newUnmounterInternal("vol1", types.UID("poduid"), &mount.FakeMounter{})
+	cleaner, err := plug.(*azureFilePlugin).newCleanerInternal("vol1", types.UID("poduid"), &mount.FakeMounter{})
 	if err != nil {
-		t.Errorf("Failed to make a new Unmounter: %v", err)
+		t.Errorf("Failed to make a new Cleaner: %v", err)
 	}
-	if unmounter == nil {
-		t.Errorf("Got a nil Unmounter")
+	if cleaner == nil {
+		t.Errorf("Got a nil Cleaner")
 	}
 
-	if err := unmounter.TearDown(); err != nil {
+	if err := cleaner.TearDown(); err != nil {
 		t.Errorf("Expected success, got: %v", err)
 	}
 	if _, err := os.Stat(path); err == nil {
@@ -188,13 +188,13 @@ func TestPersistentClaimReadOnlyFlag(t *testing.T) {
 	plugMgr.InitPlugins(ProbeVolumePlugins(), volumetest.NewFakeVolumeHost("/tmp/fake", client, nil))
 	plug, _ := plugMgr.FindPluginByName(azureFilePluginName)
 
-	// readOnly bool is supplied by persistent-claim volume source when its mounter creates other volumes
+	// readOnly bool is supplied by persistent-claim volume source when its builder creates other volumes
 	spec := volume.NewSpecFromPersistentVolume(pv, true)
 	pod := &api.Pod{ObjectMeta: api.ObjectMeta{UID: types.UID("poduid")}}
-	mounter, _ := plug.NewMounter(spec, pod, volume.VolumeOptions{})
+	builder, _ := plug.NewBuilder(spec, pod, volume.VolumeOptions{})
 
-	if !mounter.GetAttributes().ReadOnly {
-		t.Errorf("Expected true for mounter.IsReadOnly")
+	if !builder.GetAttributes().ReadOnly {
+		t.Errorf("Expected true for builder.IsReadOnly")
 	}
 }
 
@@ -204,7 +204,7 @@ func (s *fakeAzureSvc) GetAzureCredentials(host volume.VolumeHost, nameSpace, se
 	return "name", "key", nil
 }
 
-func TestMounterAndUnmounterTypeAssert(t *testing.T) {
+func TestBuilderAndCleanerTypeAssert(t *testing.T) {
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "azurefileTest")
 	if err != nil {
 		t.Fatalf("can't make a temp dir: %v", err)
@@ -228,13 +228,13 @@ func TestMounterAndUnmounterTypeAssert(t *testing.T) {
 	}
 	fake := &mount.FakeMounter{}
 	pod := &api.Pod{ObjectMeta: api.ObjectMeta{UID: types.UID("poduid")}}
-	mounter, err := plug.(*azureFilePlugin).newMounterInternal(volume.NewSpecFromVolume(spec), pod, &fakeAzureSvc{}, fake)
-	if _, ok := mounter.(volume.Unmounter); ok {
-		t.Errorf("Volume Mounter can be type-assert to Unmounter")
+	builder, err := plug.(*azureFilePlugin).newBuilderInternal(volume.NewSpecFromVolume(spec), pod, &fakeAzureSvc{}, fake)
+	if _, ok := builder.(volume.Cleaner); ok {
+		t.Errorf("Volume Builder can be type-assert to Cleaner")
 	}
 
-	unmounter, err := plug.(*azureFilePlugin).newUnmounterInternal("vol1", types.UID("poduid"), &mount.FakeMounter{})
-	if _, ok := unmounter.(volume.Mounter); ok {
-		t.Errorf("Volume Unmounter can be type-assert to Mounter")
+	cleaner, err := plug.(*azureFilePlugin).newCleanerInternal("vol1", types.UID("poduid"), &mount.FakeMounter{})
+	if _, ok := cleaner.(volume.Builder); ok {
+		t.Errorf("Volume Cleaner can be type-assert to Builder")
 	}
 }

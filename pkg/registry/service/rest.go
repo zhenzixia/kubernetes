@@ -115,7 +115,7 @@ func (rs *REST) Create(ctx api.Context, obj runtime.Object) (runtime.Object, err
 	for i := range service.Spec.Ports {
 		servicePort := &service.Spec.Ports[i]
 		if servicePort.NodePort != 0 {
-			err := nodePortOp.Allocate(int(servicePort.NodePort))
+			err := nodePortOp.Allocate(servicePort.NodePort)
 			if err != nil {
 				// TODO: when validation becomes versioned, this gets more complicated.
 				el := field.ErrorList{field.Invalid(field.NewPath("spec", "ports").Index(i).Child("nodePort"), servicePort.NodePort, err.Error())}
@@ -129,7 +129,7 @@ func (rs *REST) Create(ctx api.Context, obj runtime.Object) (runtime.Object, err
 				// not really an internal error.
 				return nil, errors.NewInternalError(fmt.Errorf("failed to allocate a nodePort: %v", err))
 			}
-			servicePort.NodePort = int32(nodePort)
+			servicePort.NodePort = nodePort
 		}
 	}
 
@@ -240,7 +240,7 @@ func (rs *REST) Update(ctx api.Context, obj runtime.Object) (runtime.Object, boo
 	if assignNodePorts {
 		for i := range service.Spec.Ports {
 			servicePort := &service.Spec.Ports[i]
-			nodePort := int(servicePort.NodePort)
+			nodePort := servicePort.NodePort
 			if nodePort != 0 {
 				if !contains(oldNodePorts, nodePort) {
 					err := nodePortOp.Allocate(nodePort)
@@ -257,7 +257,7 @@ func (rs *REST) Update(ctx api.Context, obj runtime.Object) (runtime.Object, boo
 					// not really an internal error.
 					return nil, false, errors.NewInternalError(fmt.Errorf("failed to allocate a nodePort: %v", err))
 				}
-				servicePort.NodePort = int32(nodePort)
+				servicePort.NodePort = nodePort
 			}
 			// Detect duplicate node ports; this should have been caught by validation, so we panic
 			if contains(newNodePorts, nodePort) {
@@ -316,7 +316,7 @@ func (rs *REST) ResourceLocation(ctx api.Context, id string) (*url.URL, http.Rou
 		}
 		found := false
 		for _, svcPort := range svc.Spec.Ports {
-			if int64(svcPort.Port) == portNum {
+			if svcPort.Port == int(portNum) {
 				// use the declared port's name
 				portStr = svcPort.Name
 				found = true
@@ -347,7 +347,7 @@ func (rs *REST) ResourceLocation(ctx api.Context, id string) (*url.URL, http.Rou
 			if ss.Ports[i].Name == portStr {
 				// Pick a random address.
 				ip := ss.Addresses[rand.Intn(len(ss.Addresses))].IP
-				port := int(ss.Ports[i].Port)
+				port := ss.Ports[i].Port
 				return &url.URL{
 					Scheme: svcScheme,
 					Host:   net.JoinHostPort(ip, strconv.Itoa(port)),
@@ -374,7 +374,7 @@ func CollectServiceNodePorts(service *api.Service) []int {
 	for i := range service.Spec.Ports {
 		servicePort := &service.Spec.Ports[i]
 		if servicePort.NodePort != 0 {
-			servicePorts = append(servicePorts, int(servicePort.NodePort))
+			servicePorts = append(servicePorts, servicePort.NodePort)
 		}
 	}
 	return servicePorts

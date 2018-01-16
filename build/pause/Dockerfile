@@ -13,6 +13,5 @@
 # limitations under the License.
 
 FROM scratch
-ARG ARCH
-ADD bin/pause-${ARCH} /pause
+ADD pause /
 ENTRYPOINT ["/pause"]

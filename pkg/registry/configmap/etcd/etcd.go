@@ -22,12 +22,12 @@ import (
 	"k8s.io/kubernetes/pkg/registry/generic"
 	"k8s.io/kubernetes/pkg/runtime"
 
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 )
 
 // REST implements a RESTStorage for ConfigMap against etcd
 type REST struct {
-	*registry.Store
+	*etcdgeneric.Etcd
 }
 
 // NewREST returns a RESTStorage object that will work with ConfigMap objects.
@@ -38,7 +38,7 @@ func NewREST(opts generic.RESTOptions) *REST {
 	storageInterface := opts.Decorator(
 		opts.Storage, 100, &api.ConfigMap{}, prefix, configmap.Strategy, newListFunc)
 
-	store := &registry.Store{
+	store := &etcdgeneric.Etcd{
 		NewFunc: func() runtime.Object {
 			return &api.ConfigMap{}
 		},
@@ -49,13 +49,13 @@ func NewREST(opts generic.RESTOptions) *REST {
 		// Produces a path that etcd understands, to the root of the resource
 		// by combining the namespace in the context with the given prefix.
 		KeyRootFunc: func(ctx api.Context) string {
-			return registry.NamespaceKeyRootFunc(ctx, prefix)
+			return etcdgeneric.NamespaceKeyRootFunc(ctx, prefix)
 		},
 
 		// Produces a path that etcd understands, to the resource by combining
 		// the namespace in the context with the given prefix
 		KeyFunc: func(ctx api.Context, name string) (string, error) {
-			return registry.NamespaceKeyFunc(ctx, prefix, name)
+			return etcdgeneric.NamespaceKeyFunc(ctx, prefix, name)
 		},
 
 		// Retrieves the name field of a ConfigMap object.
@@ -72,7 +72,6 @@ func NewREST(opts generic.RESTOptions) *REST {
 
 		CreateStrategy: configmap.Strategy,
 		UpdateStrategy: configmap.Strategy,
-		DeleteStrategy: configmap.Strategy,
 
 		Storage: storageInterface,
 	}

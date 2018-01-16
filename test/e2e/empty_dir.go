@@ -24,7 +24,6 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	"k8s.io/kubernetes/pkg/util"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 )
@@ -34,9 +33,9 @@ const (
 	testImageNonRootUid = "gcr.io/google_containers/mounttest-user:0.3"
 )
 
-var _ = framework.KubeDescribe("EmptyDir volumes", func() {
+var _ = Describe("EmptyDir volumes", func() {
 
-	f := framework.NewDefaultFramework("emptydir")
+	f := NewDefaultFramework("emptydir")
 
 	Context("when FSGroup is specified [Feature:FSGroup]", func() {
 		It("new files should be created with FSGroup ownership when container is root", func() {
@@ -118,7 +117,7 @@ const (
 	volumeName    = "test-volume"
 )
 
-func doTestSetgidFSGroup(f *framework.Framework, image string, medium api.StorageMedium) {
+func doTestSetgidFSGroup(f *Framework, image string, medium api.StorageMedium) {
 	var (
 		volumePath = "/test-volume"
 		filePath   = path.Join(volumePath, "test-file")
@@ -133,6 +132,7 @@ func doTestSetgidFSGroup(f *framework.Framework, image string, medium api.Storag
 		fmt.Sprintf("--file_owner=%v", filePath),
 	}
 
+	pod.Spec.SecurityContext = &api.PodSecurityContext{}
 	fsGroup := int64(123)
 	pod.Spec.SecurityContext.FSGroup = &fsGroup
 
@@ -148,7 +148,7 @@ func doTestSetgidFSGroup(f *framework.Framework, image string, medium api.Storag
 	f.TestContainerOutput(msg, pod, 0, out)
 }
 
-func doTestVolumeModeFSGroup(f *framework.Framework, image string, medium api.StorageMedium) {
+func doTestVolumeModeFSGroup(f *Framework, image string, medium api.StorageMedium) {
 	var (
 		volumePath = "/test-volume"
 		source     = &api.EmptyDirVolumeSource{Medium: medium}
@@ -161,7 +161,7 @@ func doTestVolumeModeFSGroup(f *framework.Framework, image string, medium api.St
 	}
 
 	fsGroup := int64(1001)
-	pod.Spec.SecurityContext.FSGroup = &fsGroup
+	pod.Spec.SecurityContext = &api.PodSecurityContext{FSGroup: &fsGroup}
 
 	msg := fmt.Sprintf("emptydir volume type on %v", formatMedium(medium))
 	out := []string{
@@ -173,7 +173,7 @@ func doTestVolumeModeFSGroup(f *framework.Framework, image string, medium api.St
 	f.TestContainerOutput(msg, pod, 0, out)
 }
 
-func doTest0644FSGroup(f *framework.Framework, image string, medium api.StorageMedium) {
+func doTest0644FSGroup(f *Framework, image string, medium api.StorageMedium) {
 	var (
 		volumePath = "/test-volume"
 		filePath   = path.Join(volumePath, "test-file")
@@ -187,6 +187,7 @@ func doTest0644FSGroup(f *framework.Framework, image string, medium api.StorageM
 		fmt.Sprintf("--file_perm=%v", filePath),
 	}
 
+	pod.Spec.SecurityContext = &api.PodSecurityContext{}
 	fsGroup := int64(123)
 	pod.Spec.SecurityContext.FSGroup = &fsGroup
 
@@ -201,7 +202,7 @@ func doTest0644FSGroup(f *framework.Framework, image string, medium api.StorageM
 	f.TestContainerOutput(msg, pod, 0, out)
 }
 
-func doTestVolumeMode(f *framework.Framework, image string, medium api.StorageMedium) {
+func doTestVolumeMode(f *Framework, image string, medium api.StorageMedium) {
 	var (
 		volumePath = "/test-volume"
 		source     = &api.EmptyDirVolumeSource{Medium: medium}
@@ -223,7 +224,7 @@ func doTestVolumeMode(f *framework.Framework, image string, medium api.StorageMe
 	f.TestContainerOutput(msg, pod, 0, out)
 }
 
-func doTest0644(f *framework.Framework, image string, medium api.StorageMedium) {
+func doTest0644(f *Framework, image string, medium api.StorageMedium) {
 	var (
 		volumePath = "/test-volume"
 		filePath   = path.Join(volumePath, "test-file")
@@ -248,7 +249,7 @@ func doTest0644(f *framework.Framework, image string, medium api.StorageMedium) 
 	f.TestContainerOutput(msg, pod, 0, out)
 }
 
-func doTest0666(f *framework.Framework, image string, medium api.StorageMedium) {
+func doTest0666(f *Framework, image string, medium api.StorageMedium) {
 	var (
 		volumePath = "/test-volume"
 		filePath   = path.Join(volumePath, "test-file")
@@ -273,7 +274,7 @@ func doTest0666(f *framework.Framework, image string, medium api.StorageMedium) 
 	f.TestContainerOutput(msg, pod, 0, out)
 }
 
-func doTest0777(f *framework.Framework, image string, medium api.StorageMedium) {
+func doTest0777(f *Framework, image string, medium api.StorageMedium) {
 	var (
 		volumePath = "/test-volume"
 		filePath   = path.Join(volumePath, "test-file")
@@ -327,11 +328,6 @@ func testPodWithVolume(image, path string, source *api.EmptyDirVolumeSource) *ap
 							MountPath: path,
 						},
 					},
-				},
-			},
-			SecurityContext: &api.PodSecurityContext{
-				SELinuxOptions: &api.SELinuxOptions{
-					Level: "s0",
 				},
 			},
 			RestartPolicy: api.RestartPolicyNever,

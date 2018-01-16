@@ -17,11 +17,7 @@
 "kind": "Pod",
 "metadata": {
   "name":"kube-scheduler",
-  "namespace": "kube-system",
-  "labels": {
-    "tier": "control-plane",
-    "component": "kube-scheduler"
-  }
+  "namespace": "kube-system"
 },
 "spec":{
 "hostNetwork": true,

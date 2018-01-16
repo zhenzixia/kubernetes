@@ -29,7 +29,7 @@ function generate_version() {
 
   echo "Generating swagger type docs for ${group_version}"
 
-  sed 's/YEAR/2016/' hack/boilerplate/boilerplate.go.txt > "$TMPFILE"
+  sed 's/YEAR/2015/' hack/boilerplate/boilerplate.go.txt > "$TMPFILE"
   echo "package ${group_version##*/}" >> "$TMPFILE"
   cat >> "$TMPFILE" <<EOF
 
@@ -46,9 +46,8 @@ function generate_version() {
 // AUTO-GENERATED FUNCTIONS START HERE
 EOF
 
-  go run cmd/genswaggertypedocs/swagger_type_docs.go -s \
-    "pkg/$(kube::util::group-version-to-pkg-path "${group_version}")/types.go" \
-    -f - \
+  GOPATH=$(godep path):$GOPATH go run cmd/genswaggertypedocs/swagger_type_docs.go -s \
+    "pkg/$(kube::util::group-version-to-pkg-path "${group_version}")/types.go" -f - \
     >>  "$TMPFILE"
 
   echo "// AUTO-GENERATED FUNCTIONS END HERE" >> "$TMPFILE"
@@ -57,7 +56,7 @@ EOF
   mv "$TMPFILE" "pkg/$(kube::util::group-version-to-pkg-path "${group_version}")/types_swagger_doc_generated.go"
 }
 
-GROUP_VERSIONS=(unversioned v1 authorization/v1beta1 autoscaling/v1 batch/v1 batch/v2alpha1 extensions/v1beta1 apps/v1alpha1 policy/v1alpha1 rbac/v1alpha1)
+GROUP_VERSIONS=(unversioned v1 authorization/v1beta1 autoscaling/v1 batch/v1 extensions/v1beta1)
 # To avoid compile errors, remove the currently existing files.
 for group_version in "${GROUP_VERSIONS[@]}"; do
   rm -f "pkg/$(kube::util::group-version-to-pkg-path "${group_version}")/types_swagger_doc_generated.go"
@@ -65,3 +64,5 @@ done
 for group_version in "${GROUP_VERSIONS[@]}"; do
   generate_version "${group_version}"
 done
+
+"${KUBE_ROOT}/hack/update-swagger-spec.sh"

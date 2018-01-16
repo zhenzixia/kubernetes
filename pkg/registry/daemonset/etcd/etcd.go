@@ -24,13 +24,13 @@ import (
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	"k8s.io/kubernetes/pkg/registry/daemonset"
 	"k8s.io/kubernetes/pkg/registry/generic"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
 // rest implements a RESTStorage for DaemonSets against etcd
 type REST struct {
-	*registry.Store
+	*etcdgeneric.Etcd
 }
 
 // NewREST returns a RESTStorage object that will work against DaemonSets.
@@ -41,7 +41,7 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 	storageInterface := opts.Decorator(
 		opts.Storage, cachesize.GetWatchCacheSizeByResource(cachesize.Daemonsets), &extensions.DaemonSet{}, prefix, daemonset.Strategy, newListFunc)
 
-	store := &registry.Store{
+	store := &etcdgeneric.Etcd{
 		NewFunc: func() runtime.Object { return &extensions.DaemonSet{} },
 
 		// NewListFunc returns an object capable of storing results of an etcd list.
@@ -49,12 +49,12 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 		// Produces a path that etcd understands, to the root of the resource
 		// by combining the namespace in the context with the given prefix
 		KeyRootFunc: func(ctx api.Context) string {
-			return registry.NamespaceKeyRootFunc(ctx, prefix)
+			return etcdgeneric.NamespaceKeyRootFunc(ctx, prefix)
 		},
 		// Produces a path that etcd understands, to the resource by combining
 		// the namespace in the context with the given prefix
 		KeyFunc: func(ctx api.Context, name string) (string, error) {
-			return registry.NamespaceKeyFunc(ctx, prefix, name)
+			return etcdgeneric.NamespaceKeyFunc(ctx, prefix, name)
 		},
 		// Retrieve the name field of a daemon set
 		ObjectNameFunc: func(obj runtime.Object) (string, error) {
@@ -72,7 +72,6 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 		// Used to validate daemon set updates
 		UpdateStrategy: daemonset.Strategy,
-		DeleteStrategy: daemonset.Strategy,
 
 		Storage: storageInterface,
 	}
@@ -84,7 +83,7 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 // StatusREST implements the REST endpoint for changing the status of a daemonset
 type StatusREST struct {
-	store *registry.Store
+	store *etcdgeneric.Etcd
 }
 
 func (r *StatusREST) New() runtime.Object {

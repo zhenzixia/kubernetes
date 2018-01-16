@@ -24,7 +24,7 @@ import (
 func (c *FakeDeployments) Rollback(deploymentRollback *v1beta1.DeploymentRollback) error {
 	action := core.CreateActionImpl{}
 	action.Verb = "create"
-	action.Resource = deploymentsResource
+	action.Resource = "deployments"
 	action.Subresource = "rollback"
 	action.Object = deploymentRollback
 

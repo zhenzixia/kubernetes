@@ -26,14 +26,15 @@ import (
 // FakeThirdPartyResources implements ThirdPartyResourceInterface. Meant to be embedded into a struct to get a default
 // implementation. This makes faking out just the method you want to test easier.
 type FakeThirdPartyResources struct {
-	Fake *FakeExperimental
+	Fake      *FakeExperimental
+	Namespace string
 }
 
 // Ensure statically that FakeThirdPartyResources implements DaemonInterface.
 var _ kclientlib.ThirdPartyResourceInterface = &FakeThirdPartyResources{}
 
 func (c *FakeThirdPartyResources) Get(name string) (*extensions.ThirdPartyResource, error) {
-	obj, err := c.Fake.Invokes(NewGetAction("thirdpartyresources", "", name), &extensions.ThirdPartyResource{})
+	obj, err := c.Fake.Invokes(NewGetAction("thirdpartyresources", c.Namespace, name), &extensions.ThirdPartyResource{})
 	if obj == nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func (c *FakeThirdPartyResources) Get(name string) (*extensions.ThirdPartyResour
 }
 
 func (c *FakeThirdPartyResources) List(opts api.ListOptions) (*extensions.ThirdPartyResourceList, error) {
-	obj, err := c.Fake.Invokes(NewListAction("thirdpartyresources", "", opts), &extensions.ThirdPartyResourceList{})
+	obj, err := c.Fake.Invokes(NewListAction("thirdpartyresources", c.Namespace, opts), &extensions.ThirdPartyResourceList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -49,7 +50,7 @@ func (c *FakeThirdPartyResources) List(opts api.ListOptions) (*extensions.ThirdP
 }
 
 func (c *FakeThirdPartyResources) Create(daemon *extensions.ThirdPartyResource) (*extensions.ThirdPartyResource, error) {
-	obj, err := c.Fake.Invokes(NewCreateAction("thirdpartyresources", "", daemon), &extensions.ThirdPartyResource{})
+	obj, err := c.Fake.Invokes(NewCreateAction("thirdpartyresources", c.Namespace, daemon), &extensions.ThirdPartyResource{})
 	if obj == nil {
 		return nil, err
 	}
@@ -57,7 +58,7 @@ func (c *FakeThirdPartyResources) Create(daemon *extensions.ThirdPartyResource) 
 }
 
 func (c *FakeThirdPartyResources) Update(daemon *extensions.ThirdPartyResource) (*extensions.ThirdPartyResource, error) {
-	obj, err := c.Fake.Invokes(NewUpdateAction("thirdpartyresources", "", daemon), &extensions.ThirdPartyResource{})
+	obj, err := c.Fake.Invokes(NewUpdateAction("thirdpartyresources", c.Namespace, daemon), &extensions.ThirdPartyResource{})
 	if obj == nil {
 		return nil, err
 	}
@@ -65,7 +66,7 @@ func (c *FakeThirdPartyResources) Update(daemon *extensions.ThirdPartyResource) 
 }
 
 func (c *FakeThirdPartyResources) UpdateStatus(daemon *extensions.ThirdPartyResource) (*extensions.ThirdPartyResource, error) {
-	obj, err := c.Fake.Invokes(NewUpdateSubresourceAction("thirdpartyresources", "status", "", daemon), &extensions.ThirdPartyResource{})
+	obj, err := c.Fake.Invokes(NewUpdateSubresourceAction("thirdpartyresources", "status", c.Namespace, daemon), &extensions.ThirdPartyResource{})
 	if obj == nil {
 		return nil, err
 	}
@@ -73,10 +74,10 @@ func (c *FakeThirdPartyResources) UpdateStatus(daemon *extensions.ThirdPartyReso
 }
 
 func (c *FakeThirdPartyResources) Delete(name string) error {
-	_, err := c.Fake.Invokes(NewDeleteAction("thirdpartyresources", "", name), &extensions.ThirdPartyResource{})
+	_, err := c.Fake.Invokes(NewDeleteAction("thirdpartyresources", c.Namespace, name), &extensions.ThirdPartyResource{})
 	return err
 }
 
 func (c *FakeThirdPartyResources) Watch(opts api.ListOptions) (watch.Interface, error) {
-	return c.Fake.InvokesWatch(NewWatchAction("thirdpartyresources", "", opts))
+	return c.Fake.InvokesWatch(NewWatchAction("thirdpartyresources", c.Namespace, opts))
 }

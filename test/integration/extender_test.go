@@ -191,7 +191,8 @@ func TestSchedulerExtender(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		m.Handler.ServeHTTP(w, req)
 	}))
-	defer s.Close()
+	// TODO: Uncomment when fix #19254
+	// defer s.Close()
 
 	masterConfig := framework.NewIntegrationTestMasterConfig()
 	m, err := master.New(masterConfig)
@@ -209,7 +210,8 @@ func TestSchedulerExtender(t *testing.T) {
 	es1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		extender1.serveHTTP(t, w, req)
 	}))
-	defer es1.Close()
+	// TODO: Uncomment when fix #19254
+	// defer es1.Close()
 
 	extender2 := &Extender{
 		name:         "extender2",
@@ -219,7 +221,8 @@ func TestSchedulerExtender(t *testing.T) {
 	es2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		extender2.serveHTTP(t, w, req)
 	}))
-	defer es2.Close()
+	// TODO: Uncomment when fix #19254
+	// defer es2.Close()
 
 	policy := schedulerapi.Policy{
 		ExtenderConfigs: []schedulerapi.ExtenderConfig{
@@ -241,7 +244,7 @@ func TestSchedulerExtender(t *testing.T) {
 	}
 	policy.APIVersion = testapi.Default.GroupVersion().String()
 
-	schedulerConfigFactory := factory.NewConfigFactory(restClient, api.DefaultSchedulerName, api.DefaultHardPodAffinitySymmetricWeight, api.DefaultFailureDomains)
+	schedulerConfigFactory := factory.NewConfigFactory(restClient, api.DefaultSchedulerName)
 	schedulerConfig, err := schedulerConfigFactory.CreateFromConfig(policy)
 	if err != nil {
 		t.Fatalf("Couldn't create scheduler config: %v", err)
@@ -283,7 +286,7 @@ func DoTestPodScheduling(t *testing.T, restClient *client.Client) {
 	pod := &api.Pod{
 		ObjectMeta: api.ObjectMeta{Name: "extender-test-pod"},
 		Spec: api.PodSpec{
-			Containers: []api.Container{{Name: "container", Image: "gcr.io/google_containers/pause-amd64:3.0"}},
+			Containers: []api.Container{{Name: "container", Image: "kubernetes/pause:go"}},
 		},
 	}
 

@@ -25,7 +25,6 @@ import (
 type OSInterface interface {
 	Mkdir(path string, perm os.FileMode) error
 	Symlink(oldname string, newname string) error
-	Stat(path string) (os.FileInfo, error)
 }
 
 // RealOS is used to dispatch the real system level operaitons.
@@ -39,9 +38,4 @@ func (RealOS) Mkdir(path string, perm os.FileMode) error {
 // Symlink will call os.Symlink to create a symbolic link.
 func (RealOS) Symlink(oldname string, newname string) error {
 	return os.Symlink(oldname, newname)
-}
-
-// Stat will call os.Stat to get the FileInfo for a given path
-func (RealOS) Stat(path string) (os.FileInfo, error) {
-	return os.Stat(path)
 }

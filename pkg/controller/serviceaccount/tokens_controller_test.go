@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 	"k8s.io/kubernetes/pkg/client/testing/core"
 	"k8s.io/kubernetes/pkg/runtime"
@@ -204,9 +203,9 @@ func TestTokenCreation(t *testing.T) {
 
 			AddedServiceAccount: serviceAccount(emptySecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
-				core.NewCreateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, serviceAccount(addTokenSecretReference(emptySecretReferences()))),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
+				core.NewCreateAction("secrets", api.NamespaceDefault, createdTokenSecret()),
+				core.NewUpdateAction("serviceaccounts", api.NamespaceDefault, serviceAccount(addTokenSecretReference(emptySecretReferences()))),
 			},
 		},
 		"new serviceaccount with no secrets with unsynced secret store": {
@@ -216,9 +215,9 @@ func TestTokenCreation(t *testing.T) {
 
 			AddedServiceAccount: serviceAccount(emptySecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
-				core.NewCreateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, serviceAccount(addTokenSecretReference(emptySecretReferences()))),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
+				core.NewCreateAction("secrets", api.NamespaceDefault, createdTokenSecret()),
+				core.NewUpdateAction("serviceaccounts", api.NamespaceDefault, serviceAccount(addTokenSecretReference(emptySecretReferences()))),
 			},
 		},
 		"new serviceaccount with missing secrets": {
@@ -226,9 +225,9 @@ func TestTokenCreation(t *testing.T) {
 
 			AddedServiceAccount: serviceAccount(missingSecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
-				core.NewCreateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, serviceAccount(addTokenSecretReference(missingSecretReferences()))),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
+				core.NewCreateAction("secrets", api.NamespaceDefault, createdTokenSecret()),
+				core.NewUpdateAction("serviceaccounts", api.NamespaceDefault, serviceAccount(addTokenSecretReference(missingSecretReferences()))),
 			},
 		},
 		"new serviceaccount with missing secrets with unsynced secret store": {
@@ -244,9 +243,9 @@ func TestTokenCreation(t *testing.T) {
 
 			AddedServiceAccount: serviceAccount(regularSecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
-				core.NewCreateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, serviceAccount(addTokenSecretReference(regularSecretReferences()))),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
+				core.NewCreateAction("secrets", api.NamespaceDefault, createdTokenSecret()),
+				core.NewUpdateAction("serviceaccounts", api.NamespaceDefault, serviceAccount(addTokenSecretReference(regularSecretReferences()))),
 			},
 		},
 		"new serviceaccount with token secrets": {
@@ -261,7 +260,7 @@ func TestTokenCreation(t *testing.T) {
 
 			AddedServiceAccount: serviceAccount(emptySecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
 			},
 		},
 
@@ -270,9 +269,9 @@ func TestTokenCreation(t *testing.T) {
 
 			UpdatedServiceAccount: serviceAccount(emptySecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
-				core.NewCreateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, serviceAccount(addTokenSecretReference(emptySecretReferences()))),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
+				core.NewCreateAction("secrets", api.NamespaceDefault, createdTokenSecret()),
+				core.NewUpdateAction("serviceaccounts", api.NamespaceDefault, serviceAccount(addTokenSecretReference(emptySecretReferences()))),
 			},
 		},
 		"updated serviceaccount with no secrets with unsynced secret store": {
@@ -282,9 +281,9 @@ func TestTokenCreation(t *testing.T) {
 
 			UpdatedServiceAccount: serviceAccount(emptySecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
-				core.NewCreateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, serviceAccount(addTokenSecretReference(emptySecretReferences()))),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
+				core.NewCreateAction("secrets", api.NamespaceDefault, createdTokenSecret()),
+				core.NewUpdateAction("serviceaccounts", api.NamespaceDefault, serviceAccount(addTokenSecretReference(emptySecretReferences()))),
 			},
 		},
 		"updated serviceaccount with missing secrets": {
@@ -292,9 +291,9 @@ func TestTokenCreation(t *testing.T) {
 
 			UpdatedServiceAccount: serviceAccount(missingSecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
-				core.NewCreateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, serviceAccount(addTokenSecretReference(missingSecretReferences()))),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
+				core.NewCreateAction("secrets", api.NamespaceDefault, createdTokenSecret()),
+				core.NewUpdateAction("serviceaccounts", api.NamespaceDefault, serviceAccount(addTokenSecretReference(missingSecretReferences()))),
 			},
 		},
 		"updated serviceaccount with missing secrets with unsynced secret store": {
@@ -310,9 +309,9 @@ func TestTokenCreation(t *testing.T) {
 
 			UpdatedServiceAccount: serviceAccount(regularSecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
-				core.NewCreateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, createdTokenSecret()),
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, serviceAccount(addTokenSecretReference(regularSecretReferences()))),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
+				core.NewCreateAction("secrets", api.NamespaceDefault, createdTokenSecret()),
+				core.NewUpdateAction("serviceaccounts", api.NamespaceDefault, serviceAccount(addTokenSecretReference(regularSecretReferences()))),
 			},
 		},
 		"updated serviceaccount with token secrets": {
@@ -326,7 +325,7 @@ func TestTokenCreation(t *testing.T) {
 
 			UpdatedServiceAccount: serviceAccount(emptySecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
 			},
 		},
 
@@ -350,7 +349,7 @@ func TestTokenCreation(t *testing.T) {
 
 			DeletedServiceAccount: serviceAccount(tokenSecretReferences()),
 			ExpectedActions: []core.Action{
-				core.NewDeleteAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, "token-secret-1"),
+				core.NewDeleteAction("secrets", api.NamespaceDefault, "token-secret-1"),
 			},
 		},
 
@@ -359,8 +358,8 @@ func TestTokenCreation(t *testing.T) {
 
 			AddedSecret: serviceAccountTokenSecret(),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
-				core.NewDeleteAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, "token-secret-1"),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
+				core.NewDeleteAction("secrets", api.NamespaceDefault, "token-secret-1"),
 			},
 		},
 		"added secret with serviceaccount": {
@@ -375,7 +374,7 @@ func TestTokenCreation(t *testing.T) {
 
 			AddedSecret: serviceAccountTokenSecretWithoutTokenData(),
 			ExpectedActions: []core.Action{
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewUpdateAction("secrets", api.NamespaceDefault, serviceAccountTokenSecret()),
 			},
 		},
 		"added token secret without ca data": {
@@ -384,7 +383,7 @@ func TestTokenCreation(t *testing.T) {
 
 			AddedSecret: serviceAccountTokenSecretWithoutCAData(),
 			ExpectedActions: []core.Action{
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewUpdateAction("secrets", api.NamespaceDefault, serviceAccountTokenSecret()),
 			},
 		},
 		"added token secret with mismatched ca data": {
@@ -393,7 +392,7 @@ func TestTokenCreation(t *testing.T) {
 
 			AddedSecret: serviceAccountTokenSecretWithCAData([]byte("mismatched")),
 			ExpectedActions: []core.Action{
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewUpdateAction("secrets", api.NamespaceDefault, serviceAccountTokenSecret()),
 			},
 		},
 		"added token secret without namespace data": {
@@ -402,7 +401,7 @@ func TestTokenCreation(t *testing.T) {
 
 			AddedSecret: serviceAccountTokenSecretWithoutNamespaceData(),
 			ExpectedActions: []core.Action{
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewUpdateAction("secrets", api.NamespaceDefault, serviceAccountTokenSecret()),
 			},
 		},
 		"added token secret with custom namespace data": {
@@ -420,8 +419,8 @@ func TestTokenCreation(t *testing.T) {
 
 			UpdatedSecret: serviceAccountTokenSecret(),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
-				core.NewDeleteAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, "token-secret-1"),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
+				core.NewDeleteAction("secrets", api.NamespaceDefault, "token-secret-1"),
 			},
 		},
 		"updated secret with serviceaccount": {
@@ -436,7 +435,7 @@ func TestTokenCreation(t *testing.T) {
 
 			UpdatedSecret: serviceAccountTokenSecretWithoutTokenData(),
 			ExpectedActions: []core.Action{
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewUpdateAction("secrets", api.NamespaceDefault, serviceAccountTokenSecret()),
 			},
 		},
 		"updated token secret without ca data": {
@@ -445,7 +444,7 @@ func TestTokenCreation(t *testing.T) {
 
 			UpdatedSecret: serviceAccountTokenSecretWithoutCAData(),
 			ExpectedActions: []core.Action{
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewUpdateAction("secrets", api.NamespaceDefault, serviceAccountTokenSecret()),
 			},
 		},
 		"updated token secret with mismatched ca data": {
@@ -454,7 +453,7 @@ func TestTokenCreation(t *testing.T) {
 
 			UpdatedSecret: serviceAccountTokenSecretWithCAData([]byte("mismatched")),
 			ExpectedActions: []core.Action{
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewUpdateAction("secrets", api.NamespaceDefault, serviceAccountTokenSecret()),
 			},
 		},
 		"updated token secret without namespace data": {
@@ -463,7 +462,7 @@ func TestTokenCreation(t *testing.T) {
 
 			UpdatedSecret: serviceAccountTokenSecretWithoutNamespaceData(),
 			ExpectedActions: []core.Action{
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "secrets"}, api.NamespaceDefault, serviceAccountTokenSecret()),
+				core.NewUpdateAction("secrets", api.NamespaceDefault, serviceAccountTokenSecret()),
 			},
 		},
 		"updated token secret with custom namespace data": {
@@ -486,8 +485,8 @@ func TestTokenCreation(t *testing.T) {
 
 			DeletedSecret: serviceAccountTokenSecret(),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
-				core.NewUpdateAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, serviceAccount(emptySecretReferences())),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
+				core.NewUpdateAction("serviceaccounts", api.NamespaceDefault, serviceAccount(emptySecretReferences())),
 			},
 		},
 		"deleted secret with serviceaccount without reference": {
@@ -495,7 +494,7 @@ func TestTokenCreation(t *testing.T) {
 
 			DeletedSecret: serviceAccountTokenSecret(),
 			ExpectedActions: []core.Action{
-				core.NewGetAction(unversioned.GroupVersionResource{Resource: "serviceaccounts"}, api.NamespaceDefault, "default"),
+				core.NewGetAction("serviceaccounts", api.NamespaceDefault, "default"),
 			},
 		},
 	}

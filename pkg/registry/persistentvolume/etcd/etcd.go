@@ -22,13 +22,13 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	"k8s.io/kubernetes/pkg/registry/generic"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/registry/persistentvolume"
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
 type REST struct {
-	*registry.Store
+	*etcdgeneric.Etcd
 }
 
 // NewREST returns a RESTStorage object that will work against persistent volumes.
@@ -39,14 +39,14 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 	storageInterface := opts.Decorator(
 		opts.Storage, cachesize.GetWatchCacheSizeByResource(cachesize.PersistentVolumes), &api.PersistentVolume{}, prefix, persistentvolume.Strategy, newListFunc)
 
-	store := &registry.Store{
+	store := &etcdgeneric.Etcd{
 		NewFunc:     func() runtime.Object { return &api.PersistentVolume{} },
 		NewListFunc: newListFunc,
 		KeyRootFunc: func(ctx api.Context) string {
 			return prefix
 		},
 		KeyFunc: func(ctx api.Context, name string) (string, error) {
-			return registry.NoNamespaceKeyFunc(ctx, prefix, name)
+			return etcdgeneric.NoNamespaceKeyFunc(ctx, prefix, name)
 		},
 		ObjectNameFunc: func(obj runtime.Object) (string, error) {
 			return obj.(*api.PersistentVolume).Name, nil
@@ -59,7 +59,6 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 		CreateStrategy:      persistentvolume.Strategy,
 		UpdateStrategy:      persistentvolume.Strategy,
-		DeleteStrategy:      persistentvolume.Strategy,
 		ReturnDeletedObject: true,
 
 		Storage: storageInterface,
@@ -73,7 +72,7 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 // StatusREST implements the REST endpoint for changing the status of a persistentvolume.
 type StatusREST struct {
-	store *registry.Store
+	store *etcdgeneric.Etcd
 }
 
 func (r *StatusREST) New() runtime.Object {

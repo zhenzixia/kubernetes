@@ -21,13 +21,12 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/util"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 )
 
-var _ = framework.KubeDescribe("Secrets", func() {
-	f := framework.NewDefaultFramework("secrets")
+var _ = Describe("Secrets", func() {
+	f := NewDefaultFramework("secrets")
 
 	It("should be consumable from pods in volume [Conformance]", func() {
 		name := "secret-test-" + string(util.NewUUID())
@@ -50,12 +49,12 @@ var _ = framework.KubeDescribe("Secrets", func() {
 		defer func() {
 			By("Cleaning up the secret")
 			if err := f.Client.Secrets(f.Namespace.Name).Delete(secret.Name); err != nil {
-				framework.Failf("unable to delete secret %v: %v", secret.Name, err)
+				Failf("unable to delete secret %v: %v", secret.Name, err)
 			}
 		}()
 		var err error
 		if secret, err = f.Client.Secrets(f.Namespace.Name).Create(secret); err != nil {
-			framework.Failf("unable to create test secret %s: %v", secret.Name, err)
+			Failf("unable to create test secret %s: %v", secret.Name, err)
 		}
 
 		pod := &api.Pod{
@@ -93,7 +92,7 @@ var _ = framework.KubeDescribe("Secrets", func() {
 			},
 		}
 
-		framework.TestContainerOutput("consume secrets", f.Client, pod, 0, []string{
+		testContainerOutput("consume secrets", f.Client, pod, 0, []string{
 			"content of file \"/etc/secret-volume/data-1\": value-1",
 			"mode of file \"/etc/secret-volume/data-1\": -r--r--r--",
 		}, f.Namespace.Name)
@@ -116,12 +115,12 @@ var _ = framework.KubeDescribe("Secrets", func() {
 		defer func() {
 			By("Cleaning up the secret")
 			if err := f.Client.Secrets(f.Namespace.Name).Delete(secret.Name); err != nil {
-				framework.Failf("unable to delete secret %v: %v", secret.Name, err)
+				Failf("unable to delete secret %v: %v", secret.Name, err)
 			}
 		}()
 		var err error
 		if secret, err = f.Client.Secrets(f.Namespace.Name).Create(secret); err != nil {
-			framework.Failf("unable to create test secret %s: %v", secret.Name, err)
+			Failf("unable to create test secret %s: %v", secret.Name, err)
 		}
 
 		pod := &api.Pod{
@@ -153,7 +152,7 @@ var _ = framework.KubeDescribe("Secrets", func() {
 			},
 		}
 
-		framework.TestContainerOutput("consume secrets", f.Client, pod, 0, []string{
+		testContainerOutput("consume secrets", f.Client, pod, 0, []string{
 			"SECRET_DATA=value-1",
 		}, f.Namespace.Name)
 	})

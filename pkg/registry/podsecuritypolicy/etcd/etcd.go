@@ -22,14 +22,14 @@ import (
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/registry/generic"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/registry/podsecuritypolicy"
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
 // REST implements a RESTStorage for PodSecurityPolicies against etcd.
 type REST struct {
-	*registry.Store
+	*etcdgeneric.Etcd
 }
 
 const Prefix = "/podsecuritypolicies"
@@ -40,14 +40,14 @@ func NewREST(opts generic.RESTOptions) *REST {
 	storageInterface := opts.Decorator(
 		opts.Storage, 100, &extensions.PodSecurityPolicy{}, Prefix, podsecuritypolicy.Strategy, newListFunc)
 
-	store := &registry.Store{
+	store := &etcdgeneric.Etcd{
 		NewFunc:     func() runtime.Object { return &extensions.PodSecurityPolicy{} },
 		NewListFunc: newListFunc,
 		KeyRootFunc: func(ctx api.Context) string {
 			return Prefix
 		},
 		KeyFunc: func(ctx api.Context, name string) (string, error) {
-			return registry.NoNamespaceKeyFunc(ctx, Prefix, name)
+			return etcdgeneric.NoNamespaceKeyFunc(ctx, Prefix, name)
 		},
 		ObjectNameFunc: func(obj runtime.Object) (string, error) {
 			return obj.(*extensions.PodSecurityPolicy).Name, nil
@@ -60,7 +60,6 @@ func NewREST(opts generic.RESTOptions) *REST {
 
 		CreateStrategy:      podsecuritypolicy.Strategy,
 		UpdateStrategy:      podsecuritypolicy.Strategy,
-		DeleteStrategy:      podsecuritypolicy.Strategy,
 		ReturnDeletedObject: true,
 		Storage:             storageInterface,
 	}

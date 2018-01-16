@@ -20,17 +20,19 @@ import (
 	"fmt"
 	"runtime"
 
+	docker "github.com/fsouza/go-dockerclient"
+
 	"k8s.io/kubernetes/pkg/api"
+	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/record"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
-	clientset "k8s.io/kubernetes/pkg/client/unversioned/adapters/internalclientset"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	cadvisortest "k8s.io/kubernetes/pkg/kubelet/cadvisor/testing"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	"k8s.io/kubernetes/pkg/kubelet/dockertools"
 	"k8s.io/kubernetes/pkg/kubemark"
 	proxyconfig "k8s.io/kubernetes/pkg/proxy/config"
-	"k8s.io/kubernetes/pkg/util/flag"
+	"k8s.io/kubernetes/pkg/util"
 	fakeiptables "k8s.io/kubernetes/pkg/util/iptables/testing"
 	"k8s.io/kubernetes/pkg/util/sets"
 
@@ -45,7 +47,6 @@ type HollowNodeConfig struct {
 	Morph               string
 	NodeName            string
 	ServerPort          int
-	ContentType         string
 }
 
 const (
@@ -61,19 +62,17 @@ func (c *HollowNodeConfig) addFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.NodeName, "name", "fake-node", "Name of this Hollow Node.")
 	fs.IntVar(&c.ServerPort, "api-server-port", 443, "Port on which API server is listening.")
 	fs.StringVar(&c.Morph, "morph", "", fmt.Sprintf("Specifies into which Hollow component this binary should morph. Allowed values: %v", knownMorphs.List()))
-	fs.StringVar(&c.ContentType, "kube-api-content-type", "application/json", "ContentType of requests sent to apiserver. Passing application/vnd.kubernetes.protobuf is an experimental feature now.")
 }
 
-func (c *HollowNodeConfig) createClientFromFile() (*client.Client, error) {
-	clientConfig, err := clientcmd.LoadFromFile(c.KubeconfigPath)
+func createClientFromFile(path string) (*client.Client, error) {
+	c, err := clientcmd.LoadFromFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("error while loading kubeconfig from file %v: %v", c.KubeconfigPath, err)
+		return nil, fmt.Errorf("error while loading kubeconfig from file %v: %v", path, err)
 	}
-	config, err := clientcmd.NewDefaultClientConfig(*clientConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+	config, err := clientcmd.NewDefaultClientConfig(*c, &clientcmd.ConfigOverrides{}).ClientConfig()
 	if err != nil {
 		return nil, fmt.Errorf("error while creating kubeconfig: %v", err)
 	}
-	config.ContentType = c.ContentType
 	client, err := client.New(config)
 	if err != nil {
 		return nil, fmt.Errorf("error while creating client: %v", err)
@@ -86,14 +85,14 @@ func main() {
 
 	config := HollowNodeConfig{}
 	config.addFlags(pflag.CommandLine)
-	flag.InitFlags()
+	util.InitFlags()
 
 	if !knownMorphs.Has(config.Morph) {
 		glog.Fatalf("Unknown morph: %v. Allowed values: %v", config.Morph, knownMorphs.List())
 	}
 
 	// create a client to communicate with API server.
-	cl, err := config.createClientFromFile()
+	cl, err := createClientFromFile(config.KubeconfigPath)
 	clientset := clientset.FromUnversionedClient(cl)
 	if err != nil {
 		glog.Fatal("Failed to create a Client. Exiting.")
@@ -104,6 +103,7 @@ func main() {
 		containerManager := cm.NewStubContainerManager()
 
 		fakeDockerClient := dockertools.NewFakeDockerClient()
+		fakeDockerClient.VersionInfo = docker.Env{"Version=1.1.3", "ApiVersion=1.18"}
 		fakeDockerClient.EnableSleep = true
 
 		hollowKubelet := kubemark.NewHollowKubelet(

@@ -18,10 +18,9 @@ package test_internalclientset
 
 import (
 	"github.com/golang/glog"
-	unversionedtestgroup "k8s.io/kubernetes/cmd/libs/go2idl/client-gen/testoutput/clientset_generated/test_internalclientset/typed/testgroup.k8s.io/unversioned"
+	unversionedtestgroup "k8s.io/kubernetes/cmd/libs/go2idl/client-gen/testoutput/testgroup/unversioned"
 	restclient "k8s.io/kubernetes/pkg/client/restclient"
 	discovery "k8s.io/kubernetes/pkg/client/typed/discovery"
-	"k8s.io/kubernetes/pkg/util/flowcontrol"
 )
 
 type Interface interface {
@@ -38,9 +37,6 @@ type Clientset struct {
 
 // Testgroup retrieves the TestgroupClient
 func (c *Clientset) Testgroup() unversionedtestgroup.TestgroupInterface {
-	if c == nil {
-		return nil
-	}
 	return c.TestgroupClient
 }
 
@@ -51,18 +47,14 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 // NewForConfig creates a new Clientset for the given config.
 func NewForConfig(c *restclient.Config) (*Clientset, error) {
-	configShallowCopy := *c
-	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
-		configShallowCopy.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(configShallowCopy.QPS, configShallowCopy.Burst)
-	}
 	var clientset Clientset
 	var err error
-	clientset.TestgroupClient, err = unversionedtestgroup.NewForConfig(&configShallowCopy)
+	clientset.TestgroupClient, err = unversionedtestgroup.NewForConfig(c)
 	if err != nil {
 		return &clientset, err
 	}
 
-	clientset.DiscoveryClient, err = discovery.NewDiscoveryClientForConfig(&configShallowCopy)
+	clientset.DiscoveryClient, err = discovery.NewDiscoveryClientForConfig(c)
 	if err != nil {
 		glog.Errorf("failed to create the DiscoveryClient: %v", err)
 	}

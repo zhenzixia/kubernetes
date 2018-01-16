@@ -35,6 +35,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/testing/core"
+	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/securitycontext"
@@ -66,7 +67,7 @@ func newReplicaSet(replicas int, selectorMap map[string]string) *extensions.Repl
 			ResourceVersion: "18",
 		},
 		Spec: extensions.ReplicaSetSpec{
-			Replicas: int32(replicas),
+			Replicas: replicas,
 			Selector: &unversioned.LabelSelector{MatchLabels: selectorMap},
 			Template: api.PodTemplateSpec{
 				ObjectMeta: api.ObjectMeta{
@@ -146,7 +147,7 @@ func TestSyncReplicaSetDoesNothing(t *testing.T) {
 	labelMap := map[string]string{"foo": "bar"}
 	rsSpec := newReplicaSet(2, labelMap)
 	manager.rsStore.Store.Add(rsSpec)
-	newPodList(manager.podStore.Indexer, 2, api.PodRunning, labelMap, rsSpec, "pod")
+	newPodList(manager.podStore.Store, 2, api.PodRunning, labelMap, rsSpec, "pod")
 
 	manager.podControl = &fakePodControl
 	manager.syncReplicaSet(getKey(rsSpec, t))
@@ -164,7 +165,7 @@ func TestSyncReplicaSetDeletes(t *testing.T) {
 	labelMap := map[string]string{"foo": "bar"}
 	rsSpec := newReplicaSet(1, labelMap)
 	manager.rsStore.Store.Add(rsSpec)
-	newPodList(manager.podStore.Indexer, 2, api.PodRunning, labelMap, rsSpec, "pod")
+	newPodList(manager.podStore.Store, 2, api.PodRunning, labelMap, rsSpec, "pod")
 
 	manager.syncReplicaSet(getKey(rsSpec, t))
 	validateSyncReplicaSet(t, &fakePodControl, 0, 1)
@@ -224,7 +225,7 @@ func TestStatusUpdatesWithoutReplicasChange(t *testing.T) {
 	// Setup a fake server to listen for requests, and run the ReplicaSet controller in steady state
 	fakeHandler := utiltesting.FakeHandler{
 		StatusCode:   200,
-		ResponseBody: "{}",
+		ResponseBody: "",
 	}
 	testServer := httptest.NewServer(&fakeHandler)
 	defer testServer.Close()
@@ -237,8 +238,8 @@ func TestStatusUpdatesWithoutReplicasChange(t *testing.T) {
 	labelMap := map[string]string{"foo": "bar"}
 	rs := newReplicaSet(activePods, labelMap)
 	manager.rsStore.Store.Add(rs)
-	rs.Status = extensions.ReplicaSetStatus{Replicas: int32(activePods)}
-	newPodList(manager.podStore.Indexer, activePods, api.PodRunning, labelMap, rs, "pod")
+	rs.Status = extensions.ReplicaSetStatus{Replicas: activePods}
+	newPodList(manager.podStore.Store, activePods, api.PodRunning, labelMap, rs, "pod")
 
 	fakePodControl := controller.FakePodControl{}
 	manager.podControl = &fakePodControl
@@ -266,7 +267,7 @@ func TestControllerUpdateReplicas(t *testing.T) {
 	// This is a happy server just to record the PUT request we expect for status.Replicas
 	fakeHandler := utiltesting.FakeHandler{
 		StatusCode:   200,
-		ResponseBody: "{}",
+		ResponseBody: "",
 	}
 	testServer := httptest.NewServer(&fakeHandler)
 	defer testServer.Close()
@@ -284,8 +285,8 @@ func TestControllerUpdateReplicas(t *testing.T) {
 	manager.rsStore.Store.Add(rs)
 	rs.Status = extensions.ReplicaSetStatus{Replicas: 2, FullyLabeledReplicas: 6, ObservedGeneration: 0}
 	rs.Generation = 1
-	newPodList(manager.podStore.Indexer, 2, api.PodRunning, labelMap, rs, "pod")
-	newPodList(manager.podStore.Indexer, 2, api.PodRunning, extraLabelMap, rs, "podWithExtraLabel")
+	newPodList(manager.podStore.Store, 2, api.PodRunning, labelMap, rs, "pod")
+	newPodList(manager.podStore.Store, 2, api.PodRunning, extraLabelMap, rs, "podWithExtraLabel")
 
 	// This response body is just so we don't err out decoding the http response
 	response := runtime.EncodeOrDie(testapi.Extensions.Codec(), &extensions.ReplicaSet{})
@@ -311,7 +312,7 @@ func TestSyncReplicaSetDormancy(t *testing.T) {
 	// Setup a test server so we can lie about the current state of pods
 	fakeHandler := utiltesting.FakeHandler{
 		StatusCode:   200,
-		ResponseBody: "{}",
+		ResponseBody: "",
 	}
 	testServer := httptest.NewServer(&fakeHandler)
 	defer testServer.Close()
@@ -325,7 +326,7 @@ func TestSyncReplicaSetDormancy(t *testing.T) {
 	labelMap := map[string]string{"foo": "bar"}
 	rsSpec := newReplicaSet(2, labelMap)
 	manager.rsStore.Store.Add(rsSpec)
-	newPodList(manager.podStore.Indexer, 1, api.PodRunning, labelMap, rsSpec, "pod")
+	newPodList(manager.podStore.Store, 1, api.PodRunning, labelMap, rsSpec, "pod")
 
 	// Creates a replica and sets expectations
 	rsSpec.Status.Replicas = 1
@@ -548,7 +549,7 @@ func TestUpdatePods(t *testing.T) {
 	manager.rsStore.Store.Add(&testRSSpec2)
 
 	// Put one pod in the podStore
-	pod1 := newPodList(manager.podStore.Indexer, 1, api.PodRunning, labelMap1, testRSSpec1, "pod").Items[0]
+	pod1 := newPodList(manager.podStore.Store, 1, api.PodRunning, labelMap1, testRSSpec1, "pod").Items[0]
 	pod2 := pod1
 	pod2.Labels = labelMap2
 
@@ -574,7 +575,7 @@ func TestControllerUpdateRequeue(t *testing.T) {
 	// This server should force a requeue of the controller because it fails to update status.Replicas.
 	fakeHandler := utiltesting.FakeHandler{
 		StatusCode:   500,
-		ResponseBody: "{}",
+		ResponseBody: "",
 	}
 	testServer := httptest.NewServer(&fakeHandler)
 	defer testServer.Close()
@@ -587,7 +588,7 @@ func TestControllerUpdateRequeue(t *testing.T) {
 	rs := newReplicaSet(1, labelMap)
 	manager.rsStore.Store.Add(rs)
 	rs.Status = extensions.ReplicaSetStatus{Replicas: 2}
-	newPodList(manager.podStore.Indexer, 1, api.PodRunning, labelMap, rs, "pod")
+	newPodList(manager.podStore.Store, 1, api.PodRunning, labelMap, rs, "pod")
 
 	fakePodControl := controller.FakePodControl{}
 	manager.podControl = &fakePodControl
@@ -625,25 +626,25 @@ func TestControllerUpdateStatusWithFailure(t *testing.T) {
 	updateReplicaCount(fakeRSClient, *rs, numReplicas, 0)
 	updates, gets := 0, 0
 	for _, a := range fakeClient.Actions() {
-		if a.GetResource().Resource != "replicasets" {
+		if a.GetResource() != "replicasets" {
 			t.Errorf("Unexpected action %+v", a)
 			continue
 		}
 
 		switch action := a.(type) {
-		case core.GetAction:
+		case testclient.GetAction:
 			gets++
 			// Make sure the get is for the right ReplicaSet even though the update failed.
 			if action.GetName() != rs.Name {
 				t.Errorf("Expected get for ReplicaSet %v, got %+v instead", rs.Name, action.GetName())
 			}
-		case core.UpdateAction:
+		case testclient.UpdateAction:
 			updates++
 			// Confirm that the update has the right status.Replicas even though the Get
 			// returned a ReplicaSet with replicas=1.
 			if c, ok := action.GetObject().(*extensions.ReplicaSet); !ok {
 				t.Errorf("Expected a ReplicaSet as the argument to update, got %T", c)
-			} else if int(c.Status.Replicas) != numReplicas {
+			} else if c.Status.Replicas != numReplicas {
 				t.Errorf("Expected update for ReplicaSet to contain replicas %v, got %v instead",
 					numReplicas, c.Status.Replicas)
 			}
@@ -669,7 +670,7 @@ func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int)
 	rsSpec := newReplicaSet(numReplicas, labelMap)
 	manager.rsStore.Store.Add(rsSpec)
 
-	expectedPods := int32(0)
+	expectedPods := 0
 	pods := newPodList(nil, numReplicas, api.PodPending, labelMap, rsSpec, "pod")
 
 	rsKey, err := controller.KeyFunc(rsSpec)
@@ -678,7 +679,7 @@ func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int)
 	}
 
 	// Size up the controller, then size it down, and confirm the expected create/delete pattern
-	for _, replicas := range []int32{int32(numReplicas), 0} {
+	for _, replicas := range []int{numReplicas, 0} {
 
 		rsSpec.Spec.Replicas = replicas
 		manager.rsStore.Store.Add(rsSpec)
@@ -688,22 +689,22 @@ func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int)
 
 			// The store accrues active pods. It's also used by the ReplicaSet to determine how many
 			// replicas to create.
-			activePods := int32(len(manager.podStore.Indexer.List()))
+			activePods := len(manager.podStore.Store.List())
 			if replicas != 0 {
 				// This is the number of pods currently "in flight". They were created by the
 				// ReplicaSet controller above, which then puts the ReplicaSet to sleep till
 				// all of them have been observed.
 				expectedPods = replicas - activePods
-				if expectedPods > int32(burstReplicas) {
-					expectedPods = int32(burstReplicas)
+				if expectedPods > burstReplicas {
+					expectedPods = burstReplicas
 				}
 				// This validates the ReplicaSet manager sync actually created pods
-				validateSyncReplicaSet(t, &fakePodControl, int(expectedPods), 0)
+				validateSyncReplicaSet(t, &fakePodControl, expectedPods, 0)
 
 				// This simulates the watch events for all but 1 of the expected pods.
 				// None of these should wake the controller because it has expectations==BurstReplicas.
-				for i := int32(0); i < expectedPods-1; i++ {
-					manager.podStore.Indexer.Add(&pods.Items[i])
+				for i := 0; i < expectedPods-1; i++ {
+					manager.podStore.Store.Add(&pods.Items[i])
 					manager.addPod(&pods.Items[i])
 				}
 
@@ -716,10 +717,10 @@ func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int)
 				}
 			} else {
 				expectedPods = (replicas - activePods) * -1
-				if expectedPods > int32(burstReplicas) {
-					expectedPods = int32(burstReplicas)
+				if expectedPods > burstReplicas {
+					expectedPods = burstReplicas
 				}
-				validateSyncReplicaSet(t, &fakePodControl, 0, int(expectedPods))
+				validateSyncReplicaSet(t, &fakePodControl, 0, expectedPods)
 
 				// To accurately simulate a watch we must delete the exact pods
 				// the rs is waiting for.
@@ -760,7 +761,7 @@ func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int)
 			// The last add pod will decrease the expectation of the ReplicaSet to 0,
 			// which will cause it to create/delete the remaining replicas up to burstReplicas.
 			if replicas != 0 {
-				manager.podStore.Indexer.Add(&pods.Items[expectedPods-1])
+				manager.podStore.Store.Add(&pods.Items[expectedPods-1])
 				manager.addPod(&pods.Items[expectedPods-1])
 			} else {
 				expectedDel := manager.expectations.GetUIDs(getKey(rsSpec, t))
@@ -775,19 +776,19 @@ func doTestControllerBurstReplicas(t *testing.T, burstReplicas, numReplicas int)
 						Labels:    rsSpec.Spec.Selector.MatchLabels,
 					},
 				}
-				manager.podStore.Indexer.Delete(lastPod)
+				manager.podStore.Store.Delete(lastPod)
 				manager.deletePod(lastPod)
 			}
 			pods.Items = pods.Items[expectedPods:]
 		}
 
 		// Confirm that we've created the right number of replicas
-		activePods := int32(len(manager.podStore.Indexer.List()))
+		activePods := len(manager.podStore.Store.List())
 		if activePods != rsSpec.Spec.Replicas {
 			t.Fatalf("Unexpected number of active pods, expected %d, got %d", rsSpec.Spec.Replicas, activePods)
 		}
 		// Replenish the pod list, since we cut it down sizing up
-		pods = newPodList(nil, int(replicas), api.PodRunning, labelMap, rsSpec, "pod")
+		pods = newPodList(nil, replicas, api.PodRunning, labelMap, rsSpec, "pod")
 	}
 }
 
@@ -821,7 +822,7 @@ func TestRSSyncExpectations(t *testing.T) {
 	rsSpec := newReplicaSet(2, labelMap)
 	manager.rsStore.Store.Add(rsSpec)
 	pods := newPodList(nil, 2, api.PodPending, labelMap, rsSpec, "pod")
-	manager.podStore.Indexer.Add(&pods.Items[0])
+	manager.podStore.Store.Add(&pods.Items[0])
 	postExpectationsPod := pods.Items[1]
 
 	manager.expectations = controller.NewUIDTrackingControllerExpectations(FakeRSExpectations{
@@ -829,7 +830,7 @@ func TestRSSyncExpectations(t *testing.T) {
 			// If we check active pods before checking expectataions, the
 			// ReplicaSet will create a new replica because it doesn't see
 			// this pod, but has fulfilled its expectations.
-			manager.podStore.Indexer.Add(&postExpectationsPod)
+			manager.podStore.Store.Add(&postExpectationsPod)
 		},
 	})
 	manager.syncReplicaSet(getKey(rsSpec, t))
@@ -873,7 +874,7 @@ func TestDeleteControllerAndExpectations(t *testing.T) {
 
 	// This should have no effect, since we've deleted the ReplicaSet.
 	podExp.Add(-1, 0)
-	manager.podStore.Indexer.Replace(make([]interface{}, 0), "0")
+	manager.podStore.Store.Replace(make([]interface{}, 0), "0")
 	manager.syncReplicaSet(getKey(rs, t))
 	validateSyncReplicaSet(t, &fakePodControl, 0, 0)
 }
@@ -960,7 +961,7 @@ func TestDeletionTimestamp(t *testing.T) {
 		t.Errorf("Couldn't get key for object %+v: %v", rs, err)
 	}
 	pod := newPodList(nil, 1, api.PodPending, labelMap, rs, "pod").Items[0]
-	pod.DeletionTimestamp = &unversioned.Time{Time: time.Now()}
+	pod.DeletionTimestamp = &unversioned.Time{time.Now()}
 	manager.expectations.ExpectDeletions(rsKey, []string{controller.PodKey(&pod)})
 
 	// A pod added with a deletion timestamp should decrement deletions, not creations.
@@ -1004,7 +1005,7 @@ func TestDeletionTimestamp(t *testing.T) {
 		},
 	}
 	manager.expectations.ExpectDeletions(rsKey, []string{controller.PodKey(secondPod)})
-	oldPod.DeletionTimestamp = &unversioned.Time{Time: time.Now()}
+	oldPod.DeletionTimestamp = &unversioned.Time{time.Now()}
 	manager.updatePod(&oldPod, &pod)
 
 	podExp, exists, err = manager.expectations.GetExpectations(rsKey)

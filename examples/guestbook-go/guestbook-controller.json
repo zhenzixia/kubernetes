@@ -22,7 +22,7 @@
             "containers":[
                {
                   "name":"guestbook",
-                  "image":"gcr.io/google_containers/guestbook:v3",
+                  "image":"kubernetes/guestbook:v2",
                   "ports":[
                      {
                         "name":"http-server",

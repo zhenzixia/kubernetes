@@ -64,9 +64,9 @@ func (config *DeferredLoadingClientConfig) createClientConfig() (ClientConfig, e
 
 			var mergedClientConfig ClientConfig
 			if config.fallbackReader != nil {
-				mergedClientConfig = NewInteractiveClientConfig(*mergedConfig, config.overrides.CurrentContext, config.overrides, config.fallbackReader, config.loadingRules)
+				mergedClientConfig = NewInteractiveClientConfig(*mergedConfig, config.overrides.CurrentContext, config.overrides, config.fallbackReader)
 			} else {
-				mergedClientConfig = NewNonInteractiveClientConfig(*mergedConfig, config.overrides.CurrentContext, config.overrides, config.loadingRules)
+				mergedClientConfig = NewNonInteractiveClientConfig(*mergedConfig, config.overrides.CurrentContext, config.overrides)
 			}
 
 			config.clientConfig = mergedClientConfig
@@ -91,7 +91,6 @@ func (config *DeferredLoadingClientConfig) ClientConfig() (*restclient.Config, e
 	if err != nil {
 		return nil, err
 	}
-
 	mergedConfig, err := mergedClientConfig.ClientConfig()
 	if err != nil {
 		return nil, err
@@ -103,6 +102,7 @@ func (config *DeferredLoadingClientConfig) ClientConfig() (*restclient.Config, e
 		glog.V(2).Info("No kubeconfig could be created, falling back to service account.")
 		return icc.ClientConfig()
 	}
+
 	return mergedConfig, nil
 }
 
@@ -114,9 +114,4 @@ func (config *DeferredLoadingClientConfig) Namespace() (string, bool, error) {
 	}
 
 	return mergedKubeConfig.Namespace()
-}
-
-// ConfigAccess implements ClientConfig
-func (config *DeferredLoadingClientConfig) ConfigAccess() ConfigAccess {
-	return config.loadingRules
 }

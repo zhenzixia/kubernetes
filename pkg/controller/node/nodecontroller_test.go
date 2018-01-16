@@ -29,10 +29,9 @@ import (
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
-	unversionedcore "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/unversioned"
+	unversionedcore "k8s.io/kubernetes/pkg/client/typed/generated/core/unversioned"
 	fakecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/fake"
-	"k8s.io/kubernetes/pkg/util/diff"
-	"k8s.io/kubernetes/pkg/util/flowcontrol"
+	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/watch"
 )
@@ -418,7 +417,7 @@ func TestMonitorNodeStatusEvictPods(t *testing.T) {
 
 	for _, item := range table {
 		nodeController := NewNodeController(nil, item.fakeNodeHandler,
-			evictionTimeout, flowcontrol.NewFakeAlwaysRateLimiter(), flowcontrol.NewFakeAlwaysRateLimiter(), testNodeMonitorGracePeriod,
+			evictionTimeout, util.NewFakeAlwaysRateLimiter(), util.NewFakeAlwaysRateLimiter(), testNodeMonitorGracePeriod,
 			testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, false)
 		nodeController.now = func() unversioned.Time { return fakeNow }
 		for _, ds := range item.daemonSets {
@@ -448,7 +447,7 @@ func TestMonitorNodeStatusEvictPods(t *testing.T) {
 		})
 		podEvicted := false
 		for _, action := range item.fakeNodeHandler.Actions() {
-			if action.GetVerb() == "delete" && action.GetResource().Resource == "pods" {
+			if action.GetVerb() == "delete" && action.GetResource() == "pods" {
 				podEvicted = true
 			}
 		}
@@ -487,7 +486,7 @@ func TestCloudProviderNoRateLimit(t *testing.T) {
 		deleteWaitChan: make(chan struct{}),
 	}
 	nodeController := NewNodeController(nil, fnh, 10*time.Minute,
-		flowcontrol.NewFakeAlwaysRateLimiter(), flowcontrol.NewFakeAlwaysRateLimiter(),
+		util.NewFakeAlwaysRateLimiter(), util.NewFakeAlwaysRateLimiter(),
 		testNodeMonitorGracePeriod, testNodeStartupGracePeriod,
 		testNodeMonitorPeriod, nil, false)
 	nodeController.cloud = &fakecloud.FakeCloud{}
@@ -720,8 +719,8 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 	}
 
 	for i, item := range table {
-		nodeController := NewNodeController(nil, item.fakeNodeHandler, 5*time.Minute, flowcontrol.NewFakeAlwaysRateLimiter(),
-			flowcontrol.NewFakeAlwaysRateLimiter(), testNodeMonitorGracePeriod, testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, false)
+		nodeController := NewNodeController(nil, item.fakeNodeHandler, 5*time.Minute, util.NewFakeAlwaysRateLimiter(),
+			util.NewFakeAlwaysRateLimiter(), testNodeMonitorGracePeriod, testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, false)
 		nodeController.now = func() unversioned.Time { return fakeNow }
 		if err := nodeController.monitorNodeStatus(); err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -737,10 +736,10 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 			t.Errorf("expected %v call, but got %v.", item.expectedRequestCount, item.fakeNodeHandler.RequestCount)
 		}
 		if len(item.fakeNodeHandler.UpdatedNodes) > 0 && !api.Semantic.DeepEqual(item.expectedNodes, item.fakeNodeHandler.UpdatedNodes) {
-			t.Errorf("Case[%d] unexpected nodes: %s", i, diff.ObjectDiff(item.expectedNodes[0], item.fakeNodeHandler.UpdatedNodes[0]))
+			t.Errorf("Case[%d] unexpected nodes: %s", i, util.ObjectDiff(item.expectedNodes[0], item.fakeNodeHandler.UpdatedNodes[0]))
 		}
 		if len(item.fakeNodeHandler.UpdatedNodeStatuses) > 0 && !api.Semantic.DeepEqual(item.expectedNodes, item.fakeNodeHandler.UpdatedNodeStatuses) {
-			t.Errorf("Case[%d] unexpected nodes: %s", i, diff.ObjectDiff(item.expectedNodes[0], item.fakeNodeHandler.UpdatedNodeStatuses[0]))
+			t.Errorf("Case[%d] unexpected nodes: %s", i, util.ObjectDiff(item.expectedNodes[0], item.fakeNodeHandler.UpdatedNodeStatuses[0]))
 		}
 	}
 }
@@ -870,8 +869,8 @@ func TestMonitorNodeStatusMarkPodsNotReady(t *testing.T) {
 	}
 
 	for i, item := range table {
-		nodeController := NewNodeController(nil, item.fakeNodeHandler, 5*time.Minute, flowcontrol.NewFakeAlwaysRateLimiter(),
-			flowcontrol.NewFakeAlwaysRateLimiter(), testNodeMonitorGracePeriod, testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, false)
+		nodeController := NewNodeController(nil, item.fakeNodeHandler, 5*time.Minute, util.NewFakeAlwaysRateLimiter(),
+			util.NewFakeAlwaysRateLimiter(), testNodeMonitorGracePeriod, testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, false)
 		nodeController.now = func() unversioned.Time { return fakeNow }
 		if err := nodeController.monitorNodeStatus(); err != nil {
 			t.Errorf("Case[%d] unexpected error: %v", i, err)
@@ -886,7 +885,7 @@ func TestMonitorNodeStatusMarkPodsNotReady(t *testing.T) {
 
 		podStatusUpdated := false
 		for _, action := range item.fakeNodeHandler.Actions() {
-			if action.GetVerb() == "update" && action.GetResource().Resource == "pods" && action.GetSubresource() == "status" {
+			if action.GetVerb() == "update" && action.GetResource() == "pods" && action.GetSubresource() == "status" {
 				podStatusUpdated = true
 			}
 		}
@@ -952,7 +951,7 @@ func TestNodeDeletion(t *testing.T) {
 		Clientset: fake.NewSimpleClientset(&api.PodList{Items: []api.Pod{*newPod("pod0", "node0"), *newPod("pod1", "node1")}}),
 	}
 
-	nodeController := NewNodeController(nil, fakeNodeHandler, 5*time.Minute, flowcontrol.NewFakeAlwaysRateLimiter(), flowcontrol.NewFakeAlwaysRateLimiter(),
+	nodeController := NewNodeController(nil, fakeNodeHandler, 5*time.Minute, util.NewFakeAlwaysRateLimiter(), util.NewFakeAlwaysRateLimiter(),
 		testNodeMonitorGracePeriod, testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, false)
 	nodeController.now = func() unversioned.Time { return fakeNow }
 	if err := nodeController.monitorNodeStatus(); err != nil {
@@ -968,7 +967,7 @@ func TestNodeDeletion(t *testing.T) {
 	})
 	podEvicted := false
 	for _, action := range fakeNodeHandler.Actions() {
-		if action.GetVerb() == "delete" && action.GetResource().Resource == "pods" {
+		if action.GetVerb() == "delete" && action.GetResource() == "pods" {
 			podEvicted = true
 		}
 	}
@@ -1139,7 +1138,7 @@ func TestCleanupOrphanedPods(t *testing.T) {
 	nc.nodeStore.Store.Add(newNode("bar"))
 	for _, pod := range pods {
 		p := pod
-		nc.podStore.Indexer.Add(&p)
+		nc.podStore.Store.Add(&p)
 	}
 
 	var deleteCalls int

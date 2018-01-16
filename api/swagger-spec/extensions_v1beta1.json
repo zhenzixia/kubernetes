@@ -80,8 +80,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -127,8 +126,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -206,8 +204,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -220,7 +217,7 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch individual changes to a list of DaemonSet",
       "nickname": "watchNamespacedDaemonSetList",
@@ -286,14 +283,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -361,8 +355,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -416,8 +409,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -471,8 +463,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "application/json-patch+json",
@@ -528,8 +519,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -542,7 +532,7 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch changes to an object of kind DaemonSet",
       "nickname": "watchNamespacedDaemonSet",
@@ -616,14 +606,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -639,7 +626,7 @@
       "type": "v1beta1.DaemonSetList",
       "method": "GET",
       "summary": "list or watch objects of kind DaemonSet",
-      "nickname": "listNamespacedDaemonSet",
+      "nickname": "listDaemonSet",
       "parameters": [
        {
         "type": "string",
@@ -699,8 +686,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -713,10 +699,10 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch individual changes to a list of DaemonSet",
-      "nickname": "watchNamespacedDaemonSetList",
+      "nickname": "watchDaemonSetList",
       "parameters": [
        {
         "type": "string",
@@ -771,14 +757,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -838,8 +821,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -923,8 +905,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -970,8 +951,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -1049,8 +1029,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -1063,7 +1042,7 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch individual changes to a list of Deployment",
       "nickname": "watchNamespacedDeploymentList",
@@ -1129,14 +1108,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -1204,8 +1180,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -1259,8 +1234,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -1314,8 +1288,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "application/json-patch+json",
@@ -1371,8 +1344,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -1385,7 +1357,7 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch changes to an object of kind Deployment",
       "nickname": "watchNamespacedDeployment",
@@ -1459,14 +1431,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -1482,7 +1451,7 @@
       "type": "v1beta1.DeploymentList",
       "method": "GET",
       "summary": "list or watch objects of kind Deployment",
-      "nickname": "listNamespacedDeployment",
+      "nickname": "listDeployment",
       "parameters": [
        {
         "type": "string",
@@ -1542,8 +1511,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -1556,10 +1524,10 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch individual changes to a list of Deployment",
-      "nickname": "watchNamespacedDeploymentList",
+      "nickname": "watchDeploymentList",
       "parameters": [
        {
         "type": "string",
@@ -1614,14 +1582,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -1681,8 +1646,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -1734,8 +1698,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -1789,8 +1752,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -1844,8 +1806,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "application/json-patch+json",
@@ -1907,8 +1868,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -1992,8 +1952,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -2039,8 +1998,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -2118,8 +2076,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -2132,7 +2089,7 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch individual changes to a list of HorizontalPodAutoscaler",
       "nickname": "watchNamespacedHorizontalPodAutoscalerList",
@@ -2198,14 +2155,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -2273,8 +2227,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -2328,8 +2281,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -2383,8 +2335,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "application/json-patch+json",
@@ -2440,8 +2391,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -2454,7 +2404,7 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch changes to an object of kind HorizontalPodAutoscaler",
       "nickname": "watchNamespacedHorizontalPodAutoscaler",
@@ -2528,14 +2478,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -2551,7 +2498,7 @@
       "type": "v1beta1.HorizontalPodAutoscalerList",
       "method": "GET",
       "summary": "list or watch objects of kind HorizontalPodAutoscaler",
-      "nickname": "listNamespacedHorizontalPodAutoscaler",
+      "nickname": "listHorizontalPodAutoscaler",
       "parameters": [
        {
         "type": "string",
@@ -2611,8 +2558,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -2625,10 +2571,10 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch individual changes to a list of HorizontalPodAutoscaler",
-      "nickname": "watchNamespacedHorizontalPodAutoscalerList",
+      "nickname": "watchHorizontalPodAutoscalerList",
       "parameters": [
        {
         "type": "string",
@@ -2683,14 +2629,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -2750,8 +2693,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -2835,8 +2777,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -2882,8 +2823,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -2961,8 +2901,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -2975,7 +2914,7 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch individual changes to a list of Ingress",
       "nickname": "watchNamespacedIngressList",
@@ -3041,14 +2980,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -3116,8 +3052,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -3171,8 +3106,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -3226,8 +3160,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "application/json-patch+json",
@@ -3283,8 +3216,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -3297,7 +3229,7 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch changes to an object of kind Ingress",
       "nickname": "watchNamespacedIngress",
@@ -3371,14 +3303,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -3394,7 +3323,7 @@
       "type": "v1beta1.IngressList",
       "method": "GET",
       "summary": "list or watch objects of kind Ingress",
-      "nickname": "listNamespacedIngress",
+      "nickname": "listIngress",
       "parameters": [
        {
         "type": "string",
@@ -3454,8 +3383,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -3468,10 +3396,10 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch individual changes to a list of Ingress",
-      "nickname": "watchNamespacedIngressList",
+      "nickname": "watchIngressList",
       "parameters": [
        {
         "type": "string",
@@ -3526,14 +3454,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -3593,8 +3518,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -3678,8 +3602,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -3725,8 +3648,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -3804,8 +3726,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -3818,7 +3739,7 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch individual changes to a list of Job",
       "nickname": "watchNamespacedJobList",
@@ -3884,14 +3805,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -3959,8 +3877,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -4014,8 +3931,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -4069,8 +3985,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "application/json-patch+json",
@@ -4126,8 +4041,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -4140,7 +4054,7 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch changes to an object of kind Job",
       "nickname": "watchNamespacedJob",
@@ -4214,14 +4128,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -4237,7 +4148,7 @@
       "type": "v1beta1.JobList",
       "method": "GET",
       "summary": "list or watch objects of kind Job",
-      "nickname": "listNamespacedJob",
+      "nickname": "listJob",
       "parameters": [
        {
         "type": "string",
@@ -4297,8 +4208,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -4311,10 +4221,10 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch individual changes to a list of Job",
-      "nickname": "watchNamespacedJobList",
+      "nickname": "watchJobList",
       "parameters": [
        {
         "type": "string",
@@ -4369,14 +4279,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -4436,8 +4343,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -4521,8 +4427,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -4568,8 +4473,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -4647,8 +4551,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -4661,7 +4564,7 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch individual changes to a list of ReplicaSet",
       "nickname": "watchNamespacedReplicaSetList",
@@ -4727,14 +4630,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -4802,8 +4702,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -4857,8 +4756,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -4912,8 +4810,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "application/json-patch+json",
@@ -4969,8 +4866,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -4983,7 +4879,7 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch changes to an object of kind ReplicaSet",
       "nickname": "watchNamespacedReplicaSet",
@@ -5057,14 +4953,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -5080,7 +4973,7 @@
       "type": "v1beta1.ReplicaSetList",
       "method": "GET",
       "summary": "list or watch objects of kind ReplicaSet",
-      "nickname": "listNamespacedReplicaSet",
+      "nickname": "listReplicaSet",
       "parameters": [
        {
         "type": "string",
@@ -5140,8 +5033,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -5154,10 +5046,10 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "*versioned.Event",
+      "type": "json.WatchEvent",
       "method": "GET",
       "summary": "watch individual changes to a list of ReplicaSet",
-      "nickname": "watchNamespacedReplicaSetList",
+      "nickname": "watchReplicaSetList",
       "parameters": [
        {
         "type": "string",
@@ -5212,14 +5104,11 @@
        {
         "code": 200,
         "message": "OK",
-        "responseModel": "*versioned.Event"
+        "responseModel": "json.WatchEvent"
        }
       ],
       "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
+       "application/json"
       ],
       "consumes": [
        "*/*"
@@ -5271,8 +5160,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -5326,8 +5214,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -5381,8 +5268,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "application/json-patch+json",
@@ -5444,8 +5330,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -5497,8 +5382,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -5552,8 +5436,7 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "*/*"
@@ -5607,568 +5490,12 @@
       ],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "application/json-patch+json",
        "application/merge-patch+json",
        "application/strategic-merge-patch+json"
-      ]
-     }
-    ]
-   },
-   {
-    "path": "/apis/extensions/v1beta1/thirdpartyresources",
-    "description": "API at /apis/extensions/v1beta1",
-    "operations": [
-     {
-      "type": "v1beta1.ThirdPartyResourceList",
-      "method": "GET",
-      "summary": "list or watch objects of kind ThirdPartyResource",
-      "nickname": "listThirdPartyResource",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "labelSelector",
-        "description": "A selector to restrict the list of returned objects by their labels. Defaults to everything.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "fieldSelector",
-        "description": "A selector to restrict the list of returned objects by their fields. Defaults to everything.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "boolean",
-        "paramType": "query",
-        "name": "watch",
-        "description": "Watch for changes to the described resources and return them as a stream of add, update, and remove notifications. Specify resourceVersion.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "resourceVersion",
-        "description": "When specified with a watch call, shows changes that occur after that particular version of a resource. Defaults to changes from the beginning of history.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "integer",
-        "paramType": "query",
-        "name": "timeoutSeconds",
-        "description": "Timeout for the list/watch call.",
-        "required": false,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1beta1.ThirdPartyResourceList"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     },
-     {
-      "type": "v1beta1.ThirdPartyResource",
-      "method": "POST",
-      "summary": "create a ThirdPartyResource",
-      "nickname": "createThirdPartyResource",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1beta1.ThirdPartyResource",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1beta1.ThirdPartyResource"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     },
-     {
-      "type": "unversioned.Status",
-      "method": "DELETE",
-      "summary": "delete collection of ThirdPartyResource",
-      "nickname": "deletecollectionThirdPartyResource",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "labelSelector",
-        "description": "A selector to restrict the list of returned objects by their labels. Defaults to everything.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "fieldSelector",
-        "description": "A selector to restrict the list of returned objects by their fields. Defaults to everything.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "boolean",
-        "paramType": "query",
-        "name": "watch",
-        "description": "Watch for changes to the described resources and return them as a stream of add, update, and remove notifications. Specify resourceVersion.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "resourceVersion",
-        "description": "When specified with a watch call, shows changes that occur after that particular version of a resource. Defaults to changes from the beginning of history.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "integer",
-        "paramType": "query",
-        "name": "timeoutSeconds",
-        "description": "Timeout for the list/watch call.",
-        "required": false,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "unversioned.Status"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
-    "path": "/apis/extensions/v1beta1/watch/thirdpartyresources",
-    "description": "API at /apis/extensions/v1beta1",
-    "operations": [
-     {
-      "type": "*versioned.Event",
-      "method": "GET",
-      "summary": "watch individual changes to a list of ThirdPartyResource",
-      "nickname": "watchThirdPartyResourceList",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "labelSelector",
-        "description": "A selector to restrict the list of returned objects by their labels. Defaults to everything.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "fieldSelector",
-        "description": "A selector to restrict the list of returned objects by their fields. Defaults to everything.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "boolean",
-        "paramType": "query",
-        "name": "watch",
-        "description": "Watch for changes to the described resources and return them as a stream of add, update, and remove notifications. Specify resourceVersion.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "resourceVersion",
-        "description": "When specified with a watch call, shows changes that occur after that particular version of a resource. Defaults to changes from the beginning of history.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "integer",
-        "paramType": "query",
-        "name": "timeoutSeconds",
-        "description": "Timeout for the list/watch call.",
-        "required": false,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "*versioned.Event"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
-    "path": "/apis/extensions/v1beta1/thirdpartyresources/{name}",
-    "description": "API at /apis/extensions/v1beta1",
-    "operations": [
-     {
-      "type": "v1beta1.ThirdPartyResource",
-      "method": "GET",
-      "summary": "read the specified ThirdPartyResource",
-      "nickname": "readThirdPartyResource",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "boolean",
-        "paramType": "query",
-        "name": "export",
-        "description": "Should this value be exported.  Export strips fields that a user can not specify.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "boolean",
-        "paramType": "query",
-        "name": "exact",
-        "description": "Should the export be exact.  Exact export maintains cluster-specific fields like 'Namespace'",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "path",
-        "name": "name",
-        "description": "name of the ThirdPartyResource",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1beta1.ThirdPartyResource"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     },
-     {
-      "type": "v1beta1.ThirdPartyResource",
-      "method": "PUT",
-      "summary": "replace the specified ThirdPartyResource",
-      "nickname": "replaceThirdPartyResource",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1beta1.ThirdPartyResource",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "path",
-        "name": "name",
-        "description": "name of the ThirdPartyResource",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1beta1.ThirdPartyResource"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     },
-     {
-      "type": "v1beta1.ThirdPartyResource",
-      "method": "PATCH",
-      "summary": "partially update the specified ThirdPartyResource",
-      "nickname": "patchThirdPartyResource",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "unversioned.Patch",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "path",
-        "name": "name",
-        "description": "name of the ThirdPartyResource",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1beta1.ThirdPartyResource"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "application/json-patch+json",
-       "application/merge-patch+json",
-       "application/strategic-merge-patch+json"
-      ]
-     },
-     {
-      "type": "unversioned.Status",
-      "method": "DELETE",
-      "summary": "delete a ThirdPartyResource",
-      "nickname": "deleteThirdPartyResource",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.DeleteOptions",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "path",
-        "name": "name",
-        "description": "name of the ThirdPartyResource",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "unversioned.Status"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
-    "path": "/apis/extensions/v1beta1/watch/thirdpartyresources/{name}",
-    "description": "API at /apis/extensions/v1beta1",
-    "operations": [
-     {
-      "type": "*versioned.Event",
-      "method": "GET",
-      "summary": "watch changes to an object of kind ThirdPartyResource",
-      "nickname": "watchThirdPartyResource",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "labelSelector",
-        "description": "A selector to restrict the list of returned objects by their labels. Defaults to everything.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "fieldSelector",
-        "description": "A selector to restrict the list of returned objects by their fields. Defaults to everything.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "boolean",
-        "paramType": "query",
-        "name": "watch",
-        "description": "Watch for changes to the described resources and return them as a stream of add, update, and remove notifications. Specify resourceVersion.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "resourceVersion",
-        "description": "When specified with a watch call, shows changes that occur after that particular version of a resource. Defaults to changes from the beginning of history.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "integer",
-        "paramType": "query",
-        "name": "timeoutSeconds",
-        "description": "Timeout for the list/watch call.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "path",
-        "name": "name",
-        "description": "name of the ThirdPartyResource",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "*versioned.Event"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/json;stream=watch",
-       "application/vnd.kubernetes.protobuf",
-       "application/vnd.kubernetes.protobuf;stream=watch"
-      ],
-      "consumes": [
-       "*/*"
       ]
      }
     ]
@@ -6178,20 +5505,18 @@
     "description": "API at /apis/extensions/v1beta1",
     "operations": [
      {
-      "type": "unversioned.APIResourceList",
+      "type": "void",
       "method": "GET",
       "summary": "get available resources",
       "nickname": "getAPIResources",
       "parameters": [],
       "produces": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ],
       "consumes": [
        "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
+       "application/yaml"
       ]
      }
     ]
@@ -6207,15 +5532,15 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "unversioned.ListMeta",
-      "description": "Standard list metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"
+      "description": "Standard list metadata. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#metadata"
      },
      "items": {
       "type": "array",
@@ -6236,7 +5561,7 @@
      },
      "resourceVersion": {
       "type": "string",
-      "description": "String that identifies the server's internal version of this object that can be used by clients to determine when objects have changed. Value must be treated as opaque by clients and passed unmodified back to the server. Populated by the system. Read-only. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#concurrency-control-and-consistency"
+      "description": "String that identifies the server's internal version of this object that can be used by clients to determine when objects have changed. Value must be treated as opaque by clients and passed unmodified back to the server. Populated by the system. Read-only. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#concurrency-control-and-consistency"
      }
     }
    },
@@ -6246,23 +5571,23 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "v1.ObjectMeta",
-      "description": "Standard object's metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"
+      "description": "Standard object's metadata. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#metadata"
      },
      "spec": {
       "$ref": "v1beta1.DaemonSetSpec",
-      "description": "Spec defines the desired behavior of this daemon set. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status"
+      "description": "Spec defines the desired behavior of this daemon set. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status"
      },
      "status": {
       "$ref": "v1beta1.DaemonSetStatus",
-      "description": "Status is the current status of this daemon set. This data may be out of date by some window of time. Populated by the system. Read-only. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status"
+      "description": "Status is the current status of this daemon set. This data may be out of date by some window of time. Populated by the system. Read-only. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status"
      }
     }
    },
@@ -6272,15 +5597,15 @@
     "properties": {
      "name": {
       "type": "string",
-      "description": "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: http://releases.k8s.io/HEAD/docs/user-guide/identifiers.md#names"
+      "description": "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: http://releases.k8s.io/release-1.2/docs/user-guide/identifiers.md#names"
      },
      "generateName": {
       "type": "string",
-      "description": "GenerateName is an optional prefix, used by the server, to generate a unique name ONLY IF the Name field has not been provided. If this field is used, the name returned to the client will be different than the name passed. This value will also be combined with a unique suffix. The provided value has the same validation rules as the Name field, and may be truncated by the length of the suffix required to make the value unique on the server.\n\nIf this field is specified and the generated name exists, the server will NOT return a 409 - instead, it will either return 201 Created or 500 with Reason ServerTimeout indicating a unique name could not be found in the time allotted, and the client should retry (optionally after the time indicated in the Retry-After header).\n\nApplied only if Name is not specified. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#idempotency"
+      "description": "GenerateName is an optional prefix, used by the server, to generate a unique name ONLY IF the Name field has not been provided. If this field is used, the name returned to the client will be different than the name passed. This value will also be combined with a unique suffix. The provided value has the same validation rules as the Name field, and may be truncated by the length of the suffix required to make the value unique on the server.\n\nIf this field is specified and the generated name exists, the server will NOT return a 409 - instead, it will either return 201 Created or 500 with Reason ServerTimeout indicating a unique name could not be found in the time allotted, and the client should retry (optionally after the time indicated in the Retry-After header).\n\nApplied only if Name is not specified. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#idempotency"
      },
      "namespace": {
       "type": "string",
-      "description": "Namespace defines the space within each name must be unique. An empty namespace is equivalent to the \"default\" namespace, but \"default\" is the canonical representation. Not all objects are required to be scoped to a namespace - the value of this field for those objects will be empty.\n\nMust be a DNS_LABEL. Cannot be updated. More info: http://releases.k8s.io/HEAD/docs/user-guide/namespaces.md"
+      "description": "Namespace defines the space within each name must be unique. An empty namespace is equivalent to the \"default\" namespace, but \"default\" is the canonical representation. Not all objects are required to be scoped to a namespace - the value of this field for those objects will be empty.\n\nMust be a DNS_LABEL. Cannot be updated. More info: http://releases.k8s.io/release-1.2/docs/user-guide/namespaces.md"
      },
      "selfLink": {
       "type": "string",
@@ -6288,11 +5613,11 @@
      },
      "uid": {
       "type": "string",
-      "description": "UID is the unique in time and space value for this object. It is typically generated by the server on successful creation of a resource and is not allowed to change on PUT operations.\n\nPopulated by the system. Read-only. More info: http://releases.k8s.io/HEAD/docs/user-guide/identifiers.md#uids"
+      "description": "UID is the unique in time and space value for this object. It is typically generated by the server on successful creation of a resource and is not allowed to change on PUT operations.\n\nPopulated by the system. Read-only. More info: http://releases.k8s.io/release-1.2/docs/user-guide/identifiers.md#uids"
      },
      "resourceVersion": {
       "type": "string",
-      "description": "An opaque value that represents the internal version of this object that can be used by clients to determine when objects have changed. May be used for optimistic concurrency, change detection, and the watch operation on a resource or set of resources. Clients must treat these values as opaque and passed unmodified back to the server. They may only be valid for a particular resource or set of resources.\n\nPopulated by the system. Read-only. Value must be treated as opaque by clients and . More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#concurrency-control-and-consistency"
+      "description": "An opaque value that represents the internal version of this object that can be used by clients to determine when objects have changed. May be used for optimistic concurrency, change detection, and the watch operation on a resource or set of resources. Clients must treat these values as opaque and passed unmodified back to the server. They may only be valid for a particular resource or set of resources.\n\nPopulated by the system. Read-only. Value must be treated as opaque by clients and . More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#concurrency-control-and-consistency"
      },
      "generation": {
       "type": "integer",
@@ -6301,11 +5626,11 @@
      },
      "creationTimestamp": {
       "type": "string",
-      "description": "CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC.\n\nPopulated by the system. Read-only. Null for lists. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"
+      "description": "CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC.\n\nPopulated by the system. Read-only. Null for lists. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#metadata"
      },
      "deletionTimestamp": {
       "type": "string",
-      "description": "DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This field is set by the server when a graceful deletion is requested by the user, and is not directly settable by a client. The resource will be deleted (no longer visible from resource lists, and not reachable by name) after the time in this field. Once set, this value may not be unset or be set further into the future, although it may be shortened or the resource may be deleted prior to this time. For example, a user may request that a pod is deleted in 30 seconds. The Kubelet will react by sending a graceful termination signal to the containers in the pod. Once the resource is deleted in the API, the Kubelet will send a hard termination signal to the container. If not set, graceful deletion of the object has not been requested.\n\nPopulated by the system when a graceful deletion is requested. Read-only. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"
+      "description": "DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This field is set by the server when a graceful deletion is requested by the user, and is not directly settable by a client. The resource will be deleted (no longer visible from resource lists, and not reachable by name) after the time in this field. Once set, this value may not be unset or be set further into the future, although it may be shortened or the resource may be deleted prior to this time. For example, a user may request that a pod is deleted in 30 seconds. The Kubelet will react by sending a graceful termination signal to the containers in the pod. Once the resource is deleted in the API, the Kubelet will send a hard termination signal to the container. If not set, graceful deletion of the object has not been requested.\n\nPopulated by the system when a graceful deletion is requested. Read-only. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#metadata"
      },
      "deletionGracePeriodSeconds": {
       "type": "integer",
@@ -6313,54 +5638,12 @@
       "description": "Number of seconds allowed for this object to gracefully terminate before it will be removed from the system. Only set when deletionTimestamp is also set. May only be shortened. Read-only."
      },
      "labels": {
-      "type": "object",
-      "description": "Map of string keys and values that can be used to organize and categorize (scope and select) objects. May match selectors of replication controllers and services. More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md"
+      "type": "any",
+      "description": "Map of string keys and values that can be used to organize and categorize (scope and select) objects. May match selectors of replication controllers and services. More info: http://releases.k8s.io/release-1.2/docs/user-guide/labels.md"
      },
      "annotations": {
-      "type": "object",
-      "description": "Annotations is an unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata. They are not queryable and should be preserved when modifying objects. More info: http://releases.k8s.io/HEAD/docs/user-guide/annotations.md"
-     },
-     "ownerReferences": {
-      "type": "array",
-      "items": {
-       "$ref": "v1.OwnerReference"
-      },
-      "description": "List of objects depended by this object. If ALL objects in the list have been deleted, this object will be garbage collected."
-     },
-     "finalizers": {
-      "type": "array",
-      "items": {
-       "type": "string"
-      },
-      "description": "Must be empty before the object is deleted from the registry. Each entry is an identifier for the responsible component that will remove the entry from the list. If the deletionTimestamp of the object is non-nil, entries in this list can only be removed."
-     }
-    }
-   },
-   "v1.OwnerReference": {
-    "id": "v1.OwnerReference",
-    "description": "OwnerReference contains enough information to let you identify an owning object. Currently, an owning object must be in the same namespace, so there is no namespace field.",
-    "required": [
-     "apiVersion",
-     "kind",
-     "name",
-     "uid"
-    ],
-    "properties": {
-     "apiVersion": {
-      "type": "string",
-      "description": "API version of the referent."
-     },
-     "kind": {
-      "type": "string",
-      "description": "Kind of the referent. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
-     },
-     "name": {
-      "type": "string",
-      "description": "Name of the referent. More info: http://releases.k8s.io/HEAD/docs/user-guide/identifiers.md#names"
-     },
-     "uid": {
-      "type": "string",
-      "description": "UID of the referent. More info: http://releases.k8s.io/HEAD/docs/user-guide/identifiers.md#uids"
+      "type": "any",
+      "description": "Annotations is an unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata. They are not queryable and should be preserved when modifying objects. More info: http://releases.k8s.io/release-1.2/docs/user-guide/annotations.md"
      }
     }
    },
@@ -6373,11 +5656,11 @@
     "properties": {
      "selector": {
       "$ref": "v1beta1.LabelSelector",
-      "description": "Selector is a label query over pods that are managed by the daemon set. Must match in order to be controlled. If empty, defaulted to labels on Pod template. More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md#label-selectors"
+      "description": "Selector is a label query over pods that are managed by the daemon set. Must match in order to be controlled. If empty, defaulted to labels on Pod template. More info: http://releases.k8s.io/release-1.2/docs/user-guide/labels.md#label-selectors"
      },
      "template": {
       "$ref": "v1.PodTemplateSpec",
-      "description": "Template is the object that describes the pod that will be created. The DaemonSet will create exactly one copy of this pod on every node that matches the template's node selector (or on every node if no node selector is specified). More info: http://releases.k8s.io/HEAD/docs/user-guide/replication-controller.md#pod-template"
+      "description": "Template is the object that describes the pod that will be created. The DaemonSet will create exactly one copy of this pod on every node that matches the template's node selector (or on every node if no node selector is specified). More info: http://releases.k8s.io/release-1.2/docs/user-guide/replication-controller.md#pod-template"
      }
     }
    },
@@ -6386,7 +5669,7 @@
     "description": "A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.",
     "properties": {
      "matchLabels": {
-      "type": "object",
+      "type": "any",
       "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
      },
      "matchExpressions": {
@@ -6429,11 +5712,11 @@
     "properties": {
      "metadata": {
       "$ref": "v1.ObjectMeta",
-      "description": "Standard object's metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"
+      "description": "Standard object's metadata. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#metadata"
      },
      "spec": {
       "$ref": "v1.PodSpec",
-      "description": "Specification of the desired behavior of the pod. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status"
+      "description": "Specification of the desired behavior of the pod. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status"
      }
     }
    },
@@ -6449,18 +5732,18 @@
       "items": {
        "$ref": "v1.Volume"
       },
-      "description": "List of volumes that can be mounted by containers belonging to the pod. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md"
+      "description": "List of volumes that can be mounted by containers belonging to the pod. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md"
      },
      "containers": {
       "type": "array",
       "items": {
        "$ref": "v1.Container"
       },
-      "description": "List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated. More info: http://releases.k8s.io/HEAD/docs/user-guide/containers.md"
+      "description": "List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated. More info: http://releases.k8s.io/release-1.2/docs/user-guide/containers.md"
      },
      "restartPolicy": {
       "type": "string",
-      "description": "Restart policy for all containers within the pod. One of Always, OnFailure, Never. Default to Always. More info: http://releases.k8s.io/HEAD/docs/user-guide/pod-states.md#restartpolicy"
+      "description": "Restart policy for all containers within the pod. One of Always, OnFailure, Never. Default to Always. More info: http://releases.k8s.io/release-1.2/docs/user-guide/pod-states.md#restartpolicy"
      },
      "terminationGracePeriodSeconds": {
       "type": "integer",
@@ -6477,12 +5760,12 @@
       "description": "Set DNS policy for containers within the pod. One of 'ClusterFirst' or 'Default'. Defaults to \"ClusterFirst\"."
      },
      "nodeSelector": {
-      "type": "object",
-      "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: http://releases.k8s.io/HEAD/docs/user-guide/node-selection/README.md"
+      "type": "any",
+      "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: http://releases.k8s.io/release-1.2/docs/user-guide/node-selection/README.md"
      },
      "serviceAccountName": {
       "type": "string",
-      "description": "ServiceAccountName is the name of the ServiceAccount to use to run this pod. More info: http://releases.k8s.io/HEAD/docs/design/service_accounts.md"
+      "description": "ServiceAccountName is the name of the ServiceAccount to use to run this pod. More info: http://releases.k8s.io/release-1.2/docs/design/service_accounts.md"
      },
      "serviceAccount": {
       "type": "string",
@@ -6513,15 +5796,7 @@
       "items": {
        "$ref": "v1.LocalObjectReference"
       },
-      "description": "ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec. If specified, these secrets will be passed to individual puller implementations for them to use. For example, in the case of docker, only DockerConfig type secrets are honored. More info: http://releases.k8s.io/HEAD/docs/user-guide/images.md#specifying-imagepullsecrets-on-a-pod"
-     },
-     "hostname": {
-      "type": "string",
-      "description": "Specifies the hostname of the Pod If not specified, the pod's hostname will be set to a system-defined value."
-     },
-     "subdomain": {
-      "type": "string",
-      "description": "If specified, the fully qualified Pod hostname will be \"\u003chostname\u003e.\u003csubdomain\u003e.\u003cpod namespace\u003e.svc.\u003ccluster domain\u003e\". If not specified, the pod will not have a domainname at all."
+      "description": "ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec. If specified, these secrets will be passed to individual puller implementations for them to use. For example, in the case of docker, only DockerConfig type secrets are honored. More info: http://releases.k8s.io/release-1.2/docs/user-guide/images.md#specifying-imagepullsecrets-on-a-pod"
      }
     }
    },
@@ -6534,23 +5809,23 @@
     "properties": {
      "name": {
       "type": "string",
-      "description": "Volume's name. Must be a DNS_LABEL and unique within the pod. More info: http://releases.k8s.io/HEAD/docs/user-guide/identifiers.md#names"
+      "description": "Volume's name. Must be a DNS_LABEL and unique within the pod. More info: http://releases.k8s.io/release-1.2/docs/user-guide/identifiers.md#names"
      },
      "hostPath": {
       "$ref": "v1.HostPathVolumeSource",
-      "description": "HostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#hostpath"
+      "description": "HostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#hostpath"
      },
      "emptyDir": {
       "$ref": "v1.EmptyDirVolumeSource",
-      "description": "EmptyDir represents a temporary directory that shares a pod's lifetime. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#emptydir"
+      "description": "EmptyDir represents a temporary directory that shares a pod's lifetime. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#emptydir"
      },
      "gcePersistentDisk": {
       "$ref": "v1.GCEPersistentDiskVolumeSource",
-      "description": "GCEPersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#gcepersistentdisk"
+      "description": "GCEPersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#gcepersistentdisk"
      },
      "awsElasticBlockStore": {
       "$ref": "v1.AWSElasticBlockStoreVolumeSource",
-      "description": "AWSElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#awselasticblockstore"
+      "description": "AWSElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#awselasticblockstore"
      },
      "gitRepo": {
       "$ref": "v1.GitRepoVolumeSource",
@@ -6558,27 +5833,27 @@
      },
      "secret": {
       "$ref": "v1.SecretVolumeSource",
-      "description": "Secret represents a secret that should populate this volume. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#secrets"
+      "description": "Secret represents a secret that should populate this volume. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#secrets"
      },
      "nfs": {
       "$ref": "v1.NFSVolumeSource",
-      "description": "NFS represents an NFS mount on the host that shares a pod's lifetime More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#nfs"
+      "description": "NFS represents an NFS mount on the host that shares a pod's lifetime More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#nfs"
      },
      "iscsi": {
       "$ref": "v1.ISCSIVolumeSource",
-      "description": "ISCSI represents an ISCSI Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: http://releases.k8s.io/HEAD/examples/iscsi/README.md"
+      "description": "ISCSI represents an ISCSI Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: http://releases.k8s.io/release-1.2/examples/iscsi/README.md"
      },
      "glusterfs": {
       "$ref": "v1.GlusterfsVolumeSource",
-      "description": "Glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: http://releases.k8s.io/HEAD/examples/glusterfs/README.md"
+      "description": "Glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: http://releases.k8s.io/release-1.2/examples/glusterfs/README.md"
      },
      "persistentVolumeClaim": {
       "$ref": "v1.PersistentVolumeClaimVolumeSource",
-      "description": "PersistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: http://releases.k8s.io/HEAD/docs/user-guide/persistent-volumes.md#persistentvolumeclaims"
+      "description": "PersistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: http://releases.k8s.io/release-1.2/docs/user-guide/persistent-volumes.md#persistentvolumeclaims"
      },
      "rbd": {
       "$ref": "v1.RBDVolumeSource",
-      "description": "RBD represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: http://releases.k8s.io/HEAD/examples/rbd/README.md"
+      "description": "RBD represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: http://releases.k8s.io/release-1.2/examples/rbd/README.md"
      },
      "flexVolume": {
       "$ref": "v1.FlexVolumeSource",
@@ -6586,7 +5861,7 @@
      },
      "cinder": {
       "$ref": "v1.CinderVolumeSource",
-      "description": "Cinder represents a cinder volume attached and mounted on kubelets host machine More info: http://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md"
+      "description": "Cinder represents a cinder volume attached and mounted on kubelets host machine More info: http://releases.k8s.io/release-1.2/examples/mysql-cinder-pd/README.md"
      },
      "cephfs": {
       "$ref": "v1.CephFSVolumeSource",
@@ -6623,7 +5898,7 @@
     "properties": {
      "path": {
       "type": "string",
-      "description": "Path of the directory on the host. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#hostpath"
+      "description": "Path of the directory on the host. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#hostpath"
      }
     }
    },
@@ -6633,7 +5908,7 @@
     "properties": {
      "medium": {
       "type": "string",
-      "description": "What type of storage medium should back this directory. The default is \"\" which means to use the node's default medium. Must be an empty string (default) or Memory. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#emptydir"
+      "description": "What type of storage medium should back this directory. The default is \"\" which means to use the node's default medium. Must be an empty string (default) or Memory. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#emptydir"
      }
     }
    },
@@ -6646,20 +5921,20 @@
     "properties": {
      "pdName": {
       "type": "string",
-      "description": "Unique name of the PD resource in GCE. Used to identify the disk in GCE. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#gcepersistentdisk"
+      "description": "Unique name of the PD resource in GCE. Used to identify the disk in GCE. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#gcepersistentdisk"
      },
      "fsType": {
       "type": "string",
-      "description": "Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: \"ext4\", \"xfs\", \"ntfs\". Implicitly inferred to be \"ext4\" if unspecified. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#gcepersistentdisk"
+      "description": "Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: \"ext4\", \"xfs\", \"ntfs\". Implicitly inferred to be \"ext4\" if unspecified. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#gcepersistentdisk"
      },
      "partition": {
       "type": "integer",
       "format": "int32",
-      "description": "The partition in the volume that you want to mount. If omitted, the default is to mount by volume name. Examples: For volume /dev/sda1, you specify the partition as \"1\". Similarly, the volume partition for /dev/sda is \"0\" (or you can leave the property empty). More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#gcepersistentdisk"
+      "description": "The partition in the volume that you want to mount. If omitted, the default is to mount by volume name. Examples: For volume /dev/sda1, you specify the partition as \"1\". Similarly, the volume partition for /dev/sda is \"0\" (or you can leave the property empty). More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#gcepersistentdisk"
      },
      "readOnly": {
       "type": "boolean",
-      "description": "ReadOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#gcepersistentdisk"
+      "description": "ReadOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#gcepersistentdisk"
      }
     }
    },
@@ -6672,11 +5947,11 @@
     "properties": {
      "volumeID": {
       "type": "string",
-      "description": "Unique ID of the persistent disk resource in AWS (Amazon EBS volume). More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#awselasticblockstore"
+      "description": "Unique ID of the persistent disk resource in AWS (Amazon EBS volume). More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#awselasticblockstore"
      },
      "fsType": {
       "type": "string",
-      "description": "Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: \"ext4\", \"xfs\", \"ntfs\". Implicitly inferred to be \"ext4\" if unspecified. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#awselasticblockstore"
+      "description": "Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: \"ext4\", \"xfs\", \"ntfs\". Implicitly inferred to be \"ext4\" if unspecified. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#awselasticblockstore"
      },
      "partition": {
       "type": "integer",
@@ -6685,7 +5960,7 @@
      },
      "readOnly": {
       "type": "boolean",
-      "description": "Specify \"true\" to force and set the ReadOnly property in VolumeMounts to \"true\". If omitted, the default is \"false\". More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#awselasticblockstore"
+      "description": "Specify \"true\" to force and set the ReadOnly property in VolumeMounts to \"true\". If omitted, the default is \"false\". More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#awselasticblockstore"
      }
     }
    },
@@ -6716,7 +5991,7 @@
     "properties": {
      "secretName": {
       "type": "string",
-      "description": "Name of the secret in the pod's namespace to use. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#secrets"
+      "description": "Name of the secret in the pod's namespace to use. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#secrets"
      }
     }
    },
@@ -6730,15 +6005,15 @@
     "properties": {
      "server": {
       "type": "string",
-      "description": "Server is the hostname or IP address of the NFS server. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#nfs"
+      "description": "Server is the hostname or IP address of the NFS server. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#nfs"
      },
      "path": {
       "type": "string",
-      "description": "Path that is exported by the NFS server. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#nfs"
+      "description": "Path that is exported by the NFS server. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#nfs"
      },
      "readOnly": {
       "type": "boolean",
-      "description": "ReadOnly here will force the NFS export to be mounted with read-only permissions. Defaults to false. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#nfs"
+      "description": "ReadOnly here will force the NFS export to be mounted with read-only permissions. Defaults to false. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#nfs"
      }
     }
    },
@@ -6770,7 +6045,7 @@
      },
      "fsType": {
       "type": "string",
-      "description": "Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: \"ext4\", \"xfs\", \"ntfs\". Implicitly inferred to be \"ext4\" if unspecified. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#iscsi"
+      "description": "Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: \"ext4\", \"xfs\", \"ntfs\". Implicitly inferred to be \"ext4\" if unspecified. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#iscsi"
      },
      "readOnly": {
       "type": "boolean",
@@ -6788,15 +6063,15 @@
     "properties": {
      "endpoints": {
       "type": "string",
-      "description": "EndpointsName is the endpoint name that details Glusterfs topology. More info: http://releases.k8s.io/HEAD/examples/glusterfs/README.md#create-a-pod"
+      "description": "EndpointsName is the endpoint name that details Glusterfs topology. More info: http://releases.k8s.io/release-1.2/examples/glusterfs/README.md#create-a-pod"
      },
      "path": {
       "type": "string",
-      "description": "Path is the Glusterfs volume path. More info: http://releases.k8s.io/HEAD/examples/glusterfs/README.md#create-a-pod"
+      "description": "Path is the Glusterfs volume path. More info: http://releases.k8s.io/release-1.2/examples/glusterfs/README.md#create-a-pod"
      },
      "readOnly": {
       "type": "boolean",
-      "description": "ReadOnly here will force the Glusterfs volume to be mounted with read-only permissions. Defaults to false. More info: http://releases.k8s.io/HEAD/examples/glusterfs/README.md#create-a-pod"
+      "description": "ReadOnly here will force the Glusterfs volume to be mounted with read-only permissions. Defaults to false. More info: http://releases.k8s.io/release-1.2/examples/glusterfs/README.md#create-a-pod"
      }
     }
    },
@@ -6809,7 +6084,7 @@
     "properties": {
      "claimName": {
       "type": "string",
-      "description": "ClaimName is the name of a PersistentVolumeClaim in the same namespace as the pod using this volume. More info: http://releases.k8s.io/HEAD/docs/user-guide/persistent-volumes.md#persistentvolumeclaims"
+      "description": "ClaimName is the name of a PersistentVolumeClaim in the same namespace as the pod using this volume. More info: http://releases.k8s.io/release-1.2/docs/user-guide/persistent-volumes.md#persistentvolumeclaims"
      },
      "readOnly": {
       "type": "boolean",
@@ -6834,35 +6109,35 @@
       "items": {
        "type": "string"
       },
-      "description": "A collection of Ceph monitors. More info: http://releases.k8s.io/HEAD/examples/rbd/README.md#how-to-use-it"
+      "description": "A collection of Ceph monitors. More info: http://releases.k8s.io/release-1.2/examples/rbd/README.md#how-to-use-it"
      },
      "image": {
       "type": "string",
-      "description": "The rados image name. More info: http://releases.k8s.io/HEAD/examples/rbd/README.md#how-to-use-it"
+      "description": "The rados image name. More info: http://releases.k8s.io/release-1.2/examples/rbd/README.md#how-to-use-it"
      },
      "fsType": {
       "type": "string",
-      "description": "Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: \"ext4\", \"xfs\", \"ntfs\". Implicitly inferred to be \"ext4\" if unspecified. More info: http://releases.k8s.io/HEAD/docs/user-guide/volumes.md#rbd"
+      "description": "Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: \"ext4\", \"xfs\", \"ntfs\". Implicitly inferred to be \"ext4\" if unspecified. More info: http://releases.k8s.io/release-1.2/docs/user-guide/volumes.md#rbd"
      },
      "pool": {
       "type": "string",
-      "description": "The rados pool name. Default is rbd. More info: http://releases.k8s.io/HEAD/examples/rbd/README.md#how-to-use-it."
+      "description": "The rados pool name. Default is rbd. More info: http://releases.k8s.io/release-1.2/examples/rbd/README.md#how-to-use-it."
      },
      "user": {
       "type": "string",
-      "description": "The rados user name. Default is admin. More info: http://releases.k8s.io/HEAD/examples/rbd/README.md#how-to-use-it"
+      "description": "The rados user name. Default is admin. More info: http://releases.k8s.io/release-1.2/examples/rbd/README.md#how-to-use-it"
      },
      "keyring": {
       "type": "string",
-      "description": "Keyring is the path to key ring for RBDUser. Default is /etc/ceph/keyring. More info: http://releases.k8s.io/HEAD/examples/rbd/README.md#how-to-use-it"
+      "description": "Keyring is the path to key ring for RBDUser. Default is /etc/ceph/keyring. More info: http://releases.k8s.io/release-1.2/examples/rbd/README.md#how-to-use-it"
      },
      "secretRef": {
       "$ref": "v1.LocalObjectReference",
-      "description": "SecretRef is name of the authentication secret for RBDUser. If provided overrides keyring. Default is empty. More info: http://releases.k8s.io/HEAD/examples/rbd/README.md#how-to-use-it"
+      "description": "SecretRef is name of the authentication secret for RBDUser. If provided overrides keyring. Default is empty. More info: http://releases.k8s.io/release-1.2/examples/rbd/README.md#how-to-use-it"
      },
      "readOnly": {
       "type": "boolean",
-      "description": "ReadOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false. More info: http://releases.k8s.io/HEAD/examples/rbd/README.md#how-to-use-it"
+      "description": "ReadOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false. More info: http://releases.k8s.io/release-1.2/examples/rbd/README.md#how-to-use-it"
      }
     }
    },
@@ -6872,7 +6147,7 @@
     "properties": {
      "name": {
       "type": "string",
-      "description": "Name of the referent. More info: http://releases.k8s.io/HEAD/docs/user-guide/identifiers.md#names"
+      "description": "Name of the referent. More info: http://releases.k8s.io/release-1.2/docs/user-guide/identifiers.md#names"
      }
     }
    },
@@ -6893,14 +6168,14 @@
      },
      "secretRef": {
       "$ref": "v1.LocalObjectReference",
-      "description": "Optional: SecretRef is reference to the secret object containing sensitive information to pass to the plugin scripts. This may be empty if no secret object is specified. If the secret object contains more than one secret, all secrets are passed to the plugin scripts."
+      "description": "Optional: SecretRef is reference to the authentication secret for User, default is empty."
      },
      "readOnly": {
       "type": "boolean",
       "description": "Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts."
      },
      "options": {
-      "type": "object",
+      "type": "any",
       "description": "Optional: Extra command options if any."
      }
     }
@@ -6914,15 +6189,15 @@
     "properties": {
      "volumeID": {
       "type": "string",
-      "description": "volume id used to identify the volume in cinder More info: http://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md"
+      "description": "volume id used to identify the volume in cinder More info: http://releases.k8s.io/release-1.2/examples/mysql-cinder-pd/README.md"
      },
      "fsType": {
       "type": "string",
-      "description": "Filesystem type to mount. Must be a filesystem type supported by the host operating system. Examples: \"ext4\", \"xfs\", \"ntfs\". Implicitly inferred to be \"ext4\" if unspecified. More info: http://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md"
+      "description": "Filesystem type to mount. Must be a filesystem type supported by the host operating system. Examples: \"ext4\", \"xfs\", \"ntfs\". Implicitly inferred to be \"ext4\" if unspecified. More info: http://releases.k8s.io/release-1.2/examples/mysql-cinder-pd/README.md"
      },
      "readOnly": {
       "type": "boolean",
-      "description": "Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: http://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md"
+      "description": "Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: http://releases.k8s.io/release-1.2/examples/mysql-cinder-pd/README.md"
      }
     }
    },
@@ -6938,7 +6213,7 @@
       "items": {
        "type": "string"
       },
-      "description": "Required: Monitors is a collection of Ceph monitors More info: http://releases.k8s.io/HEAD/examples/cephfs/README.md#how-to-use-it"
+      "description": "Required: Monitors is a collection of Ceph monitors More info: http://releases.k8s.io/release-1.2/examples/cephfs/README.md#how-to-use-it"
      },
      "path": {
       "type": "string",
@@ -6946,19 +6221,19 @@
      },
      "user": {
       "type": "string",
-      "description": "Optional: User is the rados user name, default is admin More info: http://releases.k8s.io/HEAD/examples/cephfs/README.md#how-to-use-it"
+      "description": "Optional: User is the rados user name, default is admin More info: http://releases.k8s.io/release-1.2/examples/cephfs/README.md#how-to-use-it"
      },
      "secretFile": {
       "type": "string",
-      "description": "Optional: SecretFile is the path to key ring for User, default is /etc/ceph/user.secret More info: http://releases.k8s.io/HEAD/examples/cephfs/README.md#how-to-use-it"
+      "description": "Optional: SecretFile is the path to key ring for User, default is /etc/ceph/user.secret More info: http://releases.k8s.io/release-1.2/examples/cephfs/README.md#how-to-use-it"
      },
      "secretRef": {
       "$ref": "v1.LocalObjectReference",
-      "description": "Optional: SecretRef is reference to the authentication secret for User, default is empty. More info: http://releases.k8s.io/HEAD/examples/cephfs/README.md#how-to-use-it"
+      "description": "Optional: SecretRef is reference to the authentication secret for User, default is empty. More info: http://releases.k8s.io/release-1.2/examples/cephfs/README.md#how-to-use-it"
      },
      "readOnly": {
       "type": "boolean",
-      "description": "Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: http://releases.k8s.io/HEAD/examples/cephfs/README.md#how-to-use-it"
+      "description": "Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: http://releases.k8s.io/release-1.2/examples/cephfs/README.md#how-to-use-it"
      }
     }
    },
@@ -7081,7 +6356,7 @@
     "properties": {
      "name": {
       "type": "string",
-      "description": "Name of the referent. More info: http://releases.k8s.io/HEAD/docs/user-guide/identifiers.md#names"
+      "description": "Name of the referent. More info: http://releases.k8s.io/release-1.2/docs/user-guide/identifiers.md#names"
      },
      "items": {
       "type": "array",
@@ -7123,21 +6398,21 @@
      },
      "image": {
       "type": "string",
-      "description": "Docker image name. More info: http://releases.k8s.io/HEAD/docs/user-guide/images.md"
+      "description": "Docker image name. More info: http://releases.k8s.io/release-1.2/docs/user-guide/images.md"
      },
      "command": {
       "type": "array",
       "items": {
        "type": "string"
       },
-      "description": "Entrypoint array. Not executed within a shell. The docker image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: http://releases.k8s.io/HEAD/docs/user-guide/containers.md#containers-and-commands"
+      "description": "Entrypoint array. Not executed within a shell. The docker image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: http://releases.k8s.io/release-1.2/docs/user-guide/containers.md#containers-and-commands"
      },
      "args": {
       "type": "array",
       "items": {
        "type": "string"
       },
-      "description": "Arguments to the entrypoint. The docker image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: http://releases.k8s.io/HEAD/docs/user-guide/containers.md#containers-and-commands"
+      "description": "Arguments to the entrypoint. The docker image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: http://releases.k8s.io/release-1.2/docs/user-guide/containers.md#containers-and-commands"
      },
      "workingDir": {
       "type": "string",
@@ -7159,7 +6434,7 @@
      },
      "resources": {
       "$ref": "v1.ResourceRequirements",
-      "description": "Compute Resources required by this container. Cannot be updated. More info: http://releases.k8s.io/HEAD/docs/user-guide/persistent-volumes.md#resources"
+      "description": "Compute Resources required by this container. Cannot be updated. More info: http://releases.k8s.io/release-1.2/docs/user-guide/persistent-volumes.md#resources"
      },
      "volumeMounts": {
       "type": "array",
@@ -7170,11 +6445,11 @@
      },
      "livenessProbe": {
       "$ref": "v1.Probe",
-      "description": "Periodic probe of container liveness. Container will be restarted if the probe fails. Cannot be updated. More info: http://releases.k8s.io/HEAD/docs/user-guide/pod-states.md#container-probes"
+      "description": "Periodic probe of container liveness. Container will be restarted if the probe fails. Cannot be updated. More info: http://releases.k8s.io/release-1.2/docs/user-guide/pod-states.md#container-probes"
      },
      "readinessProbe": {
       "$ref": "v1.Probe",
-      "description": "Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: http://releases.k8s.io/HEAD/docs/user-guide/pod-states.md#container-probes"
+      "description": "Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: http://releases.k8s.io/release-1.2/docs/user-guide/pod-states.md#container-probes"
      },
      "lifecycle": {
       "$ref": "v1.Lifecycle",
@@ -7186,11 +6461,11 @@
      },
      "imagePullPolicy": {
       "type": "string",
-      "description": "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: http://releases.k8s.io/HEAD/docs/user-guide/images.md#updating-images"
+      "description": "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: http://releases.k8s.io/release-1.2/docs/user-guide/images.md#updating-images"
      },
      "securityContext": {
       "$ref": "v1.SecurityContext",
-      "description": "Security options the pod should run with. More info: http://releases.k8s.io/HEAD/docs/design/security_context.md"
+      "description": "Security options the pod should run with. More info: http://releases.k8s.io/release-1.2/docs/design/security_context.md"
      },
      "stdin": {
       "type": "boolean",
@@ -7285,7 +6560,7 @@
     "properties": {
      "name": {
       "type": "string",
-      "description": "Name of the referent. More info: http://releases.k8s.io/HEAD/docs/user-guide/identifiers.md#names"
+      "description": "Name of the referent. More info: http://releases.k8s.io/release-1.2/docs/user-guide/identifiers.md#names"
      },
      "key": {
       "type": "string",
@@ -7302,7 +6577,7 @@
     "properties": {
      "name": {
       "type": "string",
-      "description": "Name of the referent. More info: http://releases.k8s.io/HEAD/docs/user-guide/identifiers.md#names"
+      "description": "Name of the referent. More info: http://releases.k8s.io/release-1.2/docs/user-guide/identifiers.md#names"
      },
      "key": {
       "type": "string",
@@ -7315,12 +6590,12 @@
     "description": "ResourceRequirements describes the compute resource requirements.",
     "properties": {
      "limits": {
-      "type": "object",
-      "description": "Limits describes the maximum amount of compute resources allowed. More info: http://releases.k8s.io/HEAD/docs/design/resources.md#resource-specifications"
+      "type": "any",
+      "description": "Limits describes the maximum amount of compute resources allowed. More info: http://releases.k8s.io/release-1.2/docs/design/resources.md#resource-specifications"
      },
      "requests": {
-      "type": "object",
-      "description": "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: http://releases.k8s.io/HEAD/docs/design/resources.md#resource-specifications"
+      "type": "any",
+      "description": "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: http://releases.k8s.io/release-1.2/docs/design/resources.md#resource-specifications"
      }
     }
    },
@@ -7343,10 +6618,6 @@
      "mountPath": {
       "type": "string",
       "description": "Path within the container at which the volume should be mounted.  Must not contain ':'."
-     },
-     "subPath": {
-      "type": "string",
-      "description": "Path within the volume from which the container's volume should be mounted. Defaults to \"\" (volume's root)."
      }
     }
    },
@@ -7369,12 +6640,12 @@
      "initialDelaySeconds": {
       "type": "integer",
       "format": "int32",
-      "description": "Number of seconds after the container has started before liveness probes are initiated. More info: http://releases.k8s.io/HEAD/docs/user-guide/pod-states.md#container-probes"
+      "description": "Number of seconds after the container has started before liveness probes are initiated. More info: http://releases.k8s.io/release-1.2/docs/user-guide/pod-states.md#container-probes"
      },
      "timeoutSeconds": {
       "type": "integer",
       "format": "int32",
-      "description": "Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1. More info: http://releases.k8s.io/HEAD/docs/user-guide/pod-states.md#container-probes"
+      "description": "Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1. More info: http://releases.k8s.io/release-1.2/docs/user-guide/pod-states.md#container-probes"
      },
      "periodSeconds": {
       "type": "integer",
@@ -7475,11 +6746,11 @@
     "properties": {
      "postStart": {
       "$ref": "v1.Handler",
-      "description": "PostStart is called immediately after a container is created. If the handler fails, the container is terminated and restarted according to its restart policy. Other management of the container blocks until the hook completes. More info: http://releases.k8s.io/HEAD/docs/user-guide/container-environment.md#hook-details"
+      "description": "PostStart is called immediately after a container is created. If the handler fails, the container is terminated and restarted according to its restart policy. Other management of the container blocks until the hook completes. More info: http://releases.k8s.io/release-1.2/docs/user-guide/container-environment.md#hook-details"
      },
      "preStop": {
       "$ref": "v1.Handler",
-      "description": "PreStop is called immediately before a container is terminated. The container is terminated after the handler completes. The reason for termination is passed to the handler. Regardless of the outcome of the handler, the container is eventually terminated. Other management of the container blocks until the hook completes. More info: http://releases.k8s.io/HEAD/docs/user-guide/container-environment.md#hook-details"
+      "description": "PreStop is called immediately before a container is terminated. The container is terminated after the handler completes. The reason for termination is passed to the handler. Regardless of the outcome of the handler, the container is eventually terminated. Other management of the container blocks until the hook completes. More info: http://releases.k8s.io/release-1.2/docs/user-guide/container-environment.md#hook-details"
      }
     }
    },
@@ -7598,7 +6869,7 @@
      "supplementalGroups": {
       "type": "array",
       "items": {
-       "type": "integer"
+       "$ref": "integer"
       },
       "description": "A list of groups applied to the first process run in each container, in addition to the container's primary GID.  If unspecified, no groups will be added to any container."
      },
@@ -7608,6 +6879,10 @@
       "description": "A special supplemental group that applies to all containers in a pod. Some volume types allow the Kubelet to change the ownership of that volume to be owned by the pod:\n\n1. The owning GID will be the FSGroup 2. The setgid bit is set (new files created in the volume will be owned by FSGroup) 3. The permission bits are OR'd with rw-rw "
      }
     }
+   },
+   "integer": {
+    "id": "integer",
+    "properties": {}
    },
    "v1beta1.DaemonSetStatus": {
     "id": "v1beta1.DaemonSetStatus",
@@ -7621,17 +6896,17 @@
      "currentNumberScheduled": {
       "type": "integer",
       "format": "int32",
-      "description": "CurrentNumberScheduled is the number of nodes that are running at least 1 daemon pod and are supposed to run the daemon pod. More info: http://releases.k8s.io/HEAD/docs/admin/daemons.md"
+      "description": "CurrentNumberScheduled is the number of nodes that are running at least 1 daemon pod and are supposed to run the daemon pod. More info: http://releases.k8s.io/release-1.2/docs/admin/daemons.md"
      },
      "numberMisscheduled": {
       "type": "integer",
       "format": "int32",
-      "description": "NumberMisscheduled is the number of nodes that are running the daemon pod, but are not supposed to run the daemon pod. More info: http://releases.k8s.io/HEAD/docs/admin/daemons.md"
+      "description": "NumberMisscheduled is the number of nodes that are running the daemon pod, but are not supposed to run the daemon pod. More info: http://releases.k8s.io/release-1.2/docs/admin/daemons.md"
      },
      "desiredNumberScheduled": {
       "type": "integer",
       "format": "int32",
-      "description": "DesiredNumberScheduled is the total number of nodes that should be running the daemon pod (including nodes correctly running the daemon pod). More info: http://releases.k8s.io/HEAD/docs/admin/daemons.md"
+      "description": "DesiredNumberScheduled is the total number of nodes that should be running the daemon pod (including nodes correctly running the daemon pod). More info: http://releases.k8s.io/release-1.2/docs/admin/daemons.md"
      }
     }
    },
@@ -7641,19 +6916,19 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "unversioned.ListMeta",
-      "description": "Standard list metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Standard list metadata. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "status": {
       "type": "string",
-      "description": "Status of the operation. One of: \"Success\" or \"Failure\". More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status"
+      "description": "Status of the operation. One of: \"Success\" or \"Failure\". More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status"
      },
      "message": {
       "type": "string",
@@ -7688,7 +6963,7 @@
      },
      "kind": {
       "type": "string",
-      "description": "The kind attribute of the resource associated with the status StatusReason. On some operations may differ from the requested resource Kind. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "The kind attribute of the resource associated with the status StatusReason. On some operations may differ from the requested resource Kind. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "causes": {
       "type": "array",
@@ -7722,9 +6997,18 @@
      }
     }
    },
-   "*versioned.Event": {
-    "id": "*versioned.Event",
-    "properties": {}
+   "json.WatchEvent": {
+    "id": "json.WatchEvent",
+    "properties": {
+     "type": {
+      "type": "string",
+      "description": "the type of watch event; may be ADDED, MODIFIED, DELETED, or ERROR"
+     },
+     "object": {
+      "type": "string",
+      "description": "the object being watched; will match the type of the resource endpoint or be a Status object if the type is ERROR"
+     }
+    }
    },
    "unversioned.Patch": {
     "id": "unversioned.Patch",
@@ -7734,43 +7018,24 @@
    "v1.DeleteOptions": {
     "id": "v1.DeleteOptions",
     "description": "DeleteOptions may be provided when deleting an API object",
+    "required": [
+     "gracePeriodSeconds"
+    ],
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "gracePeriodSeconds": {
       "type": "integer",
       "format": "int64",
       "description": "The duration in seconds before the object should be deleted. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period for the specified type will be used. Defaults to a per object value if not specified. zero means delete immediately."
-     },
-     "preconditions": {
-      "$ref": "v1.Preconditions",
-      "description": "Must be fulfilled before a deletion is carried out. If not possible, a 409 Conflict status will be returned."
-     },
-     "orphanDependents": {
-      "type": "boolean",
-      "description": "Should the dependent objects be orphaned. If true/false, the \"orphan\" finalizer will be added to/removed from the object's finalizers list."
      }
     }
-   },
-   "v1.Preconditions": {
-    "id": "v1.Preconditions",
-    "description": "Preconditions must be fulfilled before an operation (update, delete, etc.) is carried out.",
-    "properties": {
-     "uid": {
-      "$ref": "types.UID",
-      "description": "Specifies the target UID."
-     }
-    }
-   },
-   "types.UID": {
-    "id": "types.UID",
-    "properties": {}
    },
    "v1beta1.DeploymentList": {
     "id": "v1beta1.DeploymentList",
@@ -7781,11 +7046,11 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "unversioned.ListMeta",
@@ -7806,11 +7071,11 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "v1.ObjectMeta",
@@ -7949,18 +7214,18 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "name": {
       "type": "string",
       "description": "Required: This must match the Name of a deployment."
      },
      "updatedAnnotations": {
-      "type": "object",
+      "type": "any",
       "description": "The annotations to be updated to a deployment"
      },
      "rollbackTo": {
@@ -7975,23 +7240,23 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "v1.ObjectMeta",
-      "description": "Standard object metadata; More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata."
+      "description": "Standard object metadata; More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#metadata."
      },
      "spec": {
       "$ref": "v1beta1.ScaleSpec",
-      "description": "defines the behavior of the scale. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status."
+      "description": "defines the behavior of the scale. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status."
      },
      "status": {
       "$ref": "v1beta1.ScaleStatus",
-      "description": "current status of the scale. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status. Read-only."
+      "description": "current status of the scale. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status. Read-only."
      }
     }
    },
@@ -8019,12 +7284,12 @@
       "description": "actual number of observed instances of the scaled object."
      },
      "selector": {
-      "type": "object",
-      "description": "label query over pods that should match the replicas count. More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md#label-selectors"
+      "type": "any",
+      "description": "label query over pods that should match the replicas count. More info: http://releases.k8s.io/release-1.2/docs/user-guide/labels.md#label-selectors"
      },
      "targetSelector": {
       "type": "string",
-      "description": "label selector for pods that should match the replicas count. This is a serializated version of both map-based and more expressive set-based selectors. This is done to avoid introspection in the clients. The string will be in the same format as the query-param syntax. If the target type only supports map-based selectors, both this field and map-based selector field are populated. More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md#label-selectors"
+      "description": "label selector for pods that should match the replicas count. This is a serializated version of both map-based and more expressive set-based selectors. This is done to avoid introspection in the clients. The string will be in the same format as the query-param syntax. If the target type only supports map-based selectors, both this field and map-based selector field are populated. More info: http://releases.k8s.io/release-1.2/docs/user-guide/labels.md#label-selectors"
      }
     }
    },
@@ -8037,11 +7302,11 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "unversioned.ListMeta",
@@ -8062,19 +7327,19 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "v1.ObjectMeta",
-      "description": "Standard object metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"
+      "description": "Standard object metadata. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#metadata"
      },
      "spec": {
       "$ref": "v1beta1.HorizontalPodAutoscalerSpec",
-      "description": "behaviour of autoscaler. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status."
+      "description": "behaviour of autoscaler. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status."
      },
      "status": {
       "$ref": "v1beta1.HorizontalPodAutoscalerStatus",
@@ -8116,11 +7381,11 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind of the referent; More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind of the referent; More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds\""
      },
      "name": {
       "type": "string",
-      "description": "Name of the referent; More info: http://releases.k8s.io/HEAD/docs/user-guide/identifiers.md#names"
+      "description": "Name of the referent; More info: http://releases.k8s.io/release-1.2/docs/user-guide/identifiers.md#names"
      },
      "apiVersion": {
       "type": "string",
@@ -8188,15 +7453,15 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "unversioned.ListMeta",
-      "description": "Standard object's metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"
+      "description": "Standard object's metadata. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#metadata"
      },
      "items": {
       "type": "array",
@@ -8213,23 +7478,23 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "v1.ObjectMeta",
-      "description": "Standard object's metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"
+      "description": "Standard object's metadata. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#metadata"
      },
      "spec": {
       "$ref": "v1beta1.IngressSpec",
-      "description": "Spec is the desired state of the Ingress. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status"
+      "description": "Spec is the desired state of the Ingress. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status"
      },
      "status": {
       "$ref": "v1beta1.IngressStatus",
-      "description": "Status is the current state of the Ingress. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status"
+      "description": "Status is the current state of the Ingress. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status"
      }
     }
    },
@@ -8384,15 +7649,15 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "unversioned.ListMeta",
-      "description": "Standard list metadata More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"
+      "description": "Standard list metadata More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#metadata"
      },
      "items": {
       "type": "array",
@@ -8409,23 +7674,23 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "v1.ObjectMeta",
-      "description": "Standard object's metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"
+      "description": "Standard object's metadata. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#metadata"
      },
      "spec": {
       "$ref": "v1beta1.JobSpec",
-      "description": "Spec is a structure defining the expected behavior of a job. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status"
+      "description": "Spec is a structure defining the expected behavior of a job. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status"
      },
      "status": {
       "$ref": "v1beta1.JobStatus",
-      "description": "Status is a structure describing current status of a job. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status"
+      "description": "Status is a structure describing current status of a job. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status"
      }
     }
    },
@@ -8439,12 +7704,12 @@
      "parallelism": {
       "type": "integer",
       "format": "int32",
-      "description": "Parallelism specifies the maximum desired number of pods the job should run at any given time. The actual number of pods running in steady state will be less than this number when ((.spec.completions - .status.successful) \u003c .spec.parallelism), i.e. when the work left to do is less than max parallelism. More info: http://releases.k8s.io/HEAD/docs/user-guide/jobs.md"
+      "description": "Parallelism specifies the maximum desired number of pods the job should run at any given time. The actual number of pods running in steady state will be less than this number when ((.spec.completions - .status.successful) \u003c .spec.parallelism), i.e. when the work left to do is less than max parallelism. More info: http://releases.k8s.io/release-1.2/docs/user-guide/jobs.md"
      },
      "completions": {
       "type": "integer",
       "format": "int32",
-      "description": "Completions specifies the desired number of successfully finished pods the job should be run with.  Setting to nil means that the success of any pod signals the success of all pods, and allows parallelism to have any positive value.  Setting to 1 means that parallelism is limited to 1 and the success of that pod signals the success of the job. More info: http://releases.k8s.io/HEAD/docs/user-guide/jobs.md"
+      "description": "Completions specifies the desired number of successfully finished pods the job should be run with.  Setting to nil means that the success of any pod signals the success of all pods, and allows parallelism to have any positive value.  Setting to 1 means that parallelism is limited to 1 and the success of that pod signals the success of the job. More info: http://releases.k8s.io/release-1.2/docs/user-guide/jobs.md"
      },
      "activeDeadlineSeconds": {
       "type": "integer",
@@ -8453,15 +7718,15 @@
      },
      "selector": {
       "$ref": "v1beta1.LabelSelector",
-      "description": "Selector is a label query over pods that should match the pod count. Normally, the system sets this field for you. More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md#label-selectors"
+      "description": "Selector is a label query over pods that should match the pod count. Normally, the system sets this field for you. More info: http://releases.k8s.io/release-1.2/docs/user-guide/labels.md#label-selectors"
      },
      "autoSelector": {
       "type": "boolean",
-      "description": "AutoSelector controls generation of pod labels and pod selectors. It was not present in the original extensions/v1beta1 Job definition, but exists to allow conversion from batch/v1 Jobs, where it corresponds to, but has the opposite meaning as, ManualSelector. More info: http://releases.k8s.io/HEAD/docs/design/selector-generation.md"
+      "description": "AutoSelector controls generation of pod labels and pod selectors. It was not present in the original extensions/v1beta1 Job definition, but exists to allow conversion from batch/v1 Jobs, where it corresponds to, but has the opposite meaning as, ManualSelector. More info: http://releases.k8s.io/release-1.2/docs/design/selector-generation.md"
      },
      "template": {
       "$ref": "v1.PodTemplateSpec",
-      "description": "Template is the object that describes the pod that will be created when executing a job. More info: http://releases.k8s.io/HEAD/docs/user-guide/jobs.md"
+      "description": "Template is the object that describes the pod that will be created when executing a job. More info: http://releases.k8s.io/release-1.2/docs/user-guide/jobs.md"
      }
     }
    },
@@ -8474,7 +7739,7 @@
       "items": {
        "$ref": "v1beta1.JobCondition"
       },
-      "description": "Conditions represent the latest available observations of an object's current state. More info: http://releases.k8s.io/HEAD/docs/user-guide/jobs.md"
+      "description": "Conditions represent the latest available observations of an object's current state. More info: http://releases.k8s.io/release-1.2/docs/user-guide/jobs.md"
      },
      "startTime": {
       "type": "string",
@@ -8544,22 +7809,22 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "unversioned.ListMeta",
-      "description": "Standard list metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Standard list metadata. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "items": {
       "type": "array",
       "items": {
        "$ref": "v1beta1.ReplicaSet"
       },
-      "description": "List of ReplicaSets. More info: http://releases.k8s.io/HEAD/docs/user-guide/replication-controller.md"
+      "description": "List of ReplicaSets. More info: http://releases.k8s.io/release-1.2/docs/user-guide/replication-controller.md"
      }
     }
    },
@@ -8569,23 +7834,23 @@
     "properties": {
      "kind": {
       "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
+      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#types-kinds"
      },
      "apiVersion": {
       "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
+      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#resources"
      },
      "metadata": {
       "$ref": "v1.ObjectMeta",
-      "description": "If the Labels of a ReplicaSet are empty, they are defaulted to be the same as the Pod(s) that the ReplicaSet manages. Standard object's metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata"
+      "description": "If the Labels of a ReplicaSet are empty, they are defaulted to be the same as the Pod(s) that the ReplicaSet manages. Standard object's metadata. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#metadata"
      },
      "spec": {
       "$ref": "v1beta1.ReplicaSetSpec",
-      "description": "Spec defines the specification of the desired behavior of the ReplicaSet. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status"
+      "description": "Spec defines the specification of the desired behavior of the ReplicaSet. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status"
      },
      "status": {
       "$ref": "v1beta1.ReplicaSetStatus",
-      "description": "Status is the most recently observed status of the ReplicaSet. This data may be out of date by some window of time. Populated by the system. Read-only. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status"
+      "description": "Status is the most recently observed status of the ReplicaSet. This data may be out of date by some window of time. Populated by the system. Read-only. More info: http://releases.k8s.io/release-1.2/docs/devel/api-conventions.md#spec-and-status"
      }
     }
    },
@@ -8596,15 +7861,15 @@
      "replicas": {
       "type": "integer",
       "format": "int32",
-      "description": "Replicas is the number of desired replicas. This is a pointer to distinguish between explicit zero and unspecified. Defaults to 1. More info: http://releases.k8s.io/HEAD/docs/user-guide/replication-controller.md#what-is-a-replication-controller"
+      "description": "Replicas is the number of desired replicas. This is a pointer to distinguish between explicit zero and unspecified. Defaults to 1. More info: http://releases.k8s.io/release-1.2/docs/user-guide/replication-controller.md#what-is-a-replication-controller"
      },
      "selector": {
       "$ref": "v1beta1.LabelSelector",
-      "description": "Selector is a label query over pods that should match the replica count. If the selector is empty, it is defaulted to the labels present on the pod template. Label keys and values that must match in order to be controlled by this replica set. More info: http://releases.k8s.io/HEAD/docs/user-guide/labels.md#label-selectors"
+      "description": "Selector is a label query over pods that should match the replica count. If the selector is empty, it is defaulted to the labels present on the pod template. Label keys and values that must match in order to be controlled by this replica set. More info: http://releases.k8s.io/release-1.2/docs/user-guide/labels.md#label-selectors"
      },
      "template": {
       "$ref": "v1.PodTemplateSpec",
-      "description": "Template is the object that describes the pod that will be created if insufficient replicas are detected. More info: http://releases.k8s.io/HEAD/docs/user-guide/replication-controller.md#pod-template"
+      "description": "Template is the object that describes the pod that will be created if insufficient replicas are detected. More info: http://releases.k8s.io/release-1.2/docs/user-guide/replication-controller.md#pod-template"
      }
     }
    },
@@ -8618,7 +7883,7 @@
      "replicas": {
       "type": "integer",
       "format": "int32",
-      "description": "Replicas is the most recently oberved number of replicas. More info: http://releases.k8s.io/HEAD/docs/user-guide/replication-controller.md#what-is-a-replication-controller"
+      "description": "Replicas is the most recently oberved number of replicas. More info: http://releases.k8s.io/release-1.2/docs/user-guide/replication-controller.md#what-is-a-replication-controller"
      },
      "fullyLabeledReplicas": {
       "type": "integer",
@@ -8629,125 +7894,6 @@
       "type": "integer",
       "format": "int64",
       "description": "ObservedGeneration reflects the generation of the most recently observed ReplicaSet."
-     }
-    }
-   },
-   "v1beta1.ThirdPartyResourceList": {
-    "id": "v1beta1.ThirdPartyResourceList",
-    "description": "ThirdPartyResourceList is a list of ThirdPartyResources.",
-    "required": [
-     "items"
-    ],
-    "properties": {
-     "kind": {
-      "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
-     },
-     "apiVersion": {
-      "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
-     },
-     "metadata": {
-      "$ref": "unversioned.ListMeta",
-      "description": "Standard list metadata."
-     },
-     "items": {
-      "type": "array",
-      "items": {
-       "$ref": "v1beta1.ThirdPartyResource"
-      },
-      "description": "Items is the list of ThirdPartyResources."
-     }
-    }
-   },
-   "v1beta1.ThirdPartyResource": {
-    "id": "v1beta1.ThirdPartyResource",
-    "description": "A ThirdPartyResource is a generic representation of a resource, it is used by add-ons and plugins to add new resource types to the API.  It consists of one or more Versions of the api.",
-    "properties": {
-     "kind": {
-      "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
-     },
-     "apiVersion": {
-      "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
-     },
-     "metadata": {
-      "$ref": "v1.ObjectMeta",
-      "description": "Standard object metadata"
-     },
-     "description": {
-      "type": "string",
-      "description": "Description is the description of this object."
-     },
-     "versions": {
-      "type": "array",
-      "items": {
-       "$ref": "v1beta1.APIVersion"
-      },
-      "description": "Versions are versions for this third party object"
-     }
-    }
-   },
-   "v1beta1.APIVersion": {
-    "id": "v1beta1.APIVersion",
-    "description": "An APIVersion represents a single concrete version of an object model.",
-    "properties": {
-     "name": {
-      "type": "string",
-      "description": "Name of this version (e.g. 'v1')."
-     }
-    }
-   },
-   "unversioned.APIResourceList": {
-    "id": "unversioned.APIResourceList",
-    "description": "APIResourceList is a list of APIResource, it is used to expose the name of the resources supported in a specific group and version, and if the resource is namespaced.",
-    "required": [
-     "groupVersion",
-     "resources"
-    ],
-    "properties": {
-     "kind": {
-      "type": "string",
-      "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds"
-     },
-     "apiVersion": {
-      "type": "string",
-      "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#resources"
-     },
-     "groupVersion": {
-      "type": "string",
-      "description": "groupVersion is the group and version this APIResourceList is for."
-     },
-     "resources": {
-      "type": "array",
-      "items": {
-       "$ref": "unversioned.APIResource"
-      },
-      "description": "resources contains the name of the resources and if they are namespaced."
-     }
-    }
-   },
-   "unversioned.APIResource": {
-    "id": "unversioned.APIResource",
-    "description": "APIResource specifies the name of a resource and whether it is namespaced.",
-    "required": [
-     "name",
-     "namespaced",
-     "kind"
-    ],
-    "properties": {
-     "name": {
-      "type": "string",
-      "description": "name is the name of the resource."
-     },
-     "namespaced": {
-      "type": "boolean",
-      "description": "namespaced indicates if a resource is namespaced or not."
-     },
-     "kind": {
-      "type": "string",
-      "description": "kind is the kind for the resource (e.g. 'Foo' is the kind for a resource 'foo')"
      }
     }
    }

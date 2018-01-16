@@ -23,12 +23,11 @@ import (
 	"strconv"
 	"testing"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/apis/autoscaling"
-	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
@@ -157,10 +156,10 @@ func FuzzerFor(t *testing.T, version unversioned.GroupVersion, src rand.Source) 
 				j.RollingUpdate = &rollingUpdate
 			}
 		},
-		func(j *batch.JobSpec, c fuzz.Continue) {
+		func(j *extensions.JobSpec, c fuzz.Continue) {
 			c.FuzzNoCustom(j) // fuzz self without calling this function again
-			completions := int32(c.Rand.Int31())
-			parallelism := int32(c.Rand.Int31())
+			completions := int(c.Rand.Int31())
+			parallelism := int(c.Rand.Int31())
 			j.Completions = &completions
 			j.Parallelism = &parallelism
 			if c.Rand.Int31()%2 == 0 {
@@ -181,14 +180,28 @@ func FuzzerFor(t *testing.T, version unversioned.GroupVersion, src rand.Source) 
 			if true { //c.RandBool() {
 				*j = &runtime.Unknown{
 					// We do not set TypeMeta here because it is not carried through a round trip
-					Raw:         []byte(`{"apiVersion":"unknown.group/unknown","kind":"Something","someKey":"someValue"}`),
-					ContentType: runtime.ContentTypeJSON,
+					RawJSON: []byte(`{"apiVersion":"unknown.group/unknown","kind":"Something","someKey":"someValue"}`),
 				}
 			} else {
 				types := []runtime.Object{&api.Pod{}, &api.ReplicationController{}}
 				t := types[c.Rand.Intn(len(types))]
 				c.Fuzz(t)
 				*j = t
+			}
+		},
+		func(pb map[docker.Port][]docker.PortBinding, c fuzz.Continue) {
+			// This is necessary because keys with nil values get omitted.
+			// TODO: Is this a bug?
+			pb[docker.Port(c.RandString())] = []docker.PortBinding{
+				{c.RandString(), c.RandString()},
+				{c.RandString(), c.RandString()},
+			}
+		},
+		func(pm map[string]docker.PortMapping, c fuzz.Continue) {
+			// This is necessary because keys with nil values get omitted.
+			// TODO: Is this a bug?
+			pm[c.RandString()] = docker.PortMapping{
+				c.RandString(): c.RandString(),
 			}
 		},
 		func(q *api.ResourceRequirements, c fuzz.Continue) {
@@ -378,12 +391,20 @@ func FuzzerFor(t *testing.T, version unversioned.GroupVersion, src rand.Source) 
 			c.FuzzNoCustom(s)
 			s.Allocatable = s.Capacity
 		},
-		func(s *autoscaling.HorizontalPodAutoscalerSpec, c fuzz.Continue) {
+		func(s *extensions.APIVersion, c fuzz.Continue) {
+			// We can't use c.RandString() here because it may generate empty
+			// string, which will cause tests failure.
+			s.APIGroup = "something"
+		},
+		func(s *extensions.HorizontalPodAutoscalerSpec, c fuzz.Continue) {
 			c.FuzzNoCustom(s) // fuzz self without calling this function again
-			minReplicas := int32(c.Rand.Int31())
+			minReplicas := int(c.Rand.Int31())
 			s.MinReplicas = &minReplicas
-			targetCpu := int32(c.RandUint64())
-			s.TargetCPUUtilizationPercentage = &targetCpu
+			s.CPUUtilization = &extensions.CPUTargetUtilization{TargetPercentage: int(int32(c.RandUint64()))}
+		},
+		func(s *extensions.SubresourceReference, c fuzz.Continue) {
+			c.FuzzNoCustom(s) // fuzz self without calling this function again
+			s.Subresource = "scale"
 		},
 		func(psp *extensions.PodSecurityPolicySpec, c fuzz.Continue) {
 			c.FuzzNoCustom(psp) // fuzz self without calling this function again
@@ -410,37 +431,6 @@ func FuzzerFor(t *testing.T, version unversioned.GroupVersion, src rand.Source) 
 					},
 				}
 			}
-		},
-		func(r *runtime.RawExtension, c fuzz.Continue) {
-			// Pick an arbitrary type and fuzz it
-			types := []runtime.Object{&api.Pod{}, &extensions.Deployment{}, &api.Service{}}
-			obj := types[c.Rand.Intn(len(types))]
-			c.Fuzz(obj)
-
-			// Find a codec for converting the object to raw bytes.  This is necessary for the
-			// api version and kind to be correctly set be serialization.
-			var codec runtime.Codec
-			switch obj.(type) {
-			case *api.Pod:
-				codec = testapi.Default.Codec()
-			case *extensions.Deployment:
-				codec = testapi.Extensions.Codec()
-			case *api.Service:
-				codec = testapi.Default.Codec()
-			default:
-				t.Errorf("Failed to find codec for object type: %T", obj)
-				return
-			}
-
-			// Convert the object to raw bytes
-			bytes, err := runtime.Encode(codec, obj)
-			if err != nil {
-				t.Errorf("Failed to encode object: %v", err)
-				return
-			}
-
-			// Set the bytes field on the RawExtension
-			r.Raw = bytes
 		},
 	)
 	return f

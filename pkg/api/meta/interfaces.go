@@ -49,10 +49,6 @@ type Object interface {
 	SetResourceVersion(version string)
 	GetSelfLink() string
 	SetSelfLink(selfLink string)
-	GetCreationTimestamp() unversioned.Time
-	SetCreationTimestamp(timestamp unversioned.Time)
-	GetDeletionTimestamp() *unversioned.Time
-	SetDeletionTimestamp(timestamp *unversioned.Time)
 	GetLabels() map[string]string
 	SetLabels(labels map[string]string)
 	GetAnnotations() map[string]string
@@ -177,5 +173,3 @@ type RESTMapper interface {
 	AliasesForResource(resource string) ([]string, bool)
 	ResourceSingularizer(resource string) (singular string, err error)
 }
-
-var _ Object = &runtime.Unstructured{}

@@ -45,7 +45,7 @@ import (
 
 func newEtcdTestStorage(t *testing.T, codec runtime.Codec, prefix string) (*etcdtesting.EtcdTestServer, storage.Interface) {
 	server := etcdtesting.NewEtcdTestClientServer(t)
-	storage := etcdstorage.NewEtcdStorage(server.Client, codec, prefix, false, etcdtest.DeserializationCacheSize)
+	storage := etcdstorage.NewEtcdStorage(server.Client, codec, prefix, false)
 	return server, storage
 }
 
@@ -71,22 +71,20 @@ func makeTestPod(name string) *api.Pod {
 }
 
 func updatePod(t *testing.T, s storage.Interface, obj, old *api.Pod) *api.Pod {
-	updateFn := func(input runtime.Object, res storage.ResponseMeta) (runtime.Object, *uint64, error) {
-		newObj, err := api.Scheme.DeepCopy(obj)
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-			return nil, nil, err
-		}
-		return newObj.(*api.Pod), nil, nil
-	}
-	key := etcdtest.AddPrefix("pods/ns/" + obj.Name)
-	if err := s.GuaranteedUpdate(context.TODO(), key, &api.Pod{}, old == nil, nil, updateFn); err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-	obj.ResourceVersion = ""
+	key := etcdtest.AddPrefix("pods/" + obj.Namespace + "/" + obj.Name)
 	result := &api.Pod{}
-	if err := s.Get(context.TODO(), key, result, false); err != nil {
-		t.Errorf("unexpected error: %v", err)
+	if old == nil {
+		if err := s.Create(context.TODO(), key, obj, result, 0); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	} else {
+		// To force "update" behavior of Set() we need to set ResourceVersion of
+		// previous version of object.
+		obj.ResourceVersion = old.ResourceVersion
+		if err := s.Set(context.TODO(), key, obj, result, 0); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		obj.ResourceVersion = ""
 	}
 	return result
 }
@@ -110,8 +108,14 @@ func TestList(t *testing.T) {
 
 	_ = updatePod(t, etcdStorage, podFooPrime, fooCreated)
 
+	// Create a pod in a namespace that contains "ns" as a prefix
+	// Make sure it is not returned in a watch of "ns"
+	podFooNS2 := makeTestPod("foo")
+	podFooNS2.Namespace += "2"
+	updatePod(t, etcdStorage, podFooNS2, nil)
+
 	deleted := api.Pod{}
-	if err := etcdStorage.Delete(context.TODO(), etcdtest.AddPrefix("pods/ns/bar"), &deleted, nil); err != nil {
+	if err := etcdStorage.Delete(context.TODO(), etcdtest.AddPrefix("pods/ns/bar"), &deleted); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
@@ -146,6 +150,10 @@ func TestList(t *testing.T) {
 		// unset fields that are set by the infrastructure
 		item.ResourceVersion = ""
 		item.CreationTimestamp = unversioned.Time{}
+
+		if item.Namespace != "ns" {
+			t.Errorf("Unexpected namespace: %s", item.Namespace)
+		}
 
 		var expected *api.Pod
 		switch item.Name {
@@ -210,6 +218,9 @@ func TestWatch(t *testing.T) {
 	podFooBis := makeTestPod("foo")
 	podFooBis.Spec.NodeName = "anotherFakeNode"
 
+	podFooNS2 := makeTestPod("foo")
+	podFooNS2.Namespace += "2"
+
 	// initialVersion is used to initate the watcher at the beginning of the world,
 	// which is not defined precisely in etcd.
 	initialVersion, err := cacher.LastSyncResourceVersion()
@@ -224,6 +235,9 @@ func TestWatch(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 	defer watcher.Stop()
+
+	// Create in another namespace first to make sure events from other namespaces don't get delivered
+	updatePod(t, etcdStorage, podFooNS2, nil)
 
 	fooCreated := updatePod(t, etcdStorage, podFoo, nil)
 	_ = updatePod(t, etcdStorage, podBar, nil)
@@ -320,13 +334,20 @@ func TestFiltering(t *testing.T) {
 	podFooPrime.Labels = map[string]string{"filter": "foo"}
 	podFooPrime.Spec.NodeName = "fakeNode"
 
+	podFooNS2 := makeTestPod("foo")
+	podFooNS2.Namespace += "2"
+	podFooNS2.Labels = map[string]string{"filter": "foo"}
+
+	// Create in another namespace first to make sure events from other namespaces don't get delivered
+	updatePod(t, etcdStorage, podFooNS2, nil)
+
 	fooCreated := updatePod(t, etcdStorage, podFoo, nil)
 	fooFiltered := updatePod(t, etcdStorage, podFooFiltered, fooCreated)
 	fooUnfiltered := updatePod(t, etcdStorage, podFoo, fooFiltered)
 	_ = updatePod(t, etcdStorage, podFooPrime, fooUnfiltered)
 
 	deleted := api.Pod{}
-	if err := etcdStorage.Delete(context.TODO(), etcdtest.AddPrefix("pods/ns/foo"), &deleted, nil); err != nil {
+	if err := etcdStorage.Delete(context.TODO(), etcdtest.AddPrefix("pods/ns/foo"), &deleted); err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 

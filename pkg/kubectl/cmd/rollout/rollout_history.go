@@ -32,7 +32,6 @@ import (
 // referencing the cmd.Flags()
 type HistoryOptions struct {
 	Filenames []string
-	Recursive bool
 }
 
 const (
@@ -60,7 +59,6 @@ func NewCmdRolloutHistory(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 	cmd.Flags().Int64("revision", 0, "See the details, including podTemplate of the revision specified")
 	usage := "Filename, directory, or URL to a file identifying the resource to get from a server."
 	kubectl.AddJsonFilenameFlag(cmd, &options.Filenames, usage)
-	cmdutil.AddRecursiveFlag(cmd, &options.Recursive)
 	return cmd
 }
 
@@ -70,7 +68,7 @@ func RunHistory(f *cmdutil.Factory, cmd *cobra.Command, out io.Writer, args []st
 	}
 	revisionDetail := cmdutil.GetFlagInt64(cmd, "revision")
 
-	mapper, typer := f.Object(false)
+	mapper, typer := f.Object()
 
 	cmdNamespace, enforceNamespace, err := f.DefaultNamespace()
 	if err != nil {
@@ -79,7 +77,7 @@ func RunHistory(f *cmdutil.Factory, cmd *cobra.Command, out io.Writer, args []st
 
 	infos, err := resource.NewBuilder(mapper, typer, resource.ClientMapperFunc(f.ClientForMapping), f.Decoder(true)).
 		NamespaceParam(cmdNamespace).DefaultNamespace().
-		FilenameParam(enforceNamespace, options.Recursive, options.Filenames...).
+		FilenameParam(enforceNamespace, options.Filenames...).
 		ResourceTypeOrNameArgs(true, args...).
 		Latest().
 		Flatten().
@@ -103,6 +101,7 @@ func RunHistory(f *cmdutil.Factory, cmd *cobra.Command, out io.Writer, args []st
 			continue
 		}
 
+		formattedOutput := ""
 		if revisionDetail > 0 {
 			// Print details of a specific revision
 			template, ok := historyInfo.RevisionToTemplate[revisionDetail]
@@ -110,16 +109,16 @@ func RunHistory(f *cmdutil.Factory, cmd *cobra.Command, out io.Writer, args []st
 				return fmt.Errorf("unable to find revision %d of %s %q", revisionDetail, mapping.Resource, info.Name)
 			}
 			fmt.Fprintf(out, "%s %q revision %d\n", mapping.Resource, info.Name, revisionDetail)
-			kubectl.DescribePodTemplate(template, out)
+			formattedOutput, err = kubectl.DescribePodTemplate(template)
 		} else {
 			// Print all revisions
-			formattedOutput, printErr := kubectl.PrintRolloutHistory(historyInfo, mapping.Resource, info.Name)
-			if printErr != nil {
-				errs = append(errs, printErr)
-				continue
-			}
-			fmt.Fprintf(out, "%s\n", formattedOutput)
+			formattedOutput, err = kubectl.PrintRolloutHistory(historyInfo, mapping.Resource, info.Name)
 		}
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		fmt.Fprintf(out, "%s\n", formattedOutput)
 	}
 
 	return errors.NewAggregate(errs)

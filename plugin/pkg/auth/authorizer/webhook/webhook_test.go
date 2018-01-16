@@ -35,7 +35,7 @@ import (
 	"k8s.io/kubernetes/pkg/auth/authorizer"
 	"k8s.io/kubernetes/pkg/auth/user"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api/v1"
-	"k8s.io/kubernetes/pkg/util/diff"
+	"k8s.io/kubernetes/pkg/util"
 )
 
 func TestNewFromConfig(t *testing.T) {
@@ -435,10 +435,7 @@ func TestWebhook(t *testing.T) {
 				Verb:            "GET",
 				Namespace:       "kittensandponies",
 				APIGroup:        "group3",
-				APIVersion:      "v7beta3",
 				Resource:        "pods",
-				Subresource:     "proxy",
-				Name:            "my-pod",
 				ResourceRequest: true,
 				Path:            "/foo",
 			},
@@ -448,13 +445,10 @@ func TestWebhook(t *testing.T) {
 					User:   "jane",
 					Groups: []string{"group1", "group2"},
 					ResourceAttributes: &v1beta1.ResourceAttributes{
-						Verb:        "GET",
-						Namespace:   "kittensandponies",
-						Group:       "group3",
-						Version:     "v7beta3",
-						Resource:    "pods",
-						Subresource: "proxy",
-						Name:        "my-pod",
+						Verb:      "GET",
+						Namespace: "kittensandponies",
+						Group:     "group3",
+						Resource:  "pods",
 					},
 				},
 			},
@@ -473,7 +467,7 @@ func TestWebhook(t *testing.T) {
 			continue
 		}
 		if !reflect.DeepEqual(gotAttr, tt.want) {
-			t.Errorf("case %d: got != want:\n%s", i, diff.ObjectGoPrintDiff(gotAttr, tt.want))
+			t.Errorf("case %d: got != want:\n%s", i, util.ObjectGoPrintDiff(gotAttr, tt.want))
 		}
 	}
 }

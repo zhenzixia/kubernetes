@@ -24,9 +24,9 @@ import (
 	"sort"
 	"strings"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/glog"
 
-	dockertypes "github.com/docker/engine-api/types"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/util/sets"
 )
@@ -39,13 +39,13 @@ import (
 //   most specific match for a given image
 // - iterating a map does not yield predictable results
 type DockerKeyring interface {
-	Lookup(image string) ([]LazyAuthConfiguration, bool)
+	Lookup(image string) ([]docker.AuthConfiguration, bool)
 }
 
 // BasicDockerKeyring is a trivial map-backed implementation of DockerKeyring
 type BasicDockerKeyring struct {
 	index []string
-	creds map[string][]LazyAuthConfiguration
+	creds map[string][]docker.AuthConfiguration
 }
 
 // lazyDockerKeyring is an implementation of DockerKeyring that lazily
@@ -54,38 +54,17 @@ type lazyDockerKeyring struct {
 	Providers []DockerConfigProvider
 }
 
-// LazyAuthConfiguration wraps dockertypes.AuthConfig, potentially deferring its
-// binding. If Provider is non-nil, it will be used to obtain new credentials
-// by calling LazyProvide() on it.
-type LazyAuthConfiguration struct {
-	dockertypes.AuthConfig
-	Provider DockerConfigProvider
-}
-
-func DockerConfigEntryToLazyAuthConfiguration(ident DockerConfigEntry) LazyAuthConfiguration {
-	return LazyAuthConfiguration{
-		AuthConfig: dockertypes.AuthConfig{
-			Username: ident.Username,
-			Password: ident.Password,
-			Email:    ident.Email,
-		},
-	}
-}
-
 func (dk *BasicDockerKeyring) Add(cfg DockerConfig) {
 	if dk.index == nil {
 		dk.index = make([]string, 0)
-		dk.creds = make(map[string][]LazyAuthConfiguration)
+		dk.creds = make(map[string][]docker.AuthConfiguration)
 	}
 	for loc, ident := range cfg {
 
-		var creds LazyAuthConfiguration
-		if ident.Provider != nil {
-			creds = LazyAuthConfiguration{
-				Provider: ident.Provider,
-			}
-		} else {
-			creds = DockerConfigEntryToLazyAuthConfiguration(ident)
+		creds := docker.AuthConfiguration{
+			Username: ident.Username,
+			Password: ident.Password,
+			Email:    ident.Email,
 		}
 
 		value := loc
@@ -236,9 +215,9 @@ func urlsMatch(globUrl *url.URL, targetUrl *url.URL) (bool, error) {
 // Lookup implements the DockerKeyring method for fetching credentials based on image name.
 // Multiple credentials may be returned if there are multiple potentially valid credentials
 // available.  This allows for rotation.
-func (dk *BasicDockerKeyring) Lookup(image string) ([]LazyAuthConfiguration, bool) {
+func (dk *BasicDockerKeyring) Lookup(image string) ([]docker.AuthConfiguration, bool) {
 	// range over the index as iterating over a map does not provide a predictable ordering
-	ret := []LazyAuthConfiguration{}
+	ret := []docker.AuthConfiguration{}
 	for _, k := range dk.index {
 		// both k and image are schemeless URLs because even though schemes are allowed
 		// in the credential configurations, we remove them in Add.
@@ -260,12 +239,12 @@ func (dk *BasicDockerKeyring) Lookup(image string) ([]LazyAuthConfiguration, boo
 		}
 	}
 
-	return []LazyAuthConfiguration{}, false
+	return []docker.AuthConfiguration{}, false
 }
 
 // Lookup implements the DockerKeyring method for fetching credentials
 // based on image name.
-func (dk *lazyDockerKeyring) Lookup(image string) ([]LazyAuthConfiguration, bool) {
+func (dk *lazyDockerKeyring) Lookup(image string) ([]docker.AuthConfiguration, bool) {
 	keyring := &BasicDockerKeyring{}
 
 	for _, p := range dk.Providers {
@@ -276,11 +255,11 @@ func (dk *lazyDockerKeyring) Lookup(image string) ([]LazyAuthConfiguration, bool
 }
 
 type FakeKeyring struct {
-	auth []LazyAuthConfiguration
+	auth []docker.AuthConfiguration
 	ok   bool
 }
 
-func (f *FakeKeyring) Lookup(image string) ([]LazyAuthConfiguration, bool) {
+func (f *FakeKeyring) Lookup(image string) ([]docker.AuthConfiguration, bool) {
 	return f.auth, f.ok
 }
 
@@ -289,8 +268,9 @@ type unionDockerKeyring struct {
 	keyrings []DockerKeyring
 }
 
-func (k *unionDockerKeyring) Lookup(image string) ([]LazyAuthConfiguration, bool) {
-	authConfigs := []LazyAuthConfiguration{}
+func (k *unionDockerKeyring) Lookup(image string) ([]docker.AuthConfiguration, bool) {
+	authConfigs := []docker.AuthConfiguration{}
+
 	for _, subKeyring := range k.keyrings {
 		if subKeyring == nil {
 			continue

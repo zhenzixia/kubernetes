@@ -25,11 +25,13 @@ set -o nounset
 set -o pipefail
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
+EXIT_ON_WEAK_ERROR="${EXIT_ON_WEAK_ERROR:-false}"
 
 if [ -f "${KUBE_ROOT}/cluster/env.sh" ]; then
     source "${KUBE_ROOT}/cluster/env.sh"
 fi
 
+source "${KUBE_ROOT}/cluster/kube-env.sh"
 source "${KUBE_ROOT}/cluster/kube-util.sh"
 
 
@@ -57,20 +59,15 @@ echo "... calling validate-cluster" >&2
 # We have two different failure modes from validate cluster:
 # - 1: fatal error - cluster won't be working correctly
 # - 2: weak error - something went wrong, but cluster probably will be working correctly
-# We just print an error message in case 2).
+# We always exit in case 1), but if EXIT_ON_WEAK_ERROR != true, then we don't fail on 2).
 if [[ "${validate_result}" == "1" ]]; then
 	exit 1
 elif [[ "${validate_result}" == "2" ]]; then
-	echo "...ignoring non-fatal errors in validate-cluster" >&2
-fi
-
-if [[ "${ENABLE_PROXY:-}" == "true" ]]; then
-  . /tmp/kube-proxy-env
-  echo ""
-  echo "*** Please run the following to add the kube-apiserver endpoint to your proxy white-list ***"
-  cat /tmp/kube-proxy-env
-  echo "***                                                                                      ***"
-  echo ""
+	if [[ "${EXIT_ON_WEAK_ERROR}" == "true" ]]; then
+		exit 1;
+	else
+		echo "...ignoring non-fatal errors in validate-cluster" >&2
+	fi
 fi
 
 echo -e "Done, listing cluster services:\n" >&2

@@ -111,11 +111,34 @@ func ListPods(deployment *extensions.Deployment, getPodList podListFunc) (*api.P
 	return getPodList(namespace, options)
 }
 
+// equalIgnoreHash returns true if two given podTemplateSpec are equal, ignoring the diff in value of Labels[pod-template-hash]
+// We ignore pod-template-hash because the hash result would be different upon podTemplateSpec API changes
+// (e.g. the addition of a new field will cause the hash code to change)
+// Note that we assume input podTemplateSpecs contain non-empty labels
+func equalIgnoreHash(template1, template2 api.PodTemplateSpec) (bool, error) {
+	// The podTemplateSpec must have a non-empty label so that label selectors can find them.
+	// This is checked by validation (of resources contain a podTemplateSpec).
+	if len(template1.Labels) == 0 || len(template2.Labels) == 0 {
+		return false, fmt.Errorf("Unexpected empty labels found in given template")
+	}
+	hash1 := template1.Labels[extensions.DefaultDeploymentUniqueLabelKey]
+	hash2 := template2.Labels[extensions.DefaultDeploymentUniqueLabelKey]
+	// compare equality ignoring pod-template-hash
+	template1.Labels[extensions.DefaultDeploymentUniqueLabelKey] = hash2
+	result := api.Semantic.DeepEqual(template1, template2)
+	template1.Labels[extensions.DefaultDeploymentUniqueLabelKey] = hash1
+	return result, nil
+}
+
 // FindNewReplicaSet returns the new RS this given deployment targets (the one with the same pod template).
 func FindNewReplicaSet(deployment *extensions.Deployment, rsList []extensions.ReplicaSet) (*extensions.ReplicaSet, error) {
 	newRSTemplate := GetNewReplicaSetTemplate(deployment)
 	for i := range rsList {
-		if api.Semantic.DeepEqual(rsList[i].Spec.Template, newRSTemplate) {
+		equal, err := equalIgnoreHash(rsList[i].Spec.Template, newRSTemplate)
+		if err != nil {
+			return nil, err
+		}
+		if equal {
 			// This is the new ReplicaSet.
 			return &rsList[i], nil
 		}
@@ -140,7 +163,11 @@ func FindOldReplicaSets(deployment *extensions.Deployment, rsList []extensions.R
 				return nil, nil, fmt.Errorf("invalid label selector: %v", err)
 			}
 			// Filter out replica set that has the same pod template spec as the deployment - that is the new replica set.
-			if api.Semantic.DeepEqual(rs.Spec.Template, newRSTemplate) {
+			equal, err := equalIgnoreHash(rs.Spec.Template, newRSTemplate)
+			if err != nil {
+				return nil, nil, err
+			}
+			if equal {
 				continue
 			}
 			allOldRSs[rs.ObjectMeta.Name] = rs
@@ -237,8 +264,8 @@ func SetFromReplicaSetTemplate(deployment *extensions.Deployment, template api.P
 }
 
 // Returns the sum of Replicas of the given replica sets.
-func GetReplicaCountForReplicaSets(replicaSets []*extensions.ReplicaSet) int32 {
-	totalReplicaCount := int32(0)
+func GetReplicaCountForReplicaSets(replicaSets []*extensions.ReplicaSet) int {
+	totalReplicaCount := 0
 	for _, rs := range replicaSets {
 		if rs != nil {
 			totalReplicaCount += rs.Spec.Replicas
@@ -248,8 +275,8 @@ func GetReplicaCountForReplicaSets(replicaSets []*extensions.ReplicaSet) int32 {
 }
 
 // GetActualReplicaCountForReplicaSets returns the sum of actual replicas of the given replica sets.
-func GetActualReplicaCountForReplicaSets(replicaSets []*extensions.ReplicaSet) int32 {
-	totalReplicaCount := int32(0)
+func GetActualReplicaCountForReplicaSets(replicaSets []*extensions.ReplicaSet) int {
+	totalReplicaCount := 0
 	for _, rs := range replicaSets {
 		if rs != nil {
 			totalReplicaCount += rs.Status.Replicas
@@ -259,7 +286,7 @@ func GetActualReplicaCountForReplicaSets(replicaSets []*extensions.ReplicaSet) i
 }
 
 // Returns the number of available pods corresponding to the given replica sets.
-func GetAvailablePodsForReplicaSets(c clientset.Interface, rss []*extensions.ReplicaSet, minReadySeconds int32) (int32, error) {
+func GetAvailablePodsForReplicaSets(c clientset.Interface, rss []*extensions.ReplicaSet, minReadySeconds int) (int, error) {
 	allPods, err := GetPodsForReplicaSets(c, rss)
 	if err != nil {
 		return 0, err
@@ -267,8 +294,8 @@ func GetAvailablePodsForReplicaSets(c clientset.Interface, rss []*extensions.Rep
 	return getReadyPodsCount(allPods, minReadySeconds), nil
 }
 
-func getReadyPodsCount(pods []api.Pod, minReadySeconds int32) int32 {
-	readyPodCount := int32(0)
+func getReadyPodsCount(pods []api.Pod, minReadySeconds int) int {
+	readyPodCount := 0
 	for _, pod := range pods {
 		if IsPodAvailable(&pod, minReadySeconds) {
 			readyPodCount++
@@ -277,7 +304,7 @@ func getReadyPodsCount(pods []api.Pod, minReadySeconds int32) int32 {
 	return readyPodCount
 }
 
-func IsPodAvailable(pod *api.Pod, minReadySeconds int32) bool {
+func IsPodAvailable(pod *api.Pod, minReadySeconds int) bool {
 	if !controller.IsPodActive(*pod) {
 		return false
 	}
@@ -286,11 +313,11 @@ func IsPodAvailable(pod *api.Pod, minReadySeconds int32) bool {
 	for _, c := range pod.Status.Conditions {
 		// we only care about pod ready conditions
 		if c.Type == api.PodReady && c.Status == api.ConditionTrue {
-			// 2 cases that this ready condition is valid (passed minReadySeconds, i.e. the pod is available):
-			// 1. minReadySeconds == 0, or
+			// 2 cases that this ready condition is valid (passed minReadySeconds, i.e. the pod is ready):
+			// 1. minReadySeconds <= 0
 			// 2. LastTransitionTime (is set) + minReadySeconds (>0) < current time
 			minReadySecondsDuration := time.Duration(minReadySeconds) * time.Second
-			if minReadySeconds == 0 || !c.LastTransitionTime.IsZero() && c.LastTransitionTime.Add(minReadySecondsDuration).Before(time.Now()) {
+			if minReadySeconds <= 0 || !c.LastTransitionTime.IsZero() && c.LastTransitionTime.Add(minReadySecondsDuration).Before(time.Now()) {
 				return true
 			}
 		}
@@ -340,17 +367,17 @@ func IsRollingUpdate(deployment *extensions.Deployment) bool {
 // When one of the followings is true, we're rolling out the deployment; otherwise, we're scaling it.
 // 1) The new RS is saturated: newRS's replicas == deployment's replicas
 // 2) Max number of pods allowed is reached: deployment's replicas + maxSurge == all RSs' replicas
-func NewRSNewReplicas(deployment *extensions.Deployment, allRSs []*extensions.ReplicaSet, newRS *extensions.ReplicaSet) (int32, error) {
+func NewRSNewReplicas(deployment *extensions.Deployment, allRSs []*extensions.ReplicaSet, newRS *extensions.ReplicaSet) (int, error) {
 	switch deployment.Spec.Strategy.Type {
 	case extensions.RollingUpdateDeploymentStrategyType:
 		// Check if we can scale up.
-		maxSurge, err := intstrutil.GetValueFromIntOrPercent(&deployment.Spec.Strategy.RollingUpdate.MaxSurge, int(deployment.Spec.Replicas), true)
+		maxSurge, err := intstrutil.GetValueFromIntOrPercent(&deployment.Spec.Strategy.RollingUpdate.MaxSurge, deployment.Spec.Replicas, true)
 		if err != nil {
 			return 0, err
 		}
 		// Find the total number of pods
 		currentPodCount := GetReplicaCountForReplicaSets(allRSs)
-		maxTotalPods := deployment.Spec.Replicas + int32(maxSurge)
+		maxTotalPods := deployment.Spec.Replicas + maxSurge
 		if currentPodCount >= maxTotalPods {
 			// Cannot scale up.
 			return newRS.Spec.Replicas, nil
@@ -358,7 +385,7 @@ func NewRSNewReplicas(deployment *extensions.Deployment, allRSs []*extensions.Re
 		// Scale up.
 		scaleUpCount := maxTotalPods - currentPodCount
 		// Do not exceed the number of desired replicas.
-		scaleUpCount = int32(integer.IntMin(int(scaleUpCount), int(deployment.Spec.Replicas-newRS.Spec.Replicas)))
+		scaleUpCount = integer.IntMin(scaleUpCount, deployment.Spec.Replicas-newRS.Spec.Replicas)
 		return newRS.Spec.Replicas + scaleUpCount, nil
 	case extensions.RecreateDeploymentStrategyType:
 		return deployment.Spec.Replicas, nil
@@ -389,12 +416,12 @@ func WaitForObservedDeployment(getDeploymentFunc func() (*extensions.Deployment,
 // 1 desired, max unavailable 25%, surge 1% - should scale new(+1), then old(-1)
 // 2 desired, max unavailable 0%, surge 1% - should scale new(+1), then old(-1), then new(+1), then old(-1)
 // 1 desired, max unavailable 0%, surge 1% - should scale new(+1), then old(-1)
-func ResolveFenceposts(maxSurge, maxUnavailable *intstrutil.IntOrString, desired int32) (int32, int32, error) {
-	surge, err := intstrutil.GetValueFromIntOrPercent(maxSurge, int(desired), true)
+func ResolveFenceposts(maxSurge, maxUnavailable *intstrutil.IntOrString, desired int) (int, int, error) {
+	surge, err := intstrutil.GetValueFromIntOrPercent(maxSurge, desired, true)
 	if err != nil {
 		return 0, 0, err
 	}
-	unavailable, err := intstrutil.GetValueFromIntOrPercent(maxUnavailable, int(desired), false)
+	unavailable, err := intstrutil.GetValueFromIntOrPercent(maxUnavailable, desired, false)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -407,5 +434,5 @@ func ResolveFenceposts(maxSurge, maxUnavailable *intstrutil.IntOrString, desired
 		unavailable = 1
 	}
 
-	return int32(surge), int32(unavailable), nil
+	return surge, unavailable, nil
 }

@@ -28,7 +28,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/conversion"
 	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/util/diff"
+	"k8s.io/kubernetes/pkg/util"
 
 	"github.com/ghodss/yaml"
 	"github.com/google/gofuzz"
@@ -129,10 +129,10 @@ var TestObjectFuzzer = fuzz.New().NilChance(.5).NumElements(1, 100).Funcs(
 )
 
 func (obj *MyWeirdCustomEmbeddedVersionKindField) GetObjectKind() unversioned.ObjectKind { return obj }
-func (obj *MyWeirdCustomEmbeddedVersionKindField) SetGroupVersionKind(gvk unversioned.GroupVersionKind) {
+func (obj *MyWeirdCustomEmbeddedVersionKindField) SetGroupVersionKind(gvk *unversioned.GroupVersionKind) {
 	obj.APIVersion, obj.ObjectKind = gvk.ToAPIVersionAndKind()
 }
-func (obj *MyWeirdCustomEmbeddedVersionKindField) GroupVersionKind() unversioned.GroupVersionKind {
+func (obj *MyWeirdCustomEmbeddedVersionKindField) GroupVersionKind() *unversioned.GroupVersionKind {
 	return unversioned.FromAPIVersionAndKind(obj.APIVersion, obj.ObjectKind)
 }
 
@@ -173,7 +173,7 @@ func GetTestScheme() (*runtime.Scheme, runtime.Codec) {
 
 	s.AddUnversionedTypes(externalGV, &unversioned.Status{})
 
-	cf := newCodecFactory(s, newSerializersForScheme(s, testMetaFactory{}))
+	cf := newCodecFactory(s, testMetaFactory{})
 	codec := cf.LegacyCodec(unversioned.GroupVersion{Version: "v1"})
 	return s, codec
 }
@@ -187,12 +187,12 @@ func objDiff(a, b interface{}) string {
 	if err != nil {
 		panic("b")
 	}
-	return diff.StringDiff(string(ab), string(bb))
+	return util.StringDiff(string(ab), string(bb))
 
 	// An alternate diff attempt, in case json isn't showing you
 	// the difference. (reflect.DeepEqual makes a distinction between
 	// nil and empty slices, for example.)
-	//return diff.StringDiff(
+	//return util.StringDiff(
 	//  fmt.Sprintf("%#v", a),
 	//  fmt.Sprintf("%#v", b),
 	//)
@@ -222,7 +222,7 @@ func runTest(t *testing.T, source interface{}) {
 		return
 	}
 	if !semantic.DeepEqual(source, obj2) {
-		t.Errorf("1: %v: diff: %v", name, diff.ObjectGoPrintSideBySide(source, obj2))
+		t.Errorf("1: %v: diff: %v", name, util.ObjectGoPrintSideBySide(source, obj2))
 		return
 	}
 	obj3 := reflect.New(reflect.TypeOf(source).Elem()).Interface()
@@ -263,11 +263,11 @@ func TestVersionedEncoding(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cf := newCodecFactory(s, newSerializersForScheme(s, testMetaFactory{}))
+	cf := newCodecFactory(s, testMetaFactory{})
 	encoder, _ := cf.SerializerForFileExtension("json")
 
 	// codec that is unversioned uses the target version
-	unversionedCodec := cf.CodecForVersions(encoder, nil, nil, nil)
+	unversionedCodec := cf.CodecForVersions(encoder, nil, nil)
 	_, err = runtime.Encode(unversionedCodec, &TestType1{}, unversioned.GroupVersion{Version: "v3"})
 	if err == nil || !runtime.IsNotRegisteredError(err) {
 		t.Fatal(err)
@@ -326,7 +326,7 @@ func TestConvertTypesWhenDefaultNamesMatch(t *testing.T) {
 	}
 	expect := &TestType1{A: "test"}
 
-	codec := newCodecFactory(s, newSerializersForScheme(s, testMetaFactory{})).LegacyCodec(unversioned.GroupVersion{Version: "v1"})
+	codec := newCodecFactory(s, testMetaFactory{}).LegacyCodec(unversioned.GroupVersion{Version: "v1"})
 
 	obj, err := runtime.Decode(codec, data)
 	if err != nil {

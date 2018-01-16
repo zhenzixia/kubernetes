@@ -18,12 +18,10 @@ package e2e
 
 import (
 	"testing"
-
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 func init() {
-	framework.RegisterFlags()
+	RegisterFlags()
 }
 
 func TestE2E(t *testing.T) {

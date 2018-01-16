@@ -23,14 +23,14 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	"k8s.io/kubernetes/pkg/registry/generic"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	ingress "k8s.io/kubernetes/pkg/registry/ingress"
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
 // rest implements a RESTStorage for replication controllers against etcd
 type REST struct {
-	*registry.Store
+	*etcdgeneric.Etcd
 }
 
 // NewREST returns a RESTStorage object that will work against replication controllers.
@@ -41,7 +41,7 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 	storageInterface := opts.Decorator(
 		opts.Storage, cachesize.GetWatchCacheSizeByResource(cachesize.Ingress), &extensions.Ingress{}, prefix, ingress.Strategy, newListFunc)
 
-	store := &registry.Store{
+	store := &etcdgeneric.Etcd{
 		NewFunc: func() runtime.Object { return &extensions.Ingress{} },
 
 		// NewListFunc returns an object capable of storing results of an etcd list.
@@ -49,12 +49,12 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 		// Produces a ingress that etcd understands, to the root of the resource
 		// by combining the namespace in the context with the given prefix
 		KeyRootFunc: func(ctx api.Context) string {
-			return registry.NamespaceKeyRootFunc(ctx, prefix)
+			return etcdgeneric.NamespaceKeyRootFunc(ctx, prefix)
 		},
 		// Produces a ingress that etcd understands, to the resource by combining
 		// the namespace in the context with the given prefix
 		KeyFunc: func(ctx api.Context, name string) (string, error) {
-			return registry.NamespaceKeyFunc(ctx, prefix, name)
+			return etcdgeneric.NamespaceKeyFunc(ctx, prefix, name)
 		},
 		// Retrieve the name field of a replication controller
 		ObjectNameFunc: func(obj runtime.Object) (string, error) {
@@ -72,7 +72,6 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 		// Used to validate controller updates
 		UpdateStrategy: ingress.Strategy,
-		DeleteStrategy: ingress.Strategy,
 
 		Storage: storageInterface,
 	}
@@ -83,7 +82,7 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 // StatusREST implements the REST endpoint for changing the status of an ingress
 type StatusREST struct {
-	store *registry.Store
+	store *etcdgeneric.Etcd
 }
 
 func (r *StatusREST) New() runtime.Object {

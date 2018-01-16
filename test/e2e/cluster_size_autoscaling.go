@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -38,16 +37,16 @@ const (
 // run by default.
 //
 // These tests take ~20 minutes to run each.
-var _ = framework.KubeDescribe("Cluster size autoscaling [Feature:ClusterSizeAutoscaling] [Slow]", func() {
-	f := framework.NewDefaultFramework("autoscaling")
+var _ = Describe("Cluster size autoscaling [Feature:ClusterSizeAutoscaling] [Slow]", func() {
+	f := NewDefaultFramework("autoscaling")
 	var nodeCount int
 	var coresPerNode int
 	var memCapacityMb int
 
 	BeforeEach(func() {
-		framework.SkipUnlessProviderIs("gce")
+		SkipUnlessProviderIs("gce")
 
-		nodes := framework.ListSchedulableNodesOrDie(f.Client)
+		nodes := ListSchedulableNodesOrDie(f.Client)
 		nodeCount = len(nodes.Items)
 		Expect(nodeCount).NotTo(BeZero())
 		cpu := nodes.Items[0].Status.Capacity[api.ResourceCPU]
@@ -65,23 +64,23 @@ var _ = framework.KubeDescribe("Cluster size autoscaling [Feature:ClusterSizeAut
 
 		// Consume 50% CPU
 		rcs := createConsumingRCs(f, "cpu-utilization", nodeCount*coresPerNode, 500, 0)
-		err := framework.WaitForClusterSize(f.Client, nodeCount+1, scaleUpTimeout)
+		err := waitForClusterSize(f.Client, nodeCount+1, scaleUpTimeout)
 		for _, rc := range rcs {
 			rc.CleanUp()
 		}
-		framework.ExpectNoError(err)
+		expectNoError(err)
 
-		framework.ExpectNoError(framework.WaitForClusterSize(f.Client, nodeCount, scaleDownTimeout))
+		expectNoError(waitForClusterSize(f.Client, nodeCount, scaleDownTimeout))
 	})
 
 	It("Should scale cluster size based on cpu reservation", func() {
 		setUpAutoscaler("cpu/node_reservation", 0.5, nodeCount, nodeCount+1)
 
 		ReserveCpu(f, "cpu-reservation", 600*nodeCount*coresPerNode)
-		framework.ExpectNoError(framework.WaitForClusterSize(f.Client, nodeCount+1, scaleUpTimeout))
+		expectNoError(waitForClusterSize(f.Client, nodeCount+1, scaleUpTimeout))
 
-		framework.ExpectNoError(framework.DeleteRC(f.Client, f.Namespace.Name, "cpu-reservation"))
-		framework.ExpectNoError(framework.WaitForClusterSize(f.Client, nodeCount, scaleDownTimeout))
+		expectNoError(DeleteRC(f.Client, f.Namespace.Name, "cpu-reservation"))
+		expectNoError(waitForClusterSize(f.Client, nodeCount, scaleDownTimeout))
 	})
 
 	It("Should scale cluster size based on memory utilization", func() {
@@ -90,23 +89,23 @@ var _ = framework.KubeDescribe("Cluster size autoscaling [Feature:ClusterSizeAut
 		// Consume 60% of total memory capacity
 		megabytesPerReplica := int(memCapacityMb * 6 / 10 / coresPerNode)
 		rcs := createConsumingRCs(f, "mem-utilization", nodeCount*coresPerNode, 0, megabytesPerReplica)
-		err := framework.WaitForClusterSize(f.Client, nodeCount+1, scaleUpTimeout)
+		err := waitForClusterSize(f.Client, nodeCount+1, scaleUpTimeout)
 		for _, rc := range rcs {
 			rc.CleanUp()
 		}
-		framework.ExpectNoError(err)
+		expectNoError(err)
 
-		framework.ExpectNoError(framework.WaitForClusterSize(f.Client, nodeCount, scaleDownTimeout))
+		expectNoError(waitForClusterSize(f.Client, nodeCount, scaleDownTimeout))
 	})
 
 	It("Should scale cluster size based on memory reservation", func() {
 		setUpAutoscaler("memory/node_reservation", 0.5, nodeCount, nodeCount+1)
 
 		ReserveMemory(f, "memory-reservation", nodeCount*memCapacityMb*6/10)
-		framework.ExpectNoError(framework.WaitForClusterSize(f.Client, nodeCount+1, scaleUpTimeout))
+		expectNoError(waitForClusterSize(f.Client, nodeCount+1, scaleUpTimeout))
 
-		framework.ExpectNoError(framework.DeleteRC(f.Client, f.Namespace.Name, "memory-reservation"))
-		framework.ExpectNoError(framework.WaitForClusterSize(f.Client, nodeCount, scaleDownTimeout))
+		expectNoError(DeleteRC(f.Client, f.Namespace.Name, "memory-reservation"))
+		expectNoError(waitForClusterSize(f.Client, nodeCount, scaleDownTimeout))
 	})
 })
 
@@ -114,17 +113,17 @@ func setUpAutoscaler(metric string, target float64, min, max int) {
 	// TODO integrate with kube-up.sh script once it will support autoscaler setup.
 	By("Setting up autoscaler to scale based on " + metric)
 	out, err := exec.Command("gcloud", "compute", "instance-groups", "managed", "set-autoscaling",
-		framework.TestContext.CloudConfig.NodeInstanceGroup,
-		"--project="+framework.TestContext.CloudConfig.ProjectID,
-		"--zone="+framework.TestContext.CloudConfig.Zone,
+		testContext.CloudConfig.NodeInstanceGroup,
+		"--project="+testContext.CloudConfig.ProjectID,
+		"--zone="+testContext.CloudConfig.Zone,
 		"--custom-metric-utilization=metric=custom.cloudmonitoring.googleapis.com/kubernetes.io/"+metric+fmt.Sprintf(",utilization-target=%v", target)+",utilization-target-type=GAUGE",
 		fmt.Sprintf("--min-num-replicas=%v", min),
 		fmt.Sprintf("--max-num-replicas=%v", max),
 	).CombinedOutput()
-	framework.ExpectNoError(err, "Output: "+string(out))
+	expectNoError(err, "Output: "+string(out))
 }
 
-func createConsumingRCs(f *framework.Framework, name string, count, cpuPerReplica, memPerReplica int) []*ResourceConsumer {
+func createConsumingRCs(f *Framework, name string, count, cpuPerReplica, memPerReplica int) []*ResourceConsumer {
 	var res []*ResourceConsumer
 	for i := 1; i <= count; i++ {
 		name := fmt.Sprintf("%s-%d", name, i)
@@ -136,37 +135,37 @@ func createConsumingRCs(f *framework.Framework, name string, count, cpuPerReplic
 func cleanUpAutoscaler() {
 	By("Removing autoscaler")
 	out, err := exec.Command("gcloud", "compute", "instance-groups", "managed", "stop-autoscaling",
-		framework.TestContext.CloudConfig.NodeInstanceGroup,
-		"--project="+framework.TestContext.CloudConfig.ProjectID,
-		"--zone="+framework.TestContext.CloudConfig.Zone,
+		testContext.CloudConfig.NodeInstanceGroup,
+		"--project="+testContext.CloudConfig.ProjectID,
+		"--zone="+testContext.CloudConfig.Zone,
 	).CombinedOutput()
-	framework.ExpectNoError(err, "Output: "+string(out))
+	expectNoError(err, "Output: "+string(out))
 }
 
-func ReserveCpu(f *framework.Framework, id string, millicores int) {
+func ReserveCpu(f *Framework, id string, millicores int) {
 	By(fmt.Sprintf("Running RC which reserves %v millicores", millicores))
-	config := &framework.RCConfig{
+	config := &RCConfig{
 		Client:     f.Client,
 		Name:       id,
 		Namespace:  f.Namespace.Name,
 		Timeout:    10 * time.Minute,
-		Image:      "gcr.io/google_containers/pause-amd64:3.0",
+		Image:      "gcr.io/google_containers/pause:2.0",
 		Replicas:   millicores / 100,
 		CpuRequest: 100,
 	}
-	framework.ExpectNoError(framework.RunRC(*config))
+	expectNoError(RunRC(*config))
 }
 
-func ReserveMemory(f *framework.Framework, id string, megabytes int) {
+func ReserveMemory(f *Framework, id string, megabytes int) {
 	By(fmt.Sprintf("Running RC which reserves %v MB of memory", megabytes))
-	config := &framework.RCConfig{
+	config := &RCConfig{
 		Client:     f.Client,
 		Name:       id,
 		Namespace:  f.Namespace.Name,
 		Timeout:    10 * time.Minute,
-		Image:      "gcr.io/google_containers/pause-amd64:3.0",
+		Image:      "gcr.io/google_containers/pause:2.0",
 		Replicas:   megabytes / 500,
 		MemRequest: 500 * 1024 * 1024,
 	}
-	framework.ExpectNoError(framework.RunRC(*config))
+	expectNoError(RunRC(*config))
 }

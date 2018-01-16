@@ -21,8 +21,9 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
+	// Ensure that extensions/v1beta1 package is initialized.
+	_ "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/registry/generic"
@@ -33,20 +34,20 @@ import (
 
 func newStorage(t *testing.T) (*REST, *StatusREST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, extensions.GroupName)
-	restOptions := generic.RESTOptions{Storage: etcdStorage, Decorator: generic.UndecoratedStorage, DeleteCollectionWorkers: 1}
+	restOptions := generic.RESTOptions{etcdStorage, generic.UndecoratedStorage, 1}
 	jobStorage, statusStorage := NewREST(restOptions)
 	return jobStorage, statusStorage, server
 }
 
-func validNewJob() *batch.Job {
-	completions := int32(1)
-	parallelism := int32(1)
-	return &batch.Job{
+func validNewJob() *extensions.Job {
+	completions := 1
+	parallelism := 1
+	return &extensions.Job{
 		ObjectMeta: api.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
-		Spec: batch.JobSpec{
+		Spec: extensions.JobSpec{
 			Completions: &completions,
 			Parallelism: &parallelism,
 			Selector: &unversioned.LabelSelector{
@@ -76,15 +77,15 @@ func validNewJob() *batch.Job {
 func TestCreate(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	validJob := validNewJob()
 	validJob.ObjectMeta = api.ObjectMeta{}
 	test.TestCreate(
 		// valid
 		validJob,
 		// invalid (empty selector)
-		&batch.Job{
-			Spec: batch.JobSpec{
+		&extensions.Job{
+			Spec: extensions.JobSpec{
 				Completions: validJob.Spec.Completions,
 				Selector:    &unversioned.LabelSelector{},
 				Template:    validJob.Spec.Template,
@@ -96,25 +97,25 @@ func TestCreate(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
-	two := int32(2)
+	test := registrytest.New(t, storage.Etcd)
+	two := 2
 	test.TestUpdate(
 		// valid
 		validNewJob(),
 		// updateFunc
 		func(obj runtime.Object) runtime.Object {
-			object := obj.(*batch.Job)
+			object := obj.(*extensions.Job)
 			object.Spec.Parallelism = &two
 			return object
 		},
 		// invalid updateFunc
 		func(obj runtime.Object) runtime.Object {
-			object := obj.(*batch.Job)
+			object := obj.(*extensions.Job)
 			object.Spec.Selector = &unversioned.LabelSelector{}
 			return object
 		},
 		func(obj runtime.Object) runtime.Object {
-			object := obj.(*batch.Job)
+			object := obj.(*extensions.Job)
 			object.Spec.Completions = &two
 			return object
 		},
@@ -124,28 +125,28 @@ func TestUpdate(t *testing.T) {
 func TestDelete(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestDelete(validNewJob())
 }
 
 func TestGet(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestGet(validNewJob())
 }
 
 func TestList(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestList(validNewJob())
 }
 
 func TestWatch(t *testing.T) {
 	storage, _, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store)
+	test := registrytest.New(t, storage.Etcd)
 	test.TestWatch(
 		validNewJob(),
 		// matching labels

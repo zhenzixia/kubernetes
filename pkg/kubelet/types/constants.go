@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 const (
+	PodInfraContainerImage = "gcr.io/google_containers/pause:2.0"
 	// system default DNS resolver configuration
 	ResolvConfDefault = "/etc/resolv.conf"
 )

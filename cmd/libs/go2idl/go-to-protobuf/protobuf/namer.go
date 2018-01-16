@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"k8s.io/kubernetes/cmd/libs/go2idl/generator"
-	"k8s.io/kubernetes/cmd/libs/go2idl/namer"
 	"k8s.io/kubernetes/cmd/libs/go2idl/types"
 )
 
@@ -31,7 +30,7 @@ type localNamer struct {
 }
 
 func (n localNamer) Name(t *types.Type) string {
-	if t.Key != nil && t.Elem != nil {
+	if t.Kind == types.Map {
 		return fmt.Sprintf("map<%s, %s>", n.Name(t.Key), n.Name(t.Elem))
 	}
 	if len(n.localPackage.Package) != 0 && n.localPackage.Package == t.Name.Package {
@@ -67,10 +66,8 @@ func (n *protobufNamer) List() []generator.Package {
 }
 
 func (n *protobufNamer) Add(p *protobufPackage) {
-	if _, ok := n.packagesByPath[p.PackagePath]; !ok {
-		n.packagesByPath[p.PackagePath] = p
-		n.packages = append(n.packages, p)
-	}
+	n.packagesByPath[p.PackagePath] = p
+	n.packages = append(n.packages, p)
 }
 
 func (n *protobufNamer) GoNameToProtoName(name types.Name) types.Name {
@@ -93,6 +90,24 @@ func (n *protobufNamer) GoNameToProtoName(name types.Name) types.Name {
 	return types.Name{Name: name.Name}
 }
 
+func (n *protobufNamer) protoNameForTypeName(name types.Name) string {
+	packageName := name.Package
+	if len(name.Package) != 0 {
+		if p, ok := n.packagesByPath[packageName]; ok {
+			packageName = p.Name()
+		} else {
+			packageName = protoSafePackage(packageName)
+		}
+	}
+	if len(name.Name) == 0 {
+		return packageName
+	}
+	if len(packageName) > 0 {
+		return packageName + "." + name.Name
+	}
+	return name.Name
+}
+
 func protoSafePackage(name string) string {
 	return strings.Replace(name, "/", ".", -1)
 }
@@ -109,7 +124,7 @@ func assignGoTypeToProtoPackage(p *protobufPackage, t *types.Type, local, global
 	if otherP, ok := global[t.Name]; ok {
 		if _, ok := local[t.Name]; !ok {
 			p.Imports.AddType(&types.Type{
-				Kind: types.Protobuf,
+				Kind: typesKindProtobuf,
 				Name: otherP.ProtoTypeName(),
 			})
 		}
@@ -127,15 +142,11 @@ func assignGoTypeToProtoPackage(p *protobufPackage, t *types.Type, local, global
 
 	local[t.Name] = p
 	for _, m := range t.Members {
-		if namer.IsPrivateGoName(m.Name) {
+		if isPrivateGoName(m.Name) {
 			continue
 		}
 		field := &protoField{}
-		tag := reflect.StructTag(m.Tags).Get("protobuf")
-		if tag == "-" {
-			continue
-		}
-		if err := protobufTagToField(tag, field, m, t, p.ProtoTypeName()); err == nil && field.Type != nil {
+		if err := protobufTagToField(reflect.StructTag(m.Tags).Get("protobuf"), field, m, t, p.ProtoTypeName()); err == nil && field.Type != nil {
 			assignGoTypeToProtoPackage(p, field.Type, local, global)
 			continue
 		}

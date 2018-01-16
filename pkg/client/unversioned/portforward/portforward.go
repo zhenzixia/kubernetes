@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/kubelet/server/portforward"
 	"k8s.io/kubernetes/pkg/util/httpstream"
@@ -45,8 +46,6 @@ type PortForwarder struct {
 	Ready         chan struct{}
 	requestIDLock sync.Mutex
 	requestID     int
-	out           io.Writer
-	errOut        io.Writer
 }
 
 // ForwardedPort contains a Local:Remote port pairing.
@@ -108,7 +107,7 @@ func parsePorts(ports []string) ([]ForwardedPort, error) {
 }
 
 // New creates a new PortForwarder.
-func New(dialer httpstream.Dialer, ports []string, stopChan <-chan struct{}, out, errOut io.Writer) (*PortForwarder, error) {
+func New(dialer httpstream.Dialer, ports []string, stopChan <-chan struct{}) (*PortForwarder, error) {
 	if len(ports) == 0 {
 		return nil, errors.New("You must specify at least 1 port")
 	}
@@ -121,8 +120,6 @@ func New(dialer httpstream.Dialer, ports []string, stopChan <-chan struct{}, out
 		ports:    parsedPorts,
 		stopChan: stopChan,
 		Ready:    make(chan struct{}),
-		out:      out,
-		errOut:   errOut,
 	}, nil
 }
 
@@ -154,9 +151,7 @@ func (pf *PortForwarder) forward() error {
 		case err == nil:
 			listenSuccess = true
 		default:
-			if pf.errOut != nil {
-				fmt.Fprintf(pf.errOut, "Unable to listen on port %d: %v\n", port.Local, err)
-			}
+			glog.Warningf("Unable to listen on port %d: %v", port.Local, err)
 		}
 	}
 
@@ -215,9 +210,7 @@ func (pf *PortForwarder) getListener(protocol string, hostname string, port *For
 		return nil, fmt.Errorf("Error parsing local port: %s from %s (%s)", err, listenerAddress, host)
 	}
 	port.Local = uint16(localPortUInt)
-	if pf.out != nil {
-		fmt.Fprintf(pf.out, "Forwarding from %s:%d -> %d\n", hostname, localPortUInt, port.Remote)
-	}
+	glog.Infof("Forwarding from %s:%d -> %d", hostname, localPortUInt, port.Remote)
 
 	return listener, nil
 }
@@ -251,9 +244,7 @@ func (pf *PortForwarder) nextRequestID() int {
 func (pf *PortForwarder) handleConnection(conn net.Conn, port ForwardedPort) {
 	defer conn.Close()
 
-	if pf.out != nil {
-		fmt.Fprintf(pf.out, "Handling connection for %d\n", port.Local)
-	}
+	glog.Infof("Handling connection for %d", port.Local)
 
 	requestID := pf.nextRequestID()
 

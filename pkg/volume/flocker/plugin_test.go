@@ -31,8 +31,8 @@ import (
 
 const pluginName = "kubernetes.io/flocker"
 
-func newInitializedVolumePlugMgr(t *testing.T) (*volume.VolumePluginMgr, string) {
-	plugMgr := &volume.VolumePluginMgr{}
+func newInitializedVolumePlugMgr(t *testing.T) (volume.VolumePluginMgr, string) {
+	plugMgr := volume.VolumePluginMgr{}
 	dir, err := utiltesting.MkTmpdir("flocker")
 	assert.NoError(t, err)
 	plugMgr.InitPlugins(ProbeVolumePlugins(), volumetest.NewFakeVolumeHost(dir, nil, nil))
@@ -115,7 +115,7 @@ func TestGetFlockerVolumeSource(t *testing.T) {
 	assert.Equal(spec.PersistentVolume.Spec.Flocker, vs)
 }
 
-func TestNewMounter(t *testing.T) {
+func TestNewBuilder(t *testing.T) {
 	assert := assert.New(t)
 
 	plugMgr, _ := newInitializedVolumePlugMgr(t)
@@ -132,22 +132,22 @@ func TestNewMounter(t *testing.T) {
 		},
 	}
 
-	_, err = plug.NewMounter(spec, &api.Pod{}, volume.VolumeOptions{})
+	_, err = plug.NewBuilder(spec, &api.Pod{}, volume.VolumeOptions{})
 	assert.NoError(err)
 }
 
-func TestNewUnmounter(t *testing.T) {
+func TestNewCleaner(t *testing.T) {
 	assert := assert.New(t)
 
 	p := flockerPlugin{}
 
-	unmounter, err := p.NewUnmounter("", types.UID(""))
-	assert.Nil(unmounter)
+	cleaner, err := p.NewCleaner("", types.UID(""))
+	assert.Nil(cleaner)
 	assert.NoError(err)
 }
 
 func TestIsReadOnly(t *testing.T) {
-	b := &flockerMounter{readOnly: true}
+	b := &flockerBuilder{readOnly: true}
 	assert.True(t, b.GetAttributes().ReadOnly)
 }
 
@@ -156,7 +156,7 @@ func TestGetPath(t *testing.T) {
 
 	assert := assert.New(t)
 
-	b := flockerMounter{flocker: &flocker{path: expectedPath}}
+	b := flockerBuilder{flocker: &flocker{path: expectedPath}}
 	assert.Equal(expectedPath, b.GetPath())
 }
 
@@ -209,7 +209,7 @@ func TestSetUpAtInternal(t *testing.T) {
 	assert.NoError(err)
 
 	pod := &api.Pod{ObjectMeta: api.ObjectMeta{UID: types.UID("poduid")}}
-	b := flockerMounter{flocker: &flocker{pod: pod, plugin: plug.(*flockerPlugin)}}
+	b := flockerBuilder{flocker: &flocker{pod: pod, plugin: plug.(*flockerPlugin)}}
 	b.client = newMockFlockerClient("dataset-id", "primary-uid", mockPath)
 
 	assert.NoError(b.SetUpAt(dir, nil))

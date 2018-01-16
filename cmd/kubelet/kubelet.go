@@ -28,7 +28,6 @@ import (
 	"k8s.io/kubernetes/cmd/kubelet/app"
 	"k8s.io/kubernetes/cmd/kubelet/app/options"
 	"k8s.io/kubernetes/pkg/util"
-	"k8s.io/kubernetes/pkg/util/flag"
 	"k8s.io/kubernetes/pkg/version/verflag"
 
 	"github.com/spf13/pflag"
@@ -39,7 +38,7 @@ func main() {
 	s := options.NewKubeletServer()
 	s.AddFlags(pflag.CommandLine)
 
-	flag.InitFlags()
+	util.InitFlags()
 	util.InitLogs()
 	defer util.FlushLogs()
 

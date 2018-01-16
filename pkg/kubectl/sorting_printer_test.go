@@ -190,16 +190,16 @@ func TestSortingPrinter(t *testing.T) {
 			name: "v1.List in order",
 			obj: &api.List{
 				Items: []runtime.RawExtension{
-					{Raw: encodeOrDie(a)},
-					{Raw: encodeOrDie(b)},
-					{Raw: encodeOrDie(c)},
+					{RawJSON: encodeOrDie(a)},
+					{RawJSON: encodeOrDie(b)},
+					{RawJSON: encodeOrDie(c)},
 				},
 			},
 			sort: &api.List{
 				Items: []runtime.RawExtension{
-					{Raw: encodeOrDie(a)},
-					{Raw: encodeOrDie(b)},
-					{Raw: encodeOrDie(c)},
+					{RawJSON: encodeOrDie(a)},
+					{RawJSON: encodeOrDie(b)},
+					{RawJSON: encodeOrDie(c)},
 				},
 			},
 			field: "{.metadata.name}",
@@ -208,16 +208,16 @@ func TestSortingPrinter(t *testing.T) {
 			name: "v1.List in reverse",
 			obj: &api.List{
 				Items: []runtime.RawExtension{
-					{Raw: encodeOrDie(c)},
-					{Raw: encodeOrDie(b)},
-					{Raw: encodeOrDie(a)},
+					{RawJSON: encodeOrDie(c)},
+					{RawJSON: encodeOrDie(b)},
+					{RawJSON: encodeOrDie(a)},
 				},
 			},
 			sort: &api.List{
 				Items: []runtime.RawExtension{
-					{Raw: encodeOrDie(a)},
-					{Raw: encodeOrDie(b)},
-					{Raw: encodeOrDie(c)},
+					{RawJSON: encodeOrDie(a)},
+					{RawJSON: encodeOrDie(b)},
+					{RawJSON: encodeOrDie(c)},
 				},
 			},
 			field: "{.metadata.name}",

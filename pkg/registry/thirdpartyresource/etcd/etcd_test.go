@@ -33,14 +33,15 @@ import (
 
 func newStorage(t *testing.T) (*REST, *etcdtesting.EtcdTestServer) {
 	etcdStorage, server := registrytest.NewEtcdStorage(t, extensions.GroupName)
-	restOptions := generic.RESTOptions{Storage: etcdStorage, Decorator: generic.UndecoratedStorage, DeleteCollectionWorkers: 1}
+	restOptions := generic.RESTOptions{etcdStorage, generic.UndecoratedStorage, 1}
 	return NewREST(restOptions), server
 }
 
 func validNewThirdPartyResource(name string) *extensions.ThirdPartyResource {
 	return &extensions.ThirdPartyResource{
 		ObjectMeta: api.ObjectMeta{
-			Name: name,
+			Name:      name,
+			Namespace: api.NamespaceDefault,
 		},
 		Versions: []extensions.APIVersion{
 			{
@@ -53,9 +54,9 @@ func validNewThirdPartyResource(name string) *extensions.ThirdPartyResource {
 func TestCreate(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store).ClusterScope()
+	test := registrytest.New(t, storage.Etcd)
 	rsrc := validNewThirdPartyResource("foo")
-	rsrc.ObjectMeta = api.ObjectMeta{GenerateName: "foo-"}
+	rsrc.ObjectMeta = api.ObjectMeta{}
 	test.TestCreate(
 		// valid
 		rsrc,
@@ -67,7 +68,7 @@ func TestCreate(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store).ClusterScope()
+	test := registrytest.New(t, storage.Etcd)
 	test.TestUpdate(
 		// valid
 		validNewThirdPartyResource("foo"),
@@ -83,28 +84,28 @@ func TestUpdate(t *testing.T) {
 func TestDelete(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store).ClusterScope()
+	test := registrytest.New(t, storage.Etcd)
 	test.TestDelete(validNewThirdPartyResource("foo"))
 }
 
 func TestGet(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store).ClusterScope()
+	test := registrytest.New(t, storage.Etcd)
 	test.TestGet(validNewThirdPartyResource("foo"))
 }
 
 func TestList(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store).ClusterScope()
+	test := registrytest.New(t, storage.Etcd)
 	test.TestList(validNewThirdPartyResource("foo"))
 }
 
 func TestWatch(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
-	test := registrytest.New(t, storage.Store).ClusterScope()
+	test := registrytest.New(t, storage.Etcd)
 	test.TestWatch(
 		validNewThirdPartyResource("foo"),
 		// matching labels

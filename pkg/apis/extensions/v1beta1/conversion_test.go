@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/batch"
+	"k8s.io/kubernetes/pkg/apis/extensions"
 	versioned "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 )
 
@@ -55,7 +55,7 @@ func TestJobSpecConversion(t *testing.T) {
 
 	// Test internal -> v1beta1.
 	for _, test := range tests {
-		i := &batch.JobSpec{
+		i := &extensions.JobSpec{
 			ManualSelector: test.in,
 		}
 		v := versioned.JobSpec{}
@@ -72,7 +72,7 @@ func TestJobSpecConversion(t *testing.T) {
 		i := &versioned.JobSpec{
 			AutoSelector: test.in,
 		}
-		e := batch.JobSpec{}
+		e := extensions.JobSpec{}
 		if err := api.Scheme.Convert(i, &e); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

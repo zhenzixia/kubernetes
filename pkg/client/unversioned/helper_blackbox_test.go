@@ -31,7 +31,6 @@ import (
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/fake"
-	"k8s.io/kubernetes/pkg/runtime"
 )
 
 func objBody(object interface{}) io.ReadCloser {
@@ -105,9 +104,7 @@ func TestNegotiateVersion(t *testing.T) {
 				if test.sendErr != nil {
 					return nil, test.sendErr
 				}
-				header := http.Header{}
-				header.Set("Content-Type", runtime.ContentTypeJSON)
-				return &http.Response{StatusCode: 200, Header: header, Body: objBody(&uapi.APIVersions{Versions: test.serverVersions})}, nil
+				return &http.Response{StatusCode: 200, Body: objBody(&uapi.APIVersions{Versions: test.serverVersions})}, nil
 			}),
 		}
 		c := unversioned.NewOrDie(test.config)

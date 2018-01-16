@@ -1,4 +1,5 @@
-{% if grains['cloud'] is defined and grains.cloud in ['aws', 'gce', 'vagrant', 'vsphere', 'openstack'] %}
+{% if grains.cloud is defined %}
+{% if grains.cloud in ['aws', 'gce', 'vagrant', 'vsphere'] %}
 # TODO: generate and distribute tokens on other cloud providers.
 /srv/kubernetes/known_tokens.csv:
   file.managed:
@@ -8,17 +9,13 @@
     - mode: 600
 #    - watch_in:
 #      - service: kube-apiserver
+{% endif %}
+{% endif %}
 
+{% if grains['cloud'] is defined and grains.cloud in [ 'aws', 'gce', 'vagrant' ,'vsphere']  %}
 /srv/kubernetes/basic_auth.csv:
   file.managed:
     - source: salt://kube-apiserver/basic_auth.csv
-    - user: root
-    - group: root
-    - mode: 600
-
-/srv/kubernetes/abac-authz-policy.jsonl:
-  file.managed:
-    - source: salt://kube-apiserver/abac-authz-policy.jsonl
     - user: root
     - group: root
     - mode: 600

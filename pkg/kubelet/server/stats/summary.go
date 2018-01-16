@@ -26,14 +26,12 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
-	"k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/dockertools"
 	"k8s.io/kubernetes/pkg/kubelet/leaky"
 	"k8s.io/kubernetes/pkg/kubelet/network"
 	"k8s.io/kubernetes/pkg/types"
 
 	"github.com/golang/glog"
-
 	cadvisorapiv1 "github.com/google/cadvisor/info/v1"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
 )
@@ -44,18 +42,17 @@ type SummaryProvider interface {
 }
 
 type summaryProviderImpl struct {
-	provider           StatsProvider
-	fsResourceAnalyzer fsResourceAnalyzerInterface
-	runtime            container.Runtime
+	provider         StatsProvider
+	resourceAnalyzer ResourceAnalyzer
 }
 
 var _ SummaryProvider = &summaryProviderImpl{}
 
 // NewSummaryProvider returns a new SummaryProvider
-func NewSummaryProvider(statsProvider StatsProvider, fsResourceAnalyzer fsResourceAnalyzerInterface, cruntime container.Runtime) SummaryProvider {
+func NewSummaryProvider(statsProvider StatsProvider, resourceAnalyzer ResourceAnalyzer) SummaryProvider {
 	stackBuff := []byte{}
 	runtime.Stack(stackBuff, false)
-	return &summaryProviderImpl{statsProvider, fsResourceAnalyzer, cruntime}
+	return &summaryProviderImpl{statsProvider, resourceAnalyzer}
 }
 
 // Get implements the SummaryProvider interface
@@ -85,23 +82,19 @@ func (sp *summaryProviderImpl) Get() (*stats.Summary, error) {
 	if err != nil {
 		return nil, err
 	}
-	imageStats, err := sp.runtime.ImageStats()
-	if err != nil || imageStats == nil {
-		return nil, err
-	}
-	sb := &summaryBuilder{sp.fsResourceAnalyzer, node, nodeConfig, rootFsInfo, imageFsInfo, *imageStats, infos}
+
+	sb := &summaryBuilder{sp.resourceAnalyzer, node, nodeConfig, rootFsInfo, imageFsInfo, infos}
 	return sb.build()
 }
 
 // summaryBuilder aggregates the datastructures provided by cadvisor into a Summary result
 type summaryBuilder struct {
-	fsResourceAnalyzer fsResourceAnalyzerInterface
-	node               *api.Node
-	nodeConfig         cm.NodeConfig
-	rootFsInfo         cadvisorapiv2.FsInfo
-	imageFsInfo        cadvisorapiv2.FsInfo
-	imageStats         container.ImageStats
-	infos              map[string]cadvisorapiv2.ContainerInfo
+	resourceAnalyzer ResourceAnalyzer
+	node             *api.Node
+	nodeConfig       cm.NodeConfig
+	rootFsInfo       cadvisorapiv2.FsInfo
+	imageFsInfo      cadvisorapiv2.FsInfo
+	infos            map[string]cadvisorapiv2.ContainerInfo
 }
 
 // build returns a Summary from aggregating the input data
@@ -122,13 +115,6 @@ func (sb *summaryBuilder) build() (*stats.Summary, error) {
 			CapacityBytes:  &sb.rootFsInfo.Capacity,
 			UsedBytes:      &sb.rootFsInfo.Usage},
 		StartTime: rootStats.StartTime,
-		Runtime: &stats.RuntimeStats{
-			ImageFs: &stats.FsStats{
-				AvailableBytes: &sb.imageFsInfo.Available,
-				CapacityBytes:  &sb.imageFsInfo.Capacity,
-				UsedBytes:      &sb.imageStats.TotalStorageBytes,
-			},
-		},
 	}
 
 	systemContainers := map[string]string{
@@ -165,6 +151,7 @@ func (sb *summaryBuilder) containerInfoV2FsStats(
 		AvailableBytes: &sb.imageFsInfo.Available,
 		CapacityBytes:  &sb.imageFsInfo.Capacity,
 	}
+
 	lcs, found := sb.latestContainerStats(info)
 	if !found {
 		return
@@ -234,7 +221,7 @@ func (sb *summaryBuilder) buildSummaryPods() []stats.PodStats {
 	for _, podStats := range podToStats {
 		// Lookup the volume stats for each pod
 		podUID := types.UID(podStats.PodRef.UID)
-		if vstats, found := sb.fsResourceAnalyzer.GetPodVolumeStats(podUID); found {
+		if vstats, found := sb.resourceAnalyzer.GetPodVolumeStats(podUID); found {
 			podStats.VolumeStats = vstats.Volumes
 		}
 		result = append(result, *podStats)
@@ -297,25 +284,10 @@ func (sb *summaryBuilder) containerInfoV2ToStats(
 			PageFaults:      &pageFaults,
 			MajorPageFaults: &majorPageFaults,
 		}
-		// availableBytes = memory  limit (if known) - workingset
-		if !isMemoryUnlimited(info.Spec.Memory.Limit) {
-			availableBytes := info.Spec.Memory.Limit - cstat.Memory.WorkingSet
-			cStats.Memory.AvailableBytes = &availableBytes
-		}
 	}
-
 	sb.containerInfoV2FsStats(info, &cStats)
 	cStats.UserDefinedMetrics = sb.containerInfoV2ToUserDefinedMetrics(info)
 	return cStats
-}
-
-// Size after which we consider memory to be "unlimited". This is not
-// MaxInt64 due to rounding by the kernel.
-// TODO: cadvisor should export this https://github.com/google/cadvisor/blob/master/metrics/prometheus.go#L596
-const maxMemorySize = uint64(1 << 62)
-
-func isMemoryUnlimited(v uint64) bool {
-	return v > maxMemorySize
 }
 
 func (sb *summaryBuilder) containerInfoV2ToNetworkStats(name string, info *cadvisorapiv2.ContainerInfo) *stats.NetworkStats {

@@ -23,13 +23,12 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/wait"
-	"k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = framework.KubeDescribe("Kubernetes Dashboard", func() {
+var _ = Describe("Kubernetes Dashboard", func() {
 	const (
 		uiServiceName = "kubernetes-dashboard"
 		uiAppName     = uiServiceName
@@ -38,36 +37,36 @@ var _ = framework.KubeDescribe("Kubernetes Dashboard", func() {
 		serverStartTimeout = 1 * time.Minute
 	)
 
-	f := framework.NewDefaultFramework(uiServiceName)
+	f := NewDefaultFramework(uiServiceName)
 
 	It("should check that the kubernetes-dashboard instance is alive", func() {
 		By("Checking whether the kubernetes-dashboard service exists.")
-		err := framework.WaitForService(f.Client, uiNamespace, uiServiceName, true, framework.Poll, framework.ServiceStartTimeout)
+		err := waitForService(f.Client, uiNamespace, uiServiceName, true, poll, serviceStartTimeout)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Checking to make sure the kubernetes-dashboard pods are running")
 		selector := labels.SelectorFromSet(labels.Set(map[string]string{"k8s-app": uiAppName}))
-		err = framework.WaitForPodsWithLabelRunning(f.Client, uiNamespace, selector)
+		err = waitForPodsWithLabelRunning(f.Client, uiNamespace, selector)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Checking to make sure we get a response from the kubernetes-dashboard.")
-		err = wait.Poll(framework.Poll, serverStartTimeout, func() (bool, error) {
+		err = wait.Poll(poll, serverStartTimeout, func() (bool, error) {
 			var status int
-			proxyRequest, errProxy := framework.GetServicesProxyRequest(f.Client, f.Client.Get())
+			proxyRequest, errProxy := getServicesProxyRequest(f.Client, f.Client.Get())
 			if errProxy != nil {
-				framework.Logf("Get services proxy request failed: %v", errProxy)
+				Logf("Get services proxy request failed: %v", errProxy)
 			}
 			// Query against the proxy URL for the kube-ui service.
 			err := proxyRequest.Namespace(uiNamespace).
 				Name(uiServiceName).
-				Timeout(framework.SingleCallTimeout).
+				Timeout(singleCallTimeout).
 				Do().
 				StatusCode(&status).
 				Error()
 			if status != http.StatusOK {
-				framework.Logf("Unexpected status from kubernetes-dashboard: %v", status)
+				Logf("Unexpected status from kubernetes-dashboard: %v", status)
 			} else if err != nil {
-				framework.Logf("Request to kube-ui failed: %v", err)
+				Logf("Request to kube-ui failed: %v", err)
 			}
 			// Don't return err here as it aborts polling.
 			return status == http.StatusOK, nil
@@ -78,7 +77,7 @@ var _ = framework.KubeDescribe("Kubernetes Dashboard", func() {
 		var status int
 		err = f.Client.Get().
 			AbsPath("/ui").
-			Timeout(framework.SingleCallTimeout).
+			Timeout(singleCallTimeout).
 			Do().
 			StatusCode(&status).
 			Error()

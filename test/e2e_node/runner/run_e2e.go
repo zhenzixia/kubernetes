@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 // To run the e2e tests against one or more hosts on gce:
-// $ go run run_e2e.go --logtostderr --v 2 --ssh-env gce --hosts <comma separated hosts>
+// $ godep go run run_e2e.go --logtostderr --v 2 --ssh-env gce --hosts <comma separated hosts>
 // To run the e2e tests against one or more images on gce and provision them:
-// $ go run run_e2e.go --logtostderr --v 2 --project <project> --zone <zone> --ssh-env gce --images <comma separated images>
+// $ godep go run run_e2e.go --logtostderr --v 2 --project <project> --zone <zone> --ssh-env gce --images <comma separated images>
 package main
 
 import (
@@ -122,7 +122,7 @@ func main() {
 			fmt.Printf("Initializing e2e tests using host %s.\n", host)
 			running++
 			go func(host string) {
-				results <- testHost(host, archive, *cleanup)
+				results <- testHost(host, archive)
 			}(host)
 		}
 	}
@@ -150,8 +150,8 @@ func main() {
 }
 
 // Run tests in archive against host
-func testHost(host, archive string, deleteFiles bool) *TestResult {
-	output, err := e2e_node.RunRemote(archive, host, deleteFiles)
+func testHost(host, archive string) *TestResult {
+	output, err := e2e_node.RunRemote(archive, host, *cleanup)
 	return &TestResult{
 		output: output,
 		err:    err,
@@ -171,7 +171,7 @@ func testImage(image, archive string) *TestResult {
 			err: fmt.Errorf("Unable to create gce instance with running docker daemon for image %s.  %v", image, err),
 		}
 	}
-	return testHost(host, archive, false)
+	return testHost(host, archive)
 }
 
 // Provision a gce instance using image

@@ -29,15 +29,24 @@ if [[ $# -ne 1 ]]; then
     exit 1
 fi
 
-export JENKINS_BUILD_FINISHED="$1"
+# TODO: DRY. Refactor into upload-to-gcs.sh ?
+: ${JENKINS_GCS_LOGS_PATH:="gs://kubernetes-jenkins/logs"}
+: ${JENKINS_UPLOAD_TO_GCS:="y"}
 
-echo
-echo "Passing through to upload-to-gcs.sh with JENKINS_BUILD_FINISHED=${JENKINS_BUILD_FINISHED}"
-echo "Please update configs to call upload-to-gcs.sh directly."
-echo
-
-if [[ -x ./hack/jenkins/upload-to-gcs.sh ]]; then
-  ./hack/jenkins/upload-to-gcs.sh
-else
-  curl -fsS --retry 3 "https://raw.githubusercontent.com/kubernetes/kubernetes/master/hack/jenkins/upload-to-gcs.sh" | bash -
+if [[ ! ${JENKINS_UPLOAD_TO_GCS:-} =~ ^[yY]$ ]]; then
+  exit 0
 fi
+
+readonly result="$1"
+readonly timestamp=$(date +%s)
+readonly location="${JENKINS_GCS_LOGS_PATH}/${JOB_NAME}/${BUILD_NUMBER}/finished.json"
+
+echo -n 'Run finished at '; date -d "@${timestamp}"
+
+echo "Uploading build result to: ${location}"
+gsutil -q cp -a "public-read" <(
+    echo "{"
+    echo "    \"result\": \"${result}\","
+    echo "    \"timestamp\": ${timestamp}"
+    echo "}"
+) "${location}"

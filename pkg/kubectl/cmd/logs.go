@@ -61,7 +61,6 @@ type LogsOptions struct {
 	ClientMapper resource.ClientMapper
 	Decoder      runtime.Decoder
 
-	Object        runtime.Object
 	LogsForObject func(object, options runtime.Object) (*restclient.Request, error)
 
 	Out io.Writer
@@ -101,7 +100,6 @@ func NewCmdLogs(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 
 	cmd.Flags().Bool("interactive", false, "If true, prompt the user for input when required.")
 	cmd.Flags().MarkDeprecated("interactive", "This flag is no longer respected and there is no replacement.")
-	cmdutil.AddInclude3rdPartyFlags(cmd)
 	return cmd
 }
 
@@ -152,26 +150,13 @@ func (o *LogsOptions) Complete(f *cmdutil.Factory, out io.Writer, cmd *cobra.Com
 		logOptions.SinceSeconds = &sec
 	}
 	o.Options = logOptions
-	o.LogsForObject = f.LogsForObject
-	o.ClientMapper = resource.ClientMapperFunc(f.ClientForMapping)
-	o.Out = out
 
-	mapper, typer := f.Object(cmdutil.GetIncludeThirdPartyAPIs(cmd))
-	decoder := f.Decoder(true)
-	if o.Object == nil {
-		infos, err := resource.NewBuilder(mapper, typer, o.ClientMapper, decoder).
-			NamespaceParam(o.Namespace).DefaultNamespace().
-			ResourceNames("pods", o.ResourceArg).
-			SingleResourceType().
-			Do().Infos()
-		if err != nil {
-			return err
-		}
-		if len(infos) != 1 {
-			return errors.New("expected a resource")
-		}
-		o.Object = infos[0].Object
-	}
+	o.Mapper, o.Typer = f.Object()
+	o.Decoder = f.Decoder(true)
+	o.ClientMapper = resource.ClientMapperFunc(f.ClientForMapping)
+	o.LogsForObject = f.LogsForObject
+
+	o.Out = out
 
 	return nil
 }
@@ -193,7 +178,20 @@ func (o LogsOptions) Validate() error {
 
 // RunLogs retrieves a pod log
 func (o LogsOptions) RunLogs() (int64, error) {
-	req, err := o.LogsForObject(o.Object, o.Options)
+	infos, err := resource.NewBuilder(o.Mapper, o.Typer, o.ClientMapper, o.Decoder).
+		NamespaceParam(o.Namespace).DefaultNamespace().
+		ResourceNames("pods", o.ResourceArg).
+		SingleResourceType().
+		Do().Infos()
+	if err != nil {
+		return 0, err
+	}
+	if len(infos) != 1 {
+		return 0, errors.New("expected a resource")
+	}
+	info := infos[0]
+
+	req, err := o.LogsForObject(info.Object, o.Options)
 	if err != nil {
 		return 0, err
 	}

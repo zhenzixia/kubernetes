@@ -16,33 +16,25 @@ limitations under the License.
 
 package stats
 
-import (
-	"time"
-
-	"k8s.io/kubernetes/pkg/kubelet/container"
-)
+import "time"
 
 // ResourceAnalyzer provides statistics on node resource consumption
 type ResourceAnalyzer interface {
 	Start()
 
 	fsResourceAnalyzerInterface
-	SummaryProvider
 }
 
 // resourceAnalyzer implements ResourceAnalyzer
 type resourceAnalyzer struct {
 	*fsResourceAnalyzer
-	SummaryProvider
 }
 
 var _ ResourceAnalyzer = &resourceAnalyzer{}
 
 // NewResourceAnalyzer returns a new ResourceAnalyzer
-func NewResourceAnalyzer(statsProvider StatsProvider, calVolumeFrequency time.Duration, runtime container.Runtime) ResourceAnalyzer {
-	fsAnalyzer := newFsResourceAnalyzer(statsProvider, calVolumeFrequency)
-	summaryProvider := NewSummaryProvider(statsProvider, fsAnalyzer, runtime)
-	return &resourceAnalyzer{fsAnalyzer, summaryProvider}
+func NewResourceAnalyzer(statsProvider StatsProvider, calVolumeFrequency time.Duration) ResourceAnalyzer {
+	return &resourceAnalyzer{newFsResourceAnalyzer(statsProvider, calVolumeFrequency)}
 }
 
 // Start starts background functions necessary for the ResourceAnalyzer to function

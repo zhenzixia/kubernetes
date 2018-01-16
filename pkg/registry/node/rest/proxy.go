@@ -26,7 +26,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/rest"
 	"k8s.io/kubernetes/pkg/capabilities"
 	"k8s.io/kubernetes/pkg/kubelet/client"
-	"k8s.io/kubernetes/pkg/registry/generic/registry"
+	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	genericrest "k8s.io/kubernetes/pkg/registry/generic/rest"
 	"k8s.io/kubernetes/pkg/registry/node"
 	"k8s.io/kubernetes/pkg/runtime"
@@ -34,7 +34,7 @@ import (
 
 // ProxyREST implements the proxy subresource for a Node
 type ProxyREST struct {
-	Store          *registry.Store
+	Store          *etcdgeneric.Etcd
 	Connection     client.ConnectionInfoGetter
 	ProxyTransport http.RoundTripper
 }

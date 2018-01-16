@@ -93,24 +93,24 @@ func (plugin *hostPathPlugin) GetAccessModes() []api.PersistentVolumeAccessMode 
 	}
 }
 
-func (plugin *hostPathPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
+func (plugin *hostPathPlugin) NewBuilder(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Builder, error) {
 	if spec.Volume != nil && spec.Volume.HostPath != nil {
 		path := spec.Volume.HostPath.Path
-		return &hostPathMounter{
+		return &hostPathBuilder{
 			hostPath: &hostPath{path: path},
 			readOnly: false,
 		}, nil
 	} else {
 		path := spec.PersistentVolume.Spec.HostPath.Path
-		return &hostPathMounter{
+		return &hostPathBuilder{
 			hostPath: &hostPath{path: path},
 			readOnly: spec.ReadOnly,
 		}, nil
 	}
 }
 
-func (plugin *hostPathPlugin) NewUnmounter(volName string, podUID types.UID) (volume.Unmounter, error) {
-	return &hostPathUnmounter{&hostPath{
+func (plugin *hostPathPlugin) NewCleaner(volName string, podUID types.UID) (volume.Cleaner, error) {
+	return &hostPathCleaner{&hostPath{
 		path: "",
 	}}, nil
 }
@@ -167,14 +167,14 @@ func (hp *hostPath) GetPath() string {
 	return hp.path
 }
 
-type hostPathMounter struct {
+type hostPathBuilder struct {
 	*hostPath
 	readOnly bool
 }
 
-var _ volume.Mounter = &hostPathMounter{}
+var _ volume.Builder = &hostPathBuilder{}
 
-func (b *hostPathMounter) GetAttributes() volume.Attributes {
+func (b *hostPathBuilder) GetAttributes() volume.Attributes {
 	return volume.Attributes{
 		ReadOnly:        b.readOnly,
 		Managed:         false,
@@ -183,32 +183,32 @@ func (b *hostPathMounter) GetAttributes() volume.Attributes {
 }
 
 // SetUp does nothing.
-func (b *hostPathMounter) SetUp(fsGroup *int64) error {
+func (b *hostPathBuilder) SetUp(fsGroup *int64) error {
 	return nil
 }
 
 // SetUpAt does not make sense for host paths - probably programmer error.
-func (b *hostPathMounter) SetUpAt(dir string, fsGroup *int64) error {
+func (b *hostPathBuilder) SetUpAt(dir string, fsGroup *int64) error {
 	return fmt.Errorf("SetUpAt() does not make sense for host paths")
 }
 
-func (b *hostPathMounter) GetPath() string {
+func (b *hostPathBuilder) GetPath() string {
 	return b.path
 }
 
-type hostPathUnmounter struct {
+type hostPathCleaner struct {
 	*hostPath
 }
 
-var _ volume.Unmounter = &hostPathUnmounter{}
+var _ volume.Cleaner = &hostPathCleaner{}
 
 // TearDown does nothing.
-func (c *hostPathUnmounter) TearDown() error {
+func (c *hostPathCleaner) TearDown() error {
 	return nil
 }
 
 // TearDownAt does not make sense for host paths - probably programmer error.
-func (c *hostPathUnmounter) TearDownAt(dir string) error {
+func (c *hostPathCleaner) TearDownAt(dir string) error {
 	return fmt.Errorf("TearDownAt() does not make sense for host paths")
 }
 

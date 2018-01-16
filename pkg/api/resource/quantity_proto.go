@@ -1,3 +1,5 @@
+// +build proto
+
 /*
 Copyright 2015 The Kubernetes Authors All rights reserved.
 
@@ -19,7 +21,7 @@ package resource
 import (
 	"math/big"
 
-	inf "gopkg.in/inf.v0"
+	"speter.net/go/exp/math/dec/inf"
 )
 
 // QuantityProto is a struct that is equivalent to Quantity, but intended for
@@ -29,11 +31,11 @@ import (
 // +protobuf=true
 type QuantityProto struct {
 	// The format of the quantity
-	Format Format `protobuf:"bytes,1,opt,name=format,casttype=Format"`
+	Format Format
 	// The scale dimension of the value
-	Scale int32 `protobuf:"varint,2,opt,name=scale"`
+	Scale int32
 	// Bigint is serialized as a raw bytes array
-	Bigint []byte `protobuf:"bytes,3,opt,name=bigint"`
+	Bigint []byte
 }
 
 // ProtoTime returns the Time as a new ProtoTime value.

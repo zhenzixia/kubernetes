@@ -230,20 +230,20 @@ func doTestPlugin(scenario struct {
 		return allErrs
 	}
 	pod := &api.Pod{ObjectMeta: api.ObjectMeta{UID: types.UID("poduid")}}
-	mounter, err := plug.NewMounter(volume.NewSpecFromVolume(scenario.vol), pod, volume.VolumeOptions{RootContext: ""})
+	builder, err := plug.NewBuilder(volume.NewSpecFromVolume(scenario.vol), pod, volume.VolumeOptions{RootContext: ""})
 
 	if err != nil {
 		allErrs = append(allErrs,
-			fmt.Errorf("Failed to make a new Mounter: %v", err))
+			fmt.Errorf("Failed to make a new Builder: %v", err))
 		return allErrs
 	}
-	if mounter == nil {
+	if builder == nil {
 		allErrs = append(allErrs,
-			fmt.Errorf("Got a nil Mounter"))
+			fmt.Errorf("Got a nil Builder"))
 		return allErrs
 	}
 
-	path := mounter.GetPath()
+	path := builder.GetPath()
 	suffix := fmt.Sprintf("pods/poduid/volumes/kubernetes.io~git-repo/%v", scenario.vol.Name)
 	if !strings.HasSuffix(path, suffix) {
 		allErrs = append(allErrs,
@@ -252,7 +252,7 @@ func doTestPlugin(scenario struct {
 	}
 
 	// Test setUp()
-	setUpErrs := doTestSetUp(scenario, mounter)
+	setUpErrs := doTestSetUp(scenario, builder)
 	allErrs = append(allErrs, setUpErrs...)
 
 	if _, err := os.Stat(path); err != nil {
@@ -280,19 +280,19 @@ func doTestPlugin(scenario struct {
 		}
 	}
 
-	unmounter, err := plug.NewUnmounter("vol1", types.UID("poduid"))
+	cleaner, err := plug.NewCleaner("vol1", types.UID("poduid"))
 	if err != nil {
 		allErrs = append(allErrs,
-			fmt.Errorf("Failed to make a new Unmounter: %v", err))
+			fmt.Errorf("Failed to make a new Cleaner: %v", err))
 		return allErrs
 	}
-	if unmounter == nil {
+	if cleaner == nil {
 		allErrs = append(allErrs,
-			fmt.Errorf("Got a nil Unmounter"))
+			fmt.Errorf("Got a nil Cleaner"))
 		return allErrs
 	}
 
-	if err := unmounter.TearDown(); err != nil {
+	if err := cleaner.TearDown(); err != nil {
 		allErrs = append(allErrs,
 			fmt.Errorf("Expected success, got: %v", err))
 		return allErrs
@@ -312,7 +312,7 @@ func doTestSetUp(scenario struct {
 	vol               *api.Volume
 	expecteds         []expectedCommand
 	isExpectedFailure bool
-}, mounter volume.Mounter) []error {
+}, builder volume.Builder) []error {
 	expecteds := scenario.expecteds
 	allErrs := []error{}
 
@@ -349,7 +349,7 @@ func doTestSetUp(scenario struct {
 		CommandScript: fakeAction,
 	}
 
-	g := mounter.(*gitRepoVolumeMounter)
+	g := builder.(*gitRepoVolumeBuilder)
 	g.exec = &fake
 
 	g.SetUp(nil)

@@ -29,7 +29,6 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/api/validation"
-	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	expvalidation "k8s.io/kubernetes/pkg/apis/extensions/validation"
 	"k8s.io/kubernetes/pkg/capabilities"
@@ -110,7 +109,7 @@ func validateObject(obj runtime.Object) (errors field.ErrorList) {
 			t.Namespace = api.NamespaceDefault
 		}
 		errors = expvalidation.ValidateDeployment(t)
-	case *batch.Job:
+	case *extensions.Job:
 		if t.Namespace == "" {
 			t.Namespace = api.NamespaceDefault
 		}
@@ -129,8 +128,7 @@ func validateObject(obj runtime.Object) (errors field.ErrorList) {
 		}
 		errors = expvalidation.ValidateDaemonSet(t)
 	default:
-		errors = field.ErrorList{}
-		errors = append(errors, field.InternalError(field.NewPath(""), fmt.Errorf("no validation defined for %#v", obj)))
+		return field.ErrorList{field.InternalError(field.NewPath(""), fmt.Errorf("no validation defined for %#v", obj))}
 	}
 	return errors
 }
@@ -170,6 +168,9 @@ func walkJSONFiles(inDir string, fn func(name, path string, data []byte)) error 
 
 func TestExampleObjectSchemas(t *testing.T) {
 	cases := map[string]map[string]runtime.Object{
+		"../cmd/integration": {
+			"v1-controller": &api.ReplicationController{},
+		},
 		"../examples/guestbook": {
 			"frontend-deployment":     &extensions.Deployment{},
 			"redis-slave-deployment":  &extensions.Deployment{},
@@ -235,7 +236,7 @@ func TestExampleObjectSchemas(t *testing.T) {
 		"../docs/user-guide": {
 			"multi-pod":            nil,
 			"pod":                  &api.Pod{},
-			"job":                  &batch.Job{},
+			"job":                  &extensions.Job{},
 			"ingress":              &extensions.Ingress{},
 			"nginx-deployment":     &extensions.Deployment{},
 			"new-nginx-deployment": &extensions.Deployment{},
@@ -260,6 +261,7 @@ func TestExampleObjectSchemas(t *testing.T) {
 			"cassandra-daemonset":  &extensions.DaemonSet{},
 			"cassandra-controller": &api.ReplicationController{},
 			"cassandra-service":    &api.Service{},
+			"cassandra":            &api.Pod{},
 		},
 		"../examples/celery-rabbitmq": {
 			"celery-controller":   &api.ReplicationController{},
@@ -314,10 +316,10 @@ func TestExampleObjectSchemas(t *testing.T) {
 			"mongo-service":     &api.Service{},
 		},
 		"../examples/mysql-wordpress-pd": {
-			"gce-volumes":          &api.PersistentVolume{},
-			"local-volumes":        &api.PersistentVolume{},
-			"mysql-deployment":     &api.Service{},
-			"wordpress-deployment": &api.Service{},
+			"mysql-service":     &api.Service{},
+			"mysql":             &api.Pod{},
+			"wordpress-service": &api.Service{},
+			"wordpress":         &api.Pod{},
 		},
 		"../examples/nfs": {
 			"nfs-busybox-rc":     &api.ReplicationController{},
@@ -330,6 +332,7 @@ func TestExampleObjectSchemas(t *testing.T) {
 		},
 		"../docs/user-guide/node-selection": {
 			"pod": &api.Pod{},
+			"pod-with-node-affinity": &api.Pod{},
 		},
 		"../examples/openshift-origin": {
 			"openshift-origin-namespace": &api.Namespace{},
@@ -369,7 +372,6 @@ func TestExampleObjectSchemas(t *testing.T) {
 			"secret-env-pod": &api.Pod{},
 		},
 		"../examples/spark": {
-			"namespace-spark-cluster": &api.Namespace{},
 			"spark-master-controller": &api.ReplicationController{},
 			"spark-master-service":    &api.Service{},
 			"spark-webui":             &api.Service{},
@@ -402,12 +404,12 @@ func TestExampleObjectSchemas(t *testing.T) {
 			"javaweb-2": &api.Pod{},
 		},
 		"../examples/job/work-queue-1": {
-			"job": &batch.Job{},
+			"job": &extensions.Job{},
 		},
 		"../examples/job/work-queue-2": {
 			"redis-pod":     &api.Pod{},
 			"redis-service": &api.Service{},
-			"job":           &batch.Job{},
+			"job":           &extensions.Job{},
 		},
 		"../examples/azure_file": {
 			"azure": &api.Pod{},

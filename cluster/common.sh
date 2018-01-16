@@ -31,12 +31,14 @@ source "${KUBE_ROOT}/cluster/lib/logging.sh"
 # NOTE This must match the version_regex in build/common.sh
 # kube::release::parse_and_validate_release_version()
 KUBE_RELEASE_VERSION_REGEX="^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(beta|alpha)\\.(0|[1-9][0-9]*))?$"
+KUBE_RELEASE_VERSION_DASHED_REGEX="v(0|[1-9][0-9]*)-(0|[1-9][0-9]*)-(0|[1-9][0-9]*)(-(beta|alpha)-(0|[1-9][0-9]*))?"
 
 # KUBE_CI_VERSION_REGEX matches things like "v1.2.3-alpha.4.56+abcdefg" This
 #
 # NOTE This must match the version_regex in build/common.sh
 # kube::release::parse_and_validate_ci_version()
 KUBE_CI_VERSION_REGEX="^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)-(beta|alpha)\\.(0|[1-9][0-9]*)(\\.(0|[1-9][0-9]*)\\+[-0-9a-z]*)?$"
+KUBE_CI_VERSION_DASHED_REGEX="^v(0|[1-9][0-9]*)-(0|[1-9][0-9]*)-(0|[1-9][0-9]*)-(beta|alpha)-(0|[1-9][0-9]*)(-(0|[1-9][0-9]*)\\+[-0-9a-z]*)?"
 
 
 # Generate kubeconfig data for the created cluster.
@@ -202,16 +204,6 @@ function gen-kube-bearertoken() {
     KUBE_BEARER_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
 }
 
-# Generate uid
-# This function only works on systems with python. It generates a time based
-# UID instead of a UUID because GCE has a name length limit.
-#
-# Vars set:
-#   KUBE_UID
-function gen-uid {
-    KUBE_UID=$(python -c 'import uuid; print(uuid.uuid1().fields[0])')
-}
-
 
 function load-or-gen-kube-basicauth() {
   if [[ ! -z "${KUBE_CONTEXT:-}" ]]; then
@@ -256,7 +248,7 @@ function detect-master-from-kubeconfig() {
 
 # Sets KUBE_VERSION variable to the proper version number (e.g. "v1.0.6",
 # "v1.2.0-alpha.1.881+376438b69c7612") or a version' publication of the form
-# <bucket>/<version> (e.g. "release/stable",' "ci/latest-1").
+# <path>/<version> (e.g. "release/stable",' "ci/latest-1").
 #
 # See the docs on getting builds for more information about version
 # publication.
@@ -267,7 +259,12 @@ function detect-master-from-kubeconfig() {
 #   KUBE_VERSION
 function set_binary_version() {
   if [[ "${1}" =~ "/" ]]; then
-    KUBE_VERSION=$(gsutil cat gs://kubernetes-release/${1}.txt)
+    IFS='/' read -a path <<< "${1}"
+    if [[ "${path[0]}" == "release" ]]; then
+      KUBE_VERSION=$(gsutil cat "gs://kubernetes-release/${1}.txt")
+    else
+      KUBE_VERSION=$(gsutil cat "gs://kubernetes-release-dev/${1}.txt")
+    fi
   else
     KUBE_VERSION=${1}
   fi
@@ -295,8 +292,8 @@ function tars_from_version() {
     SERVER_BINARY_TAR_URL="https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/kubernetes-server-linux-amd64.tar.gz"
     SALT_TAR_URL="https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/kubernetes-salt.tar.gz"
   elif [[ ${KUBE_VERSION} =~ ${KUBE_CI_VERSION_REGEX} ]]; then
-    SERVER_BINARY_TAR_URL="https://storage.googleapis.com/kubernetes-release/ci/${KUBE_VERSION}/kubernetes-server-linux-amd64.tar.gz"
-    SALT_TAR_URL="https://storage.googleapis.com/kubernetes-release/ci/${KUBE_VERSION}/kubernetes-salt.tar.gz"
+    SERVER_BINARY_TAR_URL="https://storage.googleapis.com/kubernetes-release-dev/ci/${KUBE_VERSION}/kubernetes-server-linux-amd64.tar.gz"
+    SALT_TAR_URL="https://storage.googleapis.com/kubernetes-release-dev/ci/${KUBE_VERSION}/kubernetes-salt.tar.gz"
   else
     echo "Version doesn't match regexp" >&2
     exit 1
@@ -466,7 +463,6 @@ function build-kube-env {
   local file=$2
 
   build-runtime-config
-  gen-uid
 
   rm -f ${file}
   cat >$file <<EOF
@@ -514,7 +510,6 @@ KUBE_DOCKER_REGISTRY: $(yaml-quote ${KUBE_DOCKER_REGISTRY:-})
 KUBE_ADDON_REGISTRY: $(yaml-quote ${KUBE_ADDON_REGISTRY:-})
 MULTIZONE: $(yaml-quote ${MULTIZONE:-})
 NON_MASQUERADE_CIDR: $(yaml-quote ${NON_MASQUERADE_CIDR:-})
-KUBE_UID: $(yaml-quote ${KUBE_UID:-})
 EOF
   if [ -n "${KUBELET_PORT:-}" ]; then
     cat >>$file <<EOF

@@ -21,10 +21,8 @@ import (
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
-	apierrs "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/util"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -39,10 +37,8 @@ var _ = Describe("Kubelet Container Manager", func() {
 	Describe("oom score adjusting", func() {
 		namespace := "oom-adj"
 		Context("when scheduling a busybox command that always fails in a pod", func() {
-			var podName string
-
-			BeforeEach(func() {
-				podName = "bin-false" + string(util.NewUUID())
+			podName := "bin-false"
+			It("it should return succes", func() {
 				pod := &api.Pod{
 					ObjectMeta: api.ObjectMeta{
 						Name:      podName,
@@ -62,7 +58,6 @@ var _ = Describe("Kubelet Container Manager", func() {
 						},
 					},
 				}
-
 				_, err := cl.Pods(namespace).Create(pod)
 				Expect(err).To(BeNil(), fmt.Sprintf("Error creating Pod %v", err))
 			})
@@ -91,18 +86,6 @@ var _ = Describe("Kubelet Container Manager", func() {
 				err := cl.Pods(namespace).Delete(podName, &api.DeleteOptions{})
 				Expect(err).To(BeNil(), fmt.Sprintf("Error deleting Pod %v", err))
 			})
-
-			AfterEach(func() {
-				cl.Pods(namespace).Delete(podName, &api.DeleteOptions{})
-				Eventually(func() bool {
-					_, err := cl.Pods(namespace).Get(podName)
-					if err != nil && apierrs.IsNotFound(err) {
-						return true
-					}
-					return false
-				}, time.Minute, time.Second*4).Should(BeTrue())
-			})
-
 		})
 	})
 
